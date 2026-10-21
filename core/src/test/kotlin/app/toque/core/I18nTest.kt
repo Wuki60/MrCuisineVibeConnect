@@ -1,8 +1,7 @@
 package app.toque.core
 
-import app.toque.core.i18n.En
 import app.toque.core.i18n.I18n
-import app.toque.core.i18n.Lang
+import app.toque.core.i18n.Language
 import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.JobKind
@@ -10,23 +9,31 @@ import app.toque.core.machine.LinkState
 import app.toque.core.machine.PauseReason
 import org.junit.After
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
 /**
- * Vérifie que chaque texte passé à tr()/trKey() dans le code (cœur et appli) a sa traduction
- * anglaise, sans paramètre manquant ou en trop, et qu'aucune traduction n'est orpheline.
+ * Vérifie les fichiers de langue (app/src/main/assets/lang/<code>.json) par rapport aux textes
+ * passés à tr()/trKey() dans le code : l'anglais doit être complet ; toute langue ne doit contenir
+ * que des textes existants, avec les mêmes paramètres (%s, %d…). Un texte manquant reste en français.
  */
 class I18nTest {
     @After fun reset() {
-        I18n.lang = Lang.FR
+        I18n.install(emptyList())
+        I18n.select("fr")
     }
 
     private val roots = listOf(File("src/main/kotlin"), File("../app/src/main/kotlin"))
+    private val langDir = File("../app/src/main/assets/lang")
     private val call = Regex("""\btr(?:Key)?\(\s*""")
     private val placeholder = Regex("""%(?:\d+\$)?[-#+ 0,(]*\d*(?:\.\d+)?[a-zA-Z%]""")
+
+    private fun languageFiles(): List<Language> {
+        assertTrue("dossier introuvable : ${langDir.absolutePath}", langDir.isDirectory)
+        return langDir.listFiles()!!.filter { it.name.endsWith(".json") }.sortedBy { it.name }
+            .map { I18n.parse(it.name.removeSuffix(".json"), it.readText()) }
+    }
 
     /** Textes du code → fichiers où ils apparaissent. */
     private fun sourceKeys(): Map<String, MutableList<String>> {
@@ -84,22 +91,29 @@ class I18nTest {
         return b.toString()
     }
 
-    @Test fun everyTextHasAnEnglishTranslation() {
+    private fun params(s: String) = placeholder.findAll(s).map { it.value }.toList()
+
+    @Test fun languageFilesMatchTheCode() {
         val keys = sourceKeys()
         assertTrue("trop peu de textes trouvés (${keys.size})", keys.size > 300)
-        val missing = keys.filterKeys { it !in En.map }.map { "${it.value.first()} : ${it.key}" }
-        assertEquals("Textes sans traduction anglaise :\n" + missing.joinToString("\n"), 0, missing.size)
-        val unused = En.map.keys.filter { it !in keys }
-        assertEquals("Traductions inutilisées :\n" + unused.joinToString("\n"), 0, unused.size)
-    }
-
-    @Test fun placeholdersMatch() {
-        val bad = En.map.filter { (fr, en) -> placeholder.findAll(fr).map { it.value }.toList() != placeholder.findAll(en).map { it.value }.toList() }
-        assertEquals("Paramètres différents :\n" + bad.entries.joinToString("\n"), 0, bad.size)
+        val files = languageFiles()
+        assertTrue("lang/en.json manquant", files.any { it.code == "en" })
+        for (l in files) {
+            val unknown = l.texts.keys.filter { it !in keys }
+            assertEquals("${l.code}.json : textes inconnus dans le code :\n" + unknown.joinToString("\n"), 0, unknown.size)
+            val bad = l.texts.filter { (fr, t) -> params(fr) != params(t) }
+            assertEquals("${l.code}.json : paramètres différents :\n" + bad.entries.joinToString("\n"), 0, bad.size)
+            val missing = keys.keys.filter { it !in l.texts }
+            if (l.code == "en") assertEquals("en.json : textes sans traduction :\n" + missing.joinToString("\n"), 0, missing.size)
+            else if (missing.isNotEmpty()) println("${l.code}.json : ${missing.size} texte(s) restent en français")
+        }
     }
 
     @Test fun switchingLanguage() {
-        I18n.lang = Lang.EN
+        I18n.install(languageFiles())
+        val en = I18n.find("en")!!
+        assertEquals("English", en.name)
+        I18n.select("en")
         assertEquals("Settings", tr("Réglages"))
         assertEquals("When heating, speed 3 maximum", tr("En chauffe, vitesse %d maximum", 3))
         assertEquals("Downloading version 0.3.0… 42 %", tr("Téléchargement de la version %s… %d %%", "0.3.0", 42))
@@ -108,22 +122,26 @@ class I18nTest {
                 LinkState.values().map { it.label } + PauseReason.values().map { it.label }
         }
         val english = labels()
-        I18n.lang = Lang.FR
+        I18n.select("fr")
         val french = labels()
-        I18n.lang = Lang.EN
-        assertEquals(french.map { En.map[it] }, english)
-        assertEquals("Knead", JobKind.KNEAD.label)
-        I18n.lang = Lang.FR
+        assertEquals(french.map { en.texts[it] }, english)
         assertEquals("Réglages", tr("Réglages"))
         assertEquals("Pétrir", JobKind.KNEAD.label)
-        assertNotEquals(tr("Réglages"), "Settings")
     }
 
     @Test fun languageSetting() {
-        assertEquals(Lang.FR, I18n.resolve("auto", "fr"))
-        assertEquals(Lang.EN, I18n.resolve("auto", "de"))
-        assertEquals(Lang.EN, I18n.resolve(null, "en"))
-        assertEquals(Lang.FR, I18n.resolve("fr", "en"))
-        assertEquals(Lang.EN, I18n.resolve("en", "fr"))
+        I18n.install(listOf(I18n.parse("en", """{"_name":"English","Réglages":"Settings"}"""),
+            I18n.parse("de", """{"_name":"Deutsch","Réglages":"Einstellungen"}""")))
+        assertEquals(listOf("fr", "de", "en"), I18n.languages.map { it.code })
+        assertEquals("fr", I18n.resolve("auto", "fr").code)
+        assertEquals("de", I18n.resolve("auto", "de").code)
+        assertEquals("en", I18n.resolve("auto", "ja").code)
+        assertEquals("en", I18n.resolve(null, "en").code)
+        assertEquals("fr", I18n.resolve("fr", "en").code)
+        assertEquals("de", I18n.resolve("de", "fr").code)
+        assertEquals("fr", I18n.resolve("xx", "en").code)
+        I18n.select("de")
+        assertEquals("Einstellungen", tr("Réglages"))
+        assertEquals("Recettes", tr("Recettes"))
     }
 }

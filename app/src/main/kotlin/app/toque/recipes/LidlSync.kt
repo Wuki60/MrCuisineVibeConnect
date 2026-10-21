@@ -8,7 +8,6 @@ import android.database.sqlite.SQLiteDatabase
 import app.toque.Logbook
 import app.toque.Prefs
 import app.toque.core.i18n.I18n
-import app.toque.core.i18n.Lang
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.recipes.OriginalDbMapper
@@ -142,7 +141,7 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
     }
 
     private fun finish(r: Report): Report {
-        val stamp = SimpleDateFormat(if (I18n.lang == Lang.EN) "dd/MM 'at' HH:mm" else "dd/MM à HH:mm", I18n.locale).format(Date())
+        val stamp = SimpleDateFormat(tr("dd/MM à HH:mm"), I18n.locale).format(Date())
         prefs.lastSyncMs = System.currentTimeMillis()
         prefs.lastSyncResult = "$stamp : ${r.message}"
         log.write("synchro", r.message)

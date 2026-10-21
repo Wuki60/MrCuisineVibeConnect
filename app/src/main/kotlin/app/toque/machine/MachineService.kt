@@ -17,7 +17,6 @@ import android.os.RemoteException
 import app.toque.Logbook
 import app.toque.Prefs
 import app.toque.core.i18n.I18n
-import app.toque.core.i18n.Lang
 import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.ControllerConfig
@@ -186,7 +185,7 @@ class MachineService : Service() {
         val to = msg.replyTo
         val id = msg.arg1
         val data = msg.data
-        data.getString(Ipc.LANG)?.let { I18n.lang = Lang.of(it) }
+        data.getString(Ipc.LANG)?.let { if (it != I18n.code) I18n.select(it) }
         when (msg.what) {
             Ipc.REGISTER -> {
                 if (to != null && clients.none { it.binder == to.binder }) clients += to

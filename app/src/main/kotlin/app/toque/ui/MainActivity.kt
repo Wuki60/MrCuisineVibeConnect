@@ -97,7 +97,7 @@ class MainActivity : Activity() {
 
     /** Applique la langue choisie dans les réglages : l'interface est reconstruite, on revient aux réglages. */
     fun applyLanguage() {
-        I18n.lang = I18n.resolve(prefs.language, Locale.getDefault().language)
+        I18n.select(I18n.resolve(prefs.language, Locale.getDefault().language).code)
         reopenSettings = true
         recreate()
     }

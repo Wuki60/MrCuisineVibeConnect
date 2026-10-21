@@ -82,6 +82,20 @@ En ligne de commande : `gradlew assembleDebug` (et `gradlew :core:test` pour les
    Jumeau (émulateur : hôte `10.0.2.2` ; appareil réel : `adb reverse tcp:8765 tcp:8765` et
    hôte `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` ouvre le couvercle, etc.
 
+## Ajouter une langue
+
+L'appli est écrite en français ; chaque autre langue est un fichier dans
+[`app/src/main/assets/lang/`](app/src/main/assets/lang) (`en.json` pour l'anglais).
+
+1. Copier `en.json` en `<code>.json` (par exemple `de.json`), mettre `"_name"` (par exemple `"Deutsch"`)
+   et traduire les valeurs. Les clés sont les textes français ; garder les `%s` / `%d`.
+   Les textes manquants restent en français.
+2. Recompiler l'appli, ou, sans recompiler, copier le fichier dans `Android/data/app.toque/files/lang/`
+   sur l'appareil puis relancer Toque.
+
+La langue apparaît alors dans Réglages › Langue · Language. `gradlew :core:test` vérifie chaque
+fichier de langue.
+
 ## Publier une nouvelle version
 
 1. Augmenter `versionCode` et `versionName` dans `app/build.gradle.kts`.

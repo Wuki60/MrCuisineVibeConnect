@@ -1,16 +1,19 @@
 package app.toque.ui.screens
 
 import android.content.Intent
+import android.graphics.drawable.ColorDrawable
 import android.text.InputType
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.PopupWindow
+import android.widget.ScrollView
 import android.widget.TextView
 import app.toque.Prefs
 import app.toque.core.i18n.I18n
-import app.toque.core.i18n.Lang
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
@@ -31,7 +34,6 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
     private lateinit var syncText: TextView
     private lateinit var bowlText: TextView
     private lateinit var linkText: TextView
-    private lateinit var langRow: LinearLayout
     private var mode = a.prefs.mode
     private var syncing = false
 
@@ -81,9 +83,11 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
 
         // ---- Langue (titre bilingue : trouvable quelle que soit la langue affichée)
         val language = section(right, "Langue · Language", Icon.Kind.INFO)
-        langRow = Ui.horizontal(c)
-        language.addView(langRow, Ui.lp(t = 4))
-        renderLanguages()
+        val options = listOf(I18n.AUTO to tr("Automatique (langue du système)")) + I18n.languages.map { it.code to it.name }
+        language.addView(dropdown(options, a.prefs.language) { code ->
+            a.prefs.language = code
+            a.applyLanguage()
+        }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
 
         // ---- Recettes Lidl
         val lidl = section(right, tr("Recettes Lidl"), Icon.Kind.SYNC)
@@ -171,18 +175,40 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         return row
     }
 
-    private fun renderLanguages() {
-        langRow.removeAllViews()
-        val current = a.prefs.language
-        val options = listOf(I18n.AUTO to tr("Automatique"), Lang.FR.code to "Français", Lang.EN.code to "English")
-        for ((code, label) in options) {
-            langRow.addView(Ui.toggleChip(c, label, current == code) {
-                if (code != a.prefs.language) {
-                    a.prefs.language = code
-                    a.applyLanguage()
+    /** Menu déroulant : la valeur choisie, et la liste qui s'ouvre en dessous. */
+    private fun dropdown(options: List<Pair<String, String>>, selected: String, onPick: (String) -> Unit): View {
+        val box = Ui.horizontal(c)
+        box.setPadding(Ui.u(16), 0, Ui.u(14), 0)
+        box.background = Ui.pressable(Ui.round(Ui.SURFACE2, 16f, Ui.STROKE, 1f), 16f)
+        val label = options.firstOrNull { it.first == selected }?.second ?: options.first().second
+        box.addView(Ui.text(c, label, 19f, Ui.TEXT), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        box.addView(Icon(c, Icon.Kind.CHEVRON, Ui.TEXT2).apply { rotation = 90f }, LinearLayout.LayoutParams(Ui.u(22), Ui.u(22)))
+        box.isClickable = true
+        box.setOnClickListener {
+            val list = Ui.vertical(c)
+            list.setPadding(0, Ui.u(6), 0, Ui.u(6))
+            val scroll = ScrollView(c).apply {
+                addView(list)
+                background = Ui.round(Ui.SURFACE3, 16f, Ui.STROKE, 1f)
+            }
+            val popup = PopupWindow(scroll, box.width, ViewGroup.LayoutParams.WRAP_CONTENT, false)
+            for ((code, name) in options) {
+                val row = Ui.text(c, name, 19f, if (code == selected) Ui.ACCENT else Ui.TEXT)
+                row.setPadding(Ui.u(16), Ui.u(14), Ui.u(16), Ui.u(14))
+                row.background = Ui.pressable(Ui.round(0, 0f), 0f)
+                row.isClickable = true
+                row.setOnClickListener {
+                    popup.dismiss()
+                    if (code != selected) onPick(code)
                 }
-            }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 8))
+                list.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP))
+            }
+            popup.setBackgroundDrawable(ColorDrawable(0))
+            popup.isOutsideTouchable = true
+            popup.elevation = Ui.uf(8f)
+            popup.showAsDropDown(box, 0, Ui.u(6))
         }
+        return box
     }
 
     private fun renderModes() {

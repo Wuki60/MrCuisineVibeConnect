@@ -83,6 +83,20 @@ From the command line: `gradlew assembleDebug` (and `gradlew :core:test` for the
    Jumeau* (emulator: host `10.0.2.2`; real device: `adb reverse tcp:8765 tcp:8765` and host
    `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` opens the lid, etc.
 
+## Add a language
+
+The app is written in French; each other language is one file in
+[`app/src/main/assets/lang/`](app/src/main/assets/lang) (`en.json` for English).
+
+1. Copy `en.json` to `<code>.json` (for example `de.json`), set `"_name"` (for example `"Deutsch"`)
+   and translate the values. Keys are the French texts; keep the `%s` / `%d` placeholders.
+   Missing texts stay in French.
+2. Rebuild the app, or, without rebuilding, copy the file to `Android/data/app.toque/files/lang/`
+   on the device and restart Toque.
+
+The language then appears in *Réglages › Langue · Language* (Settings). `gradlew :core:test` checks
+every language file.
+
 ## Publish a new version
 
 1. Increase `versionCode` and `versionName` in `app/build.gradle.kts`.

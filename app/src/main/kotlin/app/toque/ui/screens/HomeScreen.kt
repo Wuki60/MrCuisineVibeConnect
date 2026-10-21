@@ -6,7 +6,6 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import app.toque.Prefs
 import app.toque.core.i18n.I18n
-import app.toque.core.i18n.Lang
 import app.toque.core.i18n.tr
 import app.toque.core.machine.Snapshot
 import app.toque.ui.Icon
@@ -111,7 +110,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
 
     private fun refreshClock() {
         clock.text = MainActivity.now()
-        date.text = SimpleDateFormat(if (I18n.lang == Lang.EN) "EEEE, d MMMM" else "EEEE d MMMM", I18n.locale).format(Date()).replaceFirstChar { it.uppercaseChar() }
+        date.text = SimpleDateFormat(tr("EEEE d MMMM"), I18n.locale).format(Date()).replaceFirstChar { it.uppercaseChar() }
         val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
         greeting.text = when (h) {
             in 5..11 -> tr("Bonjour")

@@ -102,7 +102,7 @@ class MachineClient(private val context: Context) {
         val m = Message.obtain(null, what, id, 0)
         m.replyTo = incoming
         // La langue voyage avec chaque commande : le processus machine rédige ses messages dans la même.
-        m.data = (data ?: Bundle()).apply { putString(Ipc.LANG, I18n.lang.code) }
+        m.data = (data ?: Bundle()).apply { putString(Ipc.LANG, I18n.code) }
         try {
             s.send(m)
         } catch (e: RemoteException) {
