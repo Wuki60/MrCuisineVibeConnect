@@ -316,6 +316,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
                     release = r
                     upd = if (updater.isNewer(r)) Upd.AVAILABLE else Upd.UP_TO_DATE
                     renderUpdate()
+                    if (upd == Upd.AVAILABLE) installUpdate()
                 }
             } catch (e: Updater.Failure) {
                 view.post { upd = Upd.ERROR; updMessage = e.message ?: "Erreur"; renderUpdate() }
@@ -326,6 +327,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         }.start()
     }
 
+    /** Propose l'installation dans une fenêtre (toujours visible, même si la carte est hors écran). */
     private fun installUpdate() {
         val r = release ?: return
         if (a.snapshot.busy) {
@@ -333,10 +335,11 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
             return
         }
         a.confirm(
-            "Installer la version ${r.version}",
-            "Toque va télécharger la mise à jour depuis GitHub, l'installer puis redémarrer (environ une minute). " +
+            "Version ${r.version} disponible",
+            notes(r).trim().let { if (it.isEmpty()) "" else it + "\n\n" } +
+                "Toque va la télécharger depuis GitHub, l'installer puis redémarrer (environ une minute). " +
                 "Le moteur reste arrêté pendant l'opération.",
-            "Installer", icon = Icon.Kind.SYNC,
+            "Installer", "Plus tard", icon = Icon.Kind.SYNC,
         ) {
             a.machine.suspendPort { v ->
                 if (!v.ok) { a.refusal(v); return@suspendPort }
