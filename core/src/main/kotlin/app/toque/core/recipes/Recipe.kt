@@ -1,5 +1,6 @@
 package app.toque.core.recipes
 
+import app.toque.core.i18n.tr
 import app.toque.core.json.Json
 import app.toque.core.json.bool
 import app.toque.core.json.int
@@ -60,15 +61,15 @@ data class StepMachine(
     val summary: String
         get() = when (program) {
             StepProgram.TURBO -> if (pulses > 0) "Turbo × $pulses" else "Turbo"
-            StepProgram.KNEAD -> "Pétrir ${SafetyPolicy.formatDuration(seconds * 1000L)}"
-            StepProgram.STEAM -> "Vapeur ${SafetyPolicy.formatDuration(seconds * 1000L)}"
-            StepProgram.TOAST -> "Rissoler ${SafetyPolicy.formatDuration(seconds * 1000L)}"
+            StepProgram.KNEAD -> JobKind.KNEAD.label + " " + SafetyPolicy.formatDuration(seconds * 1000L)
+            StepProgram.STEAM -> JobKind.STEAM.label + " " + SafetyPolicy.formatDuration(seconds * 1000L)
+            StepProgram.TOAST -> JobKind.TOAST.label + " " + SafetyPolicy.formatDuration(seconds * 1000L)
             StepProgram.MANUAL -> buildString {
                 append(SafetyPolicy.formatDuration(seconds * 1000L))
                 if (tempC > 0) append(" · ").append(Mcc.celsiusForLevel(temperatureLevel)).append(" °C")
-                append(" · vitesse ").append(speed)
-                if (reverse) append(" · inverse")
-                if (accessory == Accessory.WHISK) append(" · fouet")
+                append(" · ").append(tr("vitesse %d", speed))
+                if (reverse) append(" · ").append(tr("inverse"))
+                if (accessory == Accessory.WHISK) append(" · ").append(tr("fouet"))
             }
         }
 
@@ -92,12 +93,12 @@ data class StepMachine(
     fun violations(): List<Violation> {
         if (program == StepProgram.TURBO) {
             val v = ArrayList<Violation>()
-            if (accessory == Accessory.WHISK) v += Violation("accessory_turbo", "Pas de Turbo avec le fouet")
+            if (accessory == Accessory.WHISK) v += Violation("accessory_turbo", tr("Pas de Turbo avec le fouet"))
             return v
         }
         val v = ArrayList<Violation>()
         if (tempC != 0 && Mcc.levelForCelsius(tempC) < 0)
-            v += Violation("temp_table", "Température ${tempC} °C absente de la machine")
+            v += Violation("temp_table", tr("Température %d °C absente de la machine", tempC))
         val job = toJob("vérification") ?: return v
         v += SafetyPolicy.checkJob(job, null)
         return v

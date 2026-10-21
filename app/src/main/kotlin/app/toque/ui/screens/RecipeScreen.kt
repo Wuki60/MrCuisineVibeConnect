@@ -6,6 +6,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.toque.core.i18n.tr
 import app.toque.core.recipes.Recipe
 import app.toque.core.recipes.Step
 import app.toque.ui.Icon
@@ -41,12 +42,12 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
 
         val meta = Ui.horizontal(c)
         if (recipe.totalMinutes > 0) meta.addView(Ui.chip(c, "${recipe.totalMinutes} min", Icon.Kind.CLOCK), Ui.lp(Ui.WRAP, Ui.WRAP, r = 8))
-        if (recipe.servings > 0) meta.addView(Ui.chip(c, "${recipe.servings} pers.", Icon.Kind.POT), Ui.lp(Ui.WRAP, Ui.WRAP, r = 8))
-        meta.addView(Ui.chip(c, when (recipe.difficulty) { 1 -> "Facile"; 2 -> "Moyen"; else -> "Difficile" }, Icon.Kind.STAR))
+        if (recipe.servings > 0) meta.addView(Ui.chip(c, tr("%d pers.", recipe.servings), Icon.Kind.POT), Ui.lp(Ui.WRAP, Ui.WRAP, r = 8))
+        meta.addView(Ui.chip(c, when (recipe.difficulty) { 1 -> tr("Facile"); 2 -> tr("Moyen"); else -> tr("Difficile") }, Icon.Kind.STAR))
         left.addView(meta, Ui.lp(t = 12))
 
         val actions = Ui.horizontal(c)
-        actions.addView(Ui.button(c, "Cuisiner", Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 66, textSize = 22f) {
+        actions.addView(Ui.button(c, tr("Cuisiner"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 66, textSize = 22f) {
             a.push(CookScreen(a, recipe, 0))
         }, LinearLayout.LayoutParams(0, Ui.WRAP, 1f).apply { rightMargin = Ui.u(12) })
         val fav = Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.STAR, height = 66) { toggleFavorite() }
@@ -57,7 +58,7 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         left.addView(actions, Ui.lp(t = 14))
 
         val ing = Ui.vertical(c)
-        ing.addView(section("Ingrédients"))
+        ing.addView(section(tr("Ingrédients")))
         for (g in recipe.ingredients) {
             if (g.title.isNotBlank()) ing.addView(Ui.text(c, g.title, 17f, Ui.ACCENT, Ui.MEDIUM), Ui.lp(t = 12, b = 2))
             for (i in g.items) {
@@ -67,13 +68,13 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
                 ing.addView(row, Ui.lp(t = 8))
             }
         }
-        if (recipe.ingredients.isEmpty()) ing.addView(Ui.text(c, "Pas de liste d'ingrédients.", 17f, Ui.TEXT3), Ui.lp(t = 8))
+        if (recipe.ingredients.isEmpty()) ing.addView(Ui.text(c, tr("Pas de liste d'ingrédients."), 17f, Ui.TEXT3), Ui.lp(t = 8))
         left.addView(Ui.scroll(c, ing), LinearLayout.LayoutParams(Ui.MATCH, 0, 1f).apply { topMargin = Ui.u(10) })
         root.addView(left, LinearLayout.LayoutParams(0, Ui.MATCH, 0.42f).apply { rightMargin = Ui.u(24) })
 
         // ---- colonne droite
         val steps = Ui.vertical(c)
-        steps.addView(section("Étapes"))
+        steps.addView(section(tr("Étapes")))
         for ((i, s) in recipe.steps.withIndex()) steps.addView(stepRow(i, s), Ui.lp(t = 12))
         val stepsBox = Ui.vertical(c)
         stepsBox.background = Ui.round(Ui.SURFACE, 24f)
@@ -95,7 +96,7 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         val col = Ui.vertical(c)
         if (s.text.isNotBlank()) col.addView(Ui.text(c, s.text, 18f, Ui.TEXT).apply { setLineSpacing(0f, 1.15f) })
         val chips = Ui.horizontal(c)
-        s.weigh?.let { chips.addView(Ui.chip(c, "Peser ${it.grams} g", Icon.Kind.SCALE, Ui.TEXT2, size = 15f), Ui.lp(Ui.WRAP, Ui.WRAP, r = 8)) }
+        s.weigh?.let { chips.addView(Ui.chip(c, tr("Peser %d g", it.grams), Icon.Kind.SCALE, Ui.TEXT2, size = 15f), Ui.lp(Ui.WRAP, Ui.WRAP, r = 8)) }
         s.machine?.let { m ->
             val ok = m.valid
             chips.addView(Ui.chip(c, m.summary, if (ok) Icon.Kind.POT else Icon.Kind.WARNING,
@@ -110,14 +111,14 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         val now = !a.app.recipes.isFavorite(recipe.id)
         a.app.recipes.setFavorite(recipe.id, now)
         refreshFavorite()
-        a.toast(if (now) "Ajoutée aux favoris" else "Retirée des favoris")
+        a.toast(if (now) tr("Ajoutée aux favoris") else tr("Retirée des favoris"))
     }
 
     private fun refreshFavorite() {
         val f = a.app.recipes.isFavorite(recipe.id)
         favIcon.set(if (f) Icon.Kind.STAR_FILLED else Icon.Kind.STAR)
         favIcon.color = if (f) Ui.ACCENT else Ui.TEXT
-        favLabel.text = if (f) "Favori" else "Favori"
+        favLabel.text = tr("Favori")
     }
 
     override fun onKnobPress(): Boolean {

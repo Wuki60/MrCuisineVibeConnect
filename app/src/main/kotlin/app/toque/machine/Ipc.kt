@@ -1,6 +1,7 @@
 package app.toque.machine
 
 import android.os.Bundle
+import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.JobKind
 import app.toque.core.machine.JobSpec
@@ -30,6 +31,9 @@ object Ipc {
     const val SUSPEND_PORT = 21
     const val RESUME_PORT = 22
     const val SIM = 23
+
+    /** Clé de la langue de l'interface, jointe à chaque commande. */
+    const val LANG = "lang"
 
     const val SNAPSHOT = 100
     const val EVENT = 101
@@ -101,7 +105,7 @@ object Ipc {
     }
 
     fun bundleToVerdict(b: Bundle?): Verdict {
-        if (b == null) return Verdict.refuse("ipc", "Pas de réponse de la base")
+        if (b == null) return Verdict.refuse("ipc", tr("Pas de réponse de la base"))
         if (b.getBoolean("ok")) return Verdict.OK
         val codes = b.getStringArray("codes") ?: emptyArray()
         val messages = b.getStringArray("messages") ?: emptyArray()

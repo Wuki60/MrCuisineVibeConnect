@@ -1,5 +1,6 @@
 package app.toque.core.machine
 
+import app.toque.core.i18n.tr
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -79,7 +80,7 @@ class RootSerialTransport(
     private val baud: Int = 4800,
     private val vendorPackage: String? = "de.silpion.mc2",
 ) : Transport {
-    override val name: String get() = "Base moteur ($device)"
+    override val name: String get() = tr("Base moteur (%s)", device)
 
     @Volatile private var process: Process? = null
 
@@ -90,10 +91,10 @@ class RootSerialTransport(
             10_000,
         )
         val lines = probe.out.lines().map { it.trim() }
-        if (lines.firstOrNull() != "0") throw IOException("Accès root refusé (Magisk installé et autorisé ?)")
+        if (lines.firstOrNull() != "0") throw IOException(tr("Accès root refusé (Magisk installé et autorisé ?)"))
         val bb = lines.firstOrNull { it.startsWith("BB=") }?.substring(3)
-            ?: throw IOException("busybox introuvable (fourni par Magisk)")
-        if (lines.none { it == "DEV=ok" }) throw IOException("$device absent")
+            ?: throw IOException(tr("busybox introuvable (fourni par Magisk)"))
+        if (lines.none { it == "DEV=ok" }) throw IOException(tr("%s absent", device))
 
         if (vendorPackage != null) RootShell.run("am force-stop $vendorPackage", 8_000)
 
@@ -116,7 +117,7 @@ class RootSerialTransport(
             }
         }
         if (foreign.isNotEmpty())
-            throw IOException("Le port série est déjà utilisé par : ${foreign.joinToString()}")
+            throw IOException(tr("Le port série est déjà utilisé par : %s", foreign.joinToString()))
 
         val script = "D=$device; B=$bb; " +
             "\$B stty -F \$D $baud raw -echo cs8 -cstopb -parenb -crtscts clocal cread || exit 3; " +
@@ -140,12 +141,12 @@ class RootSerialTransport(
                 ""
             }
             process = null
-            throw IOException("Pont série arrêté (code $exited) $err")
+            throw IOException(tr("Pont série arrêté (code %d) %s", exited, err))
         }
     }
 
     override fun write(frame: ByteArray) {
-        val p = process ?: throw IOException("port fermé")
+        val p = process ?: throw IOException(tr("port fermé"))
         p.outputStream.write(frame)
         p.outputStream.flush()
     }

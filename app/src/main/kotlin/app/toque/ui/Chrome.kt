@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import app.toque.Prefs
+import app.toque.core.i18n.tr
 import app.toque.core.machine.JobState
 import app.toque.core.machine.LinkState
 import app.toque.core.machine.MachineEvent
@@ -38,7 +39,7 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
     private val back = Icon(a, Icon.Kind.BACK, Ui.TEXT)
     private val titleView = Ui.ellipsize(Ui.text(a, "", 24f, Ui.TEXT, Ui.MEDIUM))
     private val temp = Ui.chip(a, "", Icon.Kind.THERMO, Ui.TEXT2)
-    private val lid = Ui.chip(a, "Couvercle ouvert", Icon.Kind.LID, Ui.WARN, 0x33FFC14D)
+    private val lid = Ui.chip(a, tr("Couvercle ouvert"), Icon.Kind.LID, Ui.WARN, 0x33FFC14D)
     private val link = Ui.chip(a, "", Icon.Kind.LINK, Ui.TEXT2)
     private val clock = Ui.text(a, "", 22f, Ui.TEXT, Ui.LIGHT)
     private val home = Icon(a, Icon.Kind.HOME, Ui.TEXT2)
@@ -110,11 +111,11 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
         } else temp.visibility = View.GONE
         val demo = a.prefs.mode == Prefs.Mode.DEMO
         val (label, color) = when {
-            s.hasFault -> "Alerte" to Ui.DANGER
-            s.link == LinkState.READY -> (if (demo) "Démo" else "Prête") to (if (demo) Ui.COOL else Ui.OK)
-            s.link == LinkState.ARMING -> "Connexion…" to Ui.WARN
-            s.link == LinkState.LOST -> "Liaison perdue" to Ui.DANGER
-            else -> "Base absente" to Ui.TEXT3
+            s.hasFault -> tr("Alerte") to Ui.DANGER
+            s.link == LinkState.READY -> (if (demo) tr("Démo") else tr("Prête")) to (if (demo) Ui.COOL else Ui.OK)
+            s.link == LinkState.ARMING -> tr("Connexion…") to Ui.WARN
+            s.link == LinkState.LOST -> tr("Liaison perdue") to Ui.DANGER
+            else -> tr("Base absente") to Ui.TEXT3
         }
         Ui.chipText(link).text = label
         Ui.chipText(link).setTextColor(color)
@@ -158,7 +159,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
     private val chips = Ui.horizontal(a)
     private val speedChip = Ui.chip(a, "", Icon.Kind.SPEED, Ui.TEXT)
     private val tempChip = Ui.chip(a, "", Icon.Kind.THERMO, Ui.TEXT)
-    private val dirChip = Ui.chip(a, "Inverse", Icon.Kind.REVERSE, Ui.COOL)
+    private val dirChip = Ui.chip(a, tr("Inverse"), Icon.Kind.REVERSE, Ui.COOL)
     private val pauseBtn: LinearLayout
     private val stopBtn: LinearLayout
     private val okBtn: LinearLayout
@@ -195,7 +196,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         faultRow.setBackgroundColor(0xFF3A1416.toInt())
         faultRow.addView(Icon(a, Icon.Kind.WARNING, Ui.DANGER), LinearLayout.LayoutParams(Ui.u(34), Ui.u(34)).apply { rightMargin = Ui.u(14) })
         faultRow.addView(faultText, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
-        faultRow.addView(Ui.button(a, "Acquitter", Ui.Style.SECONDARY, Icon.Kind.CHECK, height = 60) {
+        faultRow.addView(Ui.button(a, tr("Acquitter"), Ui.Style.SECONDARY, Icon.Kind.CHECK, height = 60) {
             a.machine.acknowledge { v -> a.refusal(v) }
         })
         addView(faultRow, Ui.flp(Ui.MATCH, Ui.WRAP))
@@ -207,7 +208,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         if (s.state == JobState.PAUSED) {
             a.machine.resume(s.hotBlendConfirmed) { v ->
                 if (!v.ok && v.has(app.toque.core.machine.SafetyPolicy.HOT_BLEND)) {
-                    a.confirm("Contenu chaud", "Le bol est à ${s.actualTempC} °C. Reprendre le mixage ?", "Reprendre", icon = Icon.Kind.THERMO) {
+                    a.confirm(tr("Contenu chaud"), tr("Le bol est à %d °C. Reprendre le mixage ?", s.actualTempC), tr("Reprendre"), icon = Icon.Kind.THERMO) {
                         a.machine.resume(true) { a.refusal(it) }
                     }
                 } else a.refusal(v)
@@ -229,7 +230,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         if (!showJob) return
         if (s.turboActive) {
             label.text = "Turbo"
-            state.text = "Relâchez pour arrêter"
+            state.text = tr("Relâchez pour arrêter")
             time.text = "●"
             progress.progress = 0f
             setButtons(running = false, ended = false, turbo = true)
@@ -237,15 +238,15 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         }
         label.text = s.jobLabel
         state.text = when (st) {
-            JobState.STARTING -> if (s.elapsedMs == 0L) "Démarrage…" else "Reprise…"
-            JobState.RUNNING -> if (s.waitingStop) "Changement de sens…" else if (s.phaseCount > 1) "En cours · phase ${s.phaseIndex + 1}/${s.phaseCount}" else "En cours"
-            JobState.STOPPING -> "Arrêt du moteur…"
+            JobState.STARTING -> if (s.elapsedMs == 0L) tr("Démarrage…") else tr("Reprise…")
+            JobState.RUNNING -> if (s.waitingStop) tr("Changement de sens…") else if (s.phaseCount > 1) tr("En cours · phase %d/%d", s.phaseIndex + 1, s.phaseCount) else tr("En cours")
+            JobState.STOPPING -> tr("Arrêt du moteur…")
             JobState.PAUSED -> when (s.pauseReason) {
-                "LID" -> "Pause : couvercle ouvert"
-                "SAFETY" -> "Interrompu par sécurité"
-                else -> "En pause"
+                "LID" -> tr("Pause : couvercle ouvert")
+                "SAFETY" -> tr("Interrompu par sécurité")
+                else -> tr("En pause")
             }
-            JobState.FINISHED -> "Terminé"
+            JobState.FINISHED -> tr("Terminé")
             JobState.ABORTED -> s.endReason
             null -> ""
         }
@@ -258,7 +259,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         time.text = if (st == JobState.FINISHED) "00:00" else Ui.clock(s.remainingMs)
         progress.progress = if (s.totalMs > 0) s.elapsedMs.toFloat() / s.totalMs else 0f
         progress.color = if (s.jobTempLevel > 0) Ui.ACCENT else Ui.COOL
-        Ui.chipText(speedChip).text = if (s.jobKind == "STEAM") "Vapeur" else "Vitesse ${s.jobSpeed}"
+        Ui.chipText(speedChip).text = if (s.jobKind == "STEAM") tr("Vapeur") else tr("Vitesse %d", s.jobSpeed)
         tempChip.visibility = if (s.jobTempLevel > 0) View.VISIBLE else View.GONE
         Ui.chipText(tempChip).text = "${Mcc.celsiusForLevel(s.jobTempLevel)} °C"
         dirChip.visibility = if (s.jobReverse && s.jobKind == "MANUAL") View.VISIBLE else View.GONE

@@ -18,15 +18,19 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import app.toque.Prefs
 import app.toque.ToqueApp
+import app.toque.core.i18n.I18n
+import app.toque.core.i18n.tr
 import app.toque.core.machine.EventType
 import app.toque.core.machine.JobSpec
-import app.toque.core.machine.SafetyPolicy
 import app.toque.core.machine.MachineEvent
+import app.toque.core.machine.PauseReason
+import app.toque.core.machine.SafetyPolicy
 import app.toque.core.machine.Snapshot
 import app.toque.core.machine.Verdict
 import app.toque.recipes.LidlSync
 import app.toque.recipes.SyncService
 import app.toque.ui.screens.HomeScreen
+import app.toque.ui.screens.SettingsScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -85,6 +89,17 @@ class MainActivity : Activity() {
         app.recipes.load()
         SyncService.schedule(this)
         push(HomeScreen(this))
+        if (reopenSettings) {
+            reopenSettings = false
+            push(SettingsScreen(this))
+        }
+    }
+
+    /** Applique la langue choisie dans les réglages : l'interface est reconstruite, on revient aux réglages. */
+    fun applyLanguage() {
+        I18n.lang = I18n.resolve(prefs.language, Locale.getDefault().language)
+        reopenSettings = true
+        recreate()
     }
 
     override fun onStart() {
@@ -230,8 +245,8 @@ class MainActivity : Activity() {
         when (e.type) {
             EventType.JOB_FINISHED -> chime(2)
             EventType.FAULT -> { chime(3); toast(e.message, Ui.DANGER) }
-            EventType.LID_OPENED -> if (snapshot.busy || snapshot.state != null) toast("Couvercle ouvert : pause", Ui.WARN)
-            EventType.JOB_PAUSED -> if (e.message != "En pause") toast(e.message, Ui.WARN)
+            EventType.LID_OPENED -> if (snapshot.busy || snapshot.state != null) toast(tr("Couvercle ouvert : pause"), Ui.WARN)
+            EventType.JOB_PAUSED -> if (e.message != PauseReason.USER.label) toast(e.message, Ui.WARN)
             EventType.TURBO_END -> toast(e.message, Ui.TEXT2)
             else -> Unit
         }
@@ -294,7 +309,7 @@ class MainActivity : Activity() {
     }
 
     /** Dialogue de confirmation. */
-    fun confirm(title: String, message: String, yes: String, no: String = "Annuler",
+    fun confirm(title: String, message: String, yes: String, no: String = tr("Annuler"),
                 danger: Boolean = false, icon: Icon.Kind = Icon.Kind.WARNING, onYes: () -> Unit) {
         val card = Ui.card(this, 28f, Ui.SURFACE2)
         card.setPadding(Ui.u(32), Ui.u(28), Ui.u(32), Ui.u(26))
@@ -322,11 +337,11 @@ class MainActivity : Activity() {
         machine.start(spec) { v ->
             if (!v.ok && v.has(SafetyPolicy.HOT_BLEND) && v.violations.size == 1) {
                 confirm(
-                    "Contenu chaud",
-                    "Le bol est à ${snapshot.actualTempC} °C. Mixer chaud peut provoquer des projections.\n\n" +
+                    tr("Contenu chaud"),
+                    tr("Le bol est à %d °C. Mixer chaud peut provoquer des projections.\n\n" +
                         "Vérifiez que le couvercle est verrouillé, que le gobelet est en place et que le bol n'est pas trop rempli. " +
-                        "La vitesse montera progressivement.",
-                    "Mixer quand même", icon = Icon.Kind.THERMO,
+                        "La vitesse montera progressivement.", snapshot.actualTempC),
+                    tr("Mixer quand même"), icon = Icon.Kind.THERMO,
                 ) {
                     machine.start(spec.copy(hotBlendConfirmed = true)) { v2 -> refusal(v2); done(v2) }
                 }
@@ -347,7 +362,7 @@ class MainActivity : Activity() {
     /** Retour depuis l'appli d'origine : on la coupe du moteur, on reprend la main, on importe. */
     private fun endVendorSession() {
         prefs.vendorSession = false
-        toast("Reprise de la main sur le robot…")
+        toast(tr("Reprise de la main sur le robot…"))
         Thread {
             val sync = LidlSync(this, prefs, app.recipes, app.log)
             sync.forceStop()
@@ -360,14 +375,14 @@ class MainActivity : Activity() {
 
     fun openVendorApp() {
         if (snapshot.busy) {
-            toast("Arrêtez d'abord le programme en cours", Ui.WARN)
+            toast(tr("Arrêtez d'abord le programme en cours"), Ui.WARN)
             return
         }
         confirm(
-            "Ouvrir l'appli d'origine",
-            "Toque libère le moteur et lance l'appli Monsieur Cuisine d'origine, qui se synchronise avec les serveurs Lidl comme d'habitude.\n\n" +
-                "Revenez ensuite à Toque avec le bouton Accueil : les recettes seront importées automatiquement.",
-            "Ouvrir", icon = Icon.Kind.SYNC,
+            tr("Ouvrir l'appli d'origine"),
+            tr("Toque libère le moteur et lance l'appli Monsieur Cuisine d'origine, qui se synchronise avec les serveurs Lidl comme d'habitude.\n\n" +
+                "Revenez ensuite à Toque avec le bouton Accueil : les recettes seront importées automatiquement."),
+            tr("Ouvrir"), icon = Icon.Kind.SYNC,
         ) {
             machine.suspendPort { v ->
                 if (!v.ok) { refusal(v); return@suspendPort }
@@ -377,7 +392,7 @@ class MainActivity : Activity() {
                     val launch = sync.components().launch
                     main.post {
                         if (!enabled || launch == null) {
-                            toast("Appli d'origine indisponible (root ?)", Ui.WARN)
+                            toast(tr("Appli d'origine indisponible (root ?)"), Ui.WARN)
                             machine.resumePort()
                         } else {
                             prefs.vendorSession = true
@@ -390,6 +405,8 @@ class MainActivity : Activity() {
     }
 
     companion object {
+        private var reopenSettings = false
+
         /** MotionEvent.AXIS_SCROLL (API 26), valeur fixe pour Android 6. */
         private const val AXIS_SCROLL = 26
         val clockFormat = SimpleDateFormat("HH:mm", Locale.FRANCE)

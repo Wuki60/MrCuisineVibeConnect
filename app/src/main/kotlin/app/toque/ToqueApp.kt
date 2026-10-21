@@ -7,9 +7,11 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Process
+import app.toque.core.i18n.I18n
 import app.toque.machine.MachineClient
 import app.toque.recipes.RecipeRepo
 import app.toque.ui.MainActivity
+import java.util.Locale
 
 class ToqueApp : Application() {
     lateinit var prefs: Prefs
@@ -23,6 +25,7 @@ class ToqueApp : Application() {
         super.onCreate()
         prefs = Prefs(this)
         log = Logbook(this)
+        I18n.lang = I18n.resolve(prefs.language, Locale.getDefault().language)
         if (!isMainProcess()) return
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->

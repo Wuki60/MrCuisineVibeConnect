@@ -20,6 +20,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.toque.Prefs
+import app.toque.core.i18n.tr
 import app.toque.core.recipes.RecipeFilter
 import app.toque.core.recipes.SearchIndex
 import app.toque.ui.Icon
@@ -34,7 +35,7 @@ import java.util.concurrent.Executors
  * frappe), filtres, et recherche par ingrédients (séparés par des virgules).
  */
 class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, favorites: Boolean = false) : Screen(a) {
-    override val title = if (favorites) "Favoris" else "Recettes"
+    override val title = if (favorites) tr("Favoris") else tr("Recettes")
 
     private var filter = RecipeFilter(favoritesOnly = favorites)
     private var query = ""
@@ -63,7 +64,7 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
             setTextSize(TypedValue.COMPLEX_UNIT_PX, Ui.uf(21f))
             setTextColor(Ui.TEXT)
             setHintTextColor(Ui.TEXT3)
-            hint = "Recette, ingrédient… (ex. : poulet, curry)"
+            hint = tr("Recette, ingrédient… (ex. : poulet, curry)")
             background = null
             setSingleLine()
             imeOptions = EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_EXTRACT_UI
@@ -134,9 +135,9 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
             chips.addView(Ui.toggleChip(c, label, selected) { filter = f; buildChips(); search() }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
         }
         val base = RecipeFilter()
-        chip("Toutes", filter == base, base)
-        chip("Favoris", filter.favoritesOnly, base.copy(favoritesOnly = true))
-        chip("30 min max", filter.maxMinutes == 30, base.copy(maxMinutes = 30))
+        chip(tr("Toutes"), filter == base, base)
+        chip(tr("Favoris"), filter.favoritesOnly, base.copy(favoritesOnly = true))
+        chip(tr("30 min max"), filter.maxMinutes == 30, base.copy(maxMinutes = 30))
         for (cat in a.app.recipes.index.categories.take(30)) chip(cat, filter.category == cat, base.copy(category = cat))
     }
 
@@ -159,14 +160,14 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
     private fun refreshEmpty() {
         val repo = a.app.recipes
         val none = repo.loaded && repo.count == 0
-        count.text = if (results.isEmpty()) "" else "${results.size} recette" + if (results.size > 1) "s" else ""
+        count.text = if (results.isEmpty()) "" else if (results.size == 1) tr("1 recette") else tr("%d recettes", results.size)
         empty.visibility = if (results.isEmpty() && repo.loaded) View.VISIBLE else View.GONE
         emptyText.text = when {
             none && a.prefs.mode == Prefs.Mode.HARDWARE ->
-                "Les recettes Lidl apparaîtront après la première synchronisation.\nRéglages › Recettes Lidl › Synchroniser."
-            none -> "Les recettes Lidl apparaîtront après la première synchronisation, une fois Toque installé sur le robot."
-            filter.favoritesOnly && query.isBlank() -> "Aucun favori pour l'instant.\nTouchez l'étoile d'une recette pour l'ajouter."
-            else -> "Aucune recette ne correspond.\nAstuce : séparez plusieurs ingrédients par des virgules."
+                tr("Les recettes Lidl apparaîtront après la première synchronisation.\nRéglages › Recettes Lidl › Synchroniser.")
+            none -> tr("Les recettes Lidl apparaîtront après la première synchronisation, une fois Toque installé sur le robot.")
+            filter.favoritesOnly && query.isBlank() -> tr("Aucun favori pour l'instant.\nTouchez l'étoile d'une recette pour l'ajouter.")
+            else -> tr("Aucune recette ne correspond.\nAstuce : séparez plusieurs ingrédients par des virgules.")
         }
     }
 

@@ -1,5 +1,6 @@
 package app.toque.core.machine
 
+import app.toque.core.i18n.tr
 import app.toque.core.protocol.Mcc
 import app.toque.core.protocol.MccStreamParser
 import app.toque.core.protocol.Operation
@@ -30,7 +31,7 @@ interface Transport {
 
 /** Jumeau numérique du SDK (TCP, en général via `adb reverse tcp:8765 tcp:8765`). */
 class TcpTransport(private val host: String, private val port: Int) : Transport {
-    override val name: String get() = "Jumeau numérique $host:$port"
+    override val name: String get() = tr("Jumeau numérique %s:%d", host, port)
     @Volatile private var socket: Socket? = null
     private var input: InputStream? = null
     private var output: OutputStream? = null
@@ -45,13 +46,13 @@ class TcpTransport(private val host: String, private val port: Int) : Transport 
     }
 
     override fun write(frame: ByteArray) {
-        val o = output ?: throw IOException("non connecté")
+        val o = output ?: throw IOException(tr("non connecté"))
         o.write(frame)
         o.flush()
     }
 
     override fun read(buffer: ByteArray): Int {
-        val i = input ?: throw IOException("non connecté")
+        val i = input ?: throw IOException(tr("non connecté"))
         return i.read(buffer)
     }
 
@@ -164,7 +165,7 @@ class SimBoard(private val clock: Clock) {
 }
 
 class SimTransport(val board: SimBoard) : Transport {
-    override val name: String get() = "Démo (base simulée)"
+    override val name: String get() = tr("Démo (base simulée)")
     private val queue = LinkedBlockingQueue<ByteArray>()
     @Volatile private var closed = false
     private var pending: ByteArray? = null
@@ -177,7 +178,7 @@ class SimTransport(val board: SimBoard) : Transport {
     }
 
     override fun write(frame: ByteArray) {
-        if (closed) throw IOException("fermé")
+        if (closed) throw IOException(tr("fermé"))
         for (r in board.feed(frame)) queue.put(r)
     }
 

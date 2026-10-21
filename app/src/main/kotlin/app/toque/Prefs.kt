@@ -2,6 +2,9 @@ package app.toque
 
 import android.content.Context
 import android.content.SharedPreferences
+import app.toque.core.i18n.I18n
+import app.toque.core.i18n.tr
+import app.toque.core.i18n.trKey
 
 /**
  * Réglages persistants, lisibles par les deux processus (interface et machine).
@@ -11,10 +14,12 @@ class Prefs(context: Context) {
     @Suppress("DEPRECATION")
     private val p: SharedPreferences = context.getSharedPreferences("toque", Context.MODE_MULTI_PROCESS)
 
-    enum class Mode(val key: String, val label: String) {
-        DEMO("demo", "Démo (base simulée)"),
-        TWIN("twin", "Jumeau numérique (PC)"),
-        HARDWARE("hardware", "Machine réelle");
+    enum class Mode(val key: String, private val fr: String) {
+        DEMO("demo", trKey("Démo (base simulée)")),
+        TWIN("twin", trKey("Jumeau numérique (PC)")),
+        HARDWARE("hardware", trKey("Machine réelle"));
+
+        val label: String get() = tr(fr)
 
         companion object {
             fun of(k: String?) = values().firstOrNull { it.key == k } ?: DEMO
@@ -25,6 +30,13 @@ class Prefs(context: Context) {
         get() = Mode.of(p.getString("mode", null))
         set(v) {
             p.edit().putString("mode", v.key).commit()
+        }
+
+    /** Langue de l'interface : « auto » (celle du système), « fr » ou « en ». */
+    var language: String
+        get() = p.getString("language", I18n.AUTO) ?: I18n.AUTO
+        set(v) {
+            p.edit().putString("language", v).commit()
         }
 
     var twinHost: String

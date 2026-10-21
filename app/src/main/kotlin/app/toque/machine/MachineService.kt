@@ -16,6 +16,9 @@ import android.os.Messenger
 import android.os.RemoteException
 import app.toque.Logbook
 import app.toque.Prefs
+import app.toque.core.i18n.I18n
+import app.toque.core.i18n.Lang
+import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.ControllerConfig
 import app.toque.core.machine.JobState
@@ -69,7 +72,7 @@ class MachineService : Service() {
             }
             previous?.uncaughtException(thread, error)
         }
-        startForeground(NOTIFICATION_ID, notification("Base moteur", "Démarrage…"))
+        startForeground(NOTIFICATION_ID, notification(tr("Base moteur"), tr("Démarrage…")))
         createLoop()
     }
 
@@ -133,15 +136,15 @@ class MachineService : Service() {
 
     private fun updateNotification(s: Snapshot) {
         val text = when {
-            s.hasFault -> "Alerte : ${s.faultMessage}"
-            s.state == JobState.RUNNING -> "${s.jobLabel} · reste ${formatClock(s.remainingMs)}"
-            s.state == JobState.PAUSED -> "${s.jobLabel} en pause"
+            s.hasFault -> tr("Alerte : %s", s.faultMessage)
+            s.state == JobState.RUNNING -> tr("%s · reste %s", s.jobLabel, formatClock(s.remainingMs))
+            s.state == JobState.PAUSED -> tr("%s en pause", s.jobLabel)
             else -> s.link.label + if (s.transportName.isNotEmpty()) " · ${s.transportName}" else ""
         }
         if (text == lastNotified) return
         lastNotified = text
         val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        nm.notify(NOTIFICATION_ID, notification("Base moteur", text))
+        nm.notify(NOTIFICATION_ID, notification(tr("Base moteur"), text))
     }
 
     private fun broadcastEvent(e: MachineEvent) {
@@ -183,6 +186,7 @@ class MachineService : Service() {
         val to = msg.replyTo
         val id = msg.arg1
         val data = msg.data
+        data.getString(Ipc.LANG)?.let { I18n.lang = Lang.of(it) }
         when (msg.what) {
             Ipc.REGISTER -> {
                 if (to != null && clients.none { it.binder == to.binder }) clients += to
@@ -191,7 +195,7 @@ class MachineService : Service() {
             Ipc.UNREGISTER -> clients.removeAll { it.binder == to?.binder }
             Ipc.START_JOB -> {
                 val spec = Ipc.bundleToJob(data)
-                if (spec == null) reply(to, id, Verdict.refuse("ipc", "Programme illisible"))
+                if (spec == null) reply(to, id, Verdict.refuse("ipc", tr("Programme illisible")))
                 else l.post { c -> reply(to, id, c.startJob(spec)) }
             }
             Ipc.PAUSE -> l.post { c -> reply(to, id, c.pause()) }
@@ -220,7 +224,7 @@ class MachineService : Service() {
             Ipc.RECONFIGURE -> Thread {
                 val busy = try { l.call { it.busy } } catch (_: Exception) { true }
                 main.post {
-                    if (busy) reply(to, id, Verdict.refuse("busy", "Impossible pendant un programme"))
+                    if (busy) reply(to, id, Verdict.refuse("busy", tr("Impossible pendant un programme")))
                     else {
                         createLoop()
                         reply(to, id, Verdict.OK)
@@ -229,7 +233,7 @@ class MachineService : Service() {
             }.start()
             Ipc.SUSPEND_PORT -> Thread {
                 val ok = try { l.suspendPort() } catch (_: Exception) { false }
-                reply(to, id, if (ok) Verdict.OK else Verdict.refuse("busy", "Arrêtez d'abord le programme en cours"))
+                reply(to, id, if (ok) Verdict.OK else Verdict.refuse("busy", tr("Arrêtez d'abord le programme en cours")))
             }.start()
             Ipc.RESUME_PORT -> {
                 l.resumePort()
@@ -266,7 +270,7 @@ class MachineService : Service() {
         try {
             val cls = Class.forName("android.app.NotificationChannel")
             val channel = cls.getConstructor(String::class.java, CharSequence::class.java, Int::class.javaPrimitiveType)
-                .newInstance(CHANNEL, "Base moteur", 2)
+                .newInstance(CHANNEL, tr("Base moteur"), 2)
             val nm = getSystemService(Context.NOTIFICATION_SERVICE)
             nm.javaClass.getMethod("createNotificationChannel", cls).invoke(nm, channel)
         } catch (_: Throwable) {

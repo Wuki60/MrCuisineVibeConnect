@@ -7,6 +7,7 @@
  */
 package app.toque.core.protocol
 
+import app.toque.core.i18n.tr
 import java.io.IOException
 
 class MccProtocolException(message: String) : IOException(message)
@@ -219,14 +220,14 @@ object Mcc {
 
     /** Message lisible pour un code d'erreur brut de la base. */
     fun boardErrorMessage(code: Int): String = when (code) {
-        1 -> "Erreur de communication signalée par la base"
-        3 -> "Surtension secteur"
-        4 -> "Sous-tension secteur"
-        5 -> "Erreur moteur"
-        6 -> "Pas d'eau (vapeur)"
-        7 -> "Moteur en surchauffe : laissez refroidir"
-        8 -> "Durée maximale dépassée"
-        else -> "Erreur de la base (code $code)"
+        1 -> tr("Erreur de communication signalée par la base")
+        3 -> tr("Surtension secteur")
+        4 -> tr("Sous-tension secteur")
+        5 -> tr("Erreur moteur")
+        6 -> tr("Pas d'eau (vapeur)")
+        7 -> tr("Moteur en surchauffe : laissez refroidir")
+        8 -> tr("Durée maximale dépassée")
+        else -> tr("Erreur de la base (code %d)", code)
     }
 }
 

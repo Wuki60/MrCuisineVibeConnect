@@ -8,6 +8,7 @@ import android.content.pm.PackageInstaller
 import android.os.Handler
 import android.os.Looper
 import app.toque.ToqueApp
+import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.update.Release
 import app.toque.core.update.Releases
@@ -40,12 +41,12 @@ class Updater(private val context: Context) {
         try {
             when (val code = c.responseCode) {
                 200 -> {}
-                404 -> throw Failure("Aucune version publiée sur GitHub pour l'instant")
-                403, 429 -> throw Failure("GitHub limite les vérifications : réessayez dans une heure")
-                else -> throw Failure("GitHub a répondu $code")
+                404 -> throw Failure(tr("Aucune version publiée sur GitHub pour l'instant"))
+                403, 429 -> throw Failure(tr("GitHub limite les vérifications : réessayez dans une heure"))
+                else -> throw Failure(tr("GitHub a répondu %d", code))
             }
             val text = c.inputStream.bufferedReader().use { it.readText() }
-            val r = try { Releases.parse(text) } catch (e: IllegalArgumentException) { throw Failure("Réponse GitHub illisible") }
+            val r = try { Releases.parse(text) } catch (e: IllegalArgumentException) { throw Failure(tr("Réponse GitHub illisible")) }
             log.write("maj", "dernière version publiée : ${r.version} (installée : $installedVersion)")
             return r
         } catch (e: IOException) {
@@ -59,14 +60,14 @@ class Updater(private val context: Context) {
 
     /** Télécharge l'APK de la version et vérifie qu'il s'agit bien d'une version plus récente de Toque. */
     fun download(r: Release, progress: (Int) -> Unit): File {
-        val url = r.apkUrl ?: throw Failure("Cette version ne contient pas d'appli à installer")
+        val url = r.apkUrl ?: throw Failure(tr("Cette version ne contient pas d'appli à installer"))
         val dir = File(context.cacheDir, "maj")
         dir.mkdirs()
         dir.listFiles()?.forEach { it.delete() }
         val file = File(dir, "Toque-${r.version}.apk")
         val c = open(url, "application/octet-stream")
         try {
-            if (c.responseCode != 200) throw Failure("Téléchargement refusé (code ${c.responseCode})")
+            if (c.responseCode != 200) throw Failure(tr("Téléchargement refusé (code %d)", c.responseCode))
             val total = if (r.apkSize > 0) r.apkSize else c.contentLength.toLong()
             var done = 0L
             var shown = -1
@@ -87,7 +88,7 @@ class Updater(private val context: Context) {
             }
             if (r.apkSize > 0 && done != r.apkSize) {
                 file.delete()
-                throw Failure("Téléchargement incomplet, réessayez")
+                throw Failure(tr("Téléchargement incomplet, réessayez"))
             }
         } catch (e: IOException) {
             file.delete()
@@ -103,9 +104,9 @@ class Updater(private val context: Context) {
     @Suppress("DEPRECATION")
     private fun verify(file: File) {
         val pi = context.packageManager.getPackageArchiveInfo(file.path, 0)
-        if (pi == null) { file.delete(); throw Failure("Le fichier téléchargé n'est pas une appli valide") }
-        if (pi.packageName != context.packageName) { file.delete(); throw Failure("Le fichier téléchargé n'est pas Toque") }
-        if (pi.versionCode <= installedCode) { file.delete(); throw Failure("Cette version n'est pas plus récente que celle installée") }
+        if (pi == null) { file.delete(); throw Failure(tr("Le fichier téléchargé n'est pas une appli valide")) }
+        if (pi.packageName != context.packageName) { file.delete(); throw Failure(tr("Le fichier téléchargé n'est pas Toque")) }
+        if (pi.versionCode <= installedCode) { file.delete(); throw Failure(tr("Cette version n'est pas plus récente que celle installée")) }
     }
 
     /**
@@ -121,7 +122,7 @@ class Updater(private val context: Context) {
         val tmp = "/data/local/tmp/toque-maj.apk"
         val out = "/data/local/tmp/toque-maj.log"
         val copy = RootShell.run("cat '${apk.absolutePath}' > $tmp && chmod 644 $tmp && rm -f $out && echo ok", 60_000)
-        if (!copy.out.contains("ok")) throw Failure("Copie de la mise à jour impossible : ${copy.err.trim()}")
+        if (!copy.out.contains("ok")) throw Failure(tr("Copie de la mise à jour impossible : %s", copy.err.trim()))
         log.write("maj", "installation (root) de ${apk.name}")
         // Lancée en arrière-plan : Android arrête Toque pendant l'installation, puis `am start` le relance.
         val launch = "am start -n ${context.packageName}/${MainActivity::class.java.name}"
@@ -135,7 +136,7 @@ class Updater(private val context: Context) {
                 throw Failure(explain(result))
             }
         }
-        throw Failure("L'installation ne répond pas. Redémarrez le robot puis réessayez.")
+        throw Failure(tr("L'installation ne répond pas. Redémarrez le robot puis réessayez."))
     }
 
     private fun installSession(apk: File) {
@@ -156,7 +157,7 @@ class Updater(private val context: Context) {
             session.commit(pending.intentSender)
         } catch (e: Exception) {
             session.abandon()
-            throw Failure("Installation impossible : ${e.message}")
+            throw Failure(tr("Installation impossible : %s", e.message))
         } finally {
             session.close()
         }
@@ -175,8 +176,8 @@ class Updater(private val context: Context) {
     private fun network(e: IOException): Failure {
         log.write("maj", "réseau : $e")
         return when (e) {
-            is SSLException -> Failure("Connexion sécurisée à GitHub impossible. Vérifiez la date et l'heure du robot.")
-            else -> Failure("Pas de connexion à GitHub. Vérifiez le Wi-Fi du robot.")
+            is SSLException -> Failure(tr("Connexion sécurisée à GitHub impossible. Vérifiez la date et l'heure du robot."))
+            else -> Failure(tr("Pas de connexion à GitHub. Vérifiez le Wi-Fi du robot."))
         }
     }
 
@@ -186,11 +187,11 @@ class Updater(private val context: Context) {
 
         fun explain(result: String): String = when {
             result.contains("UPDATE_INCOMPATIBLE") || result.contains("SIGNATURE") ->
-                "La version installée n'a pas la même signature. Désinstallez Toque une fois, puis installez la version de GitHub."
-            result.contains("INSUFFICIENT_STORAGE") -> "Espace de stockage insuffisant sur le robot"
-            result.contains("VERSION_DOWNGRADE") -> "Cette version est plus ancienne que celle installée"
-            result.contains("OLDER_SDK") -> "Cette version n'est pas compatible avec ce robot"
-            else -> "Installation refusée : ${result.lines().lastOrNull { it.isNotBlank() } ?: result}"
+                tr("La version installée n'a pas la même signature. Désinstallez Toque une fois, puis installez la version de GitHub.")
+            result.contains("INSUFFICIENT_STORAGE") -> tr("Espace de stockage insuffisant sur le robot")
+            result.contains("VERSION_DOWNGRADE") -> tr("Cette version est plus ancienne que celle installée")
+            result.contains("OLDER_SDK") -> tr("Cette version n'est pas compatible avec ce robot")
+            else -> tr("Installation refusée : %s", result.lines().lastOrNull { it.isNotBlank() } ?: result)
         }
     }
 }
@@ -210,7 +211,7 @@ class InstallResultReceiver : BroadcastReceiver() {
             else -> {
                 val message = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE) ?: "code $status"
                 log.write("maj", "échec : $message")
-                val text = if (status == PackageInstaller.STATUS_FAILURE_ABORTED) "Installation annulée" else Updater.explain(message)
+                val text = if (status == PackageInstaller.STATUS_FAILURE_ABORTED) tr("Installation annulée") else Updater.explain(message)
                 Handler(Looper.getMainLooper()).post { Updater.onInstallError?.invoke(text) }
             }
         }

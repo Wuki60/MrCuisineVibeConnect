@@ -1,5 +1,7 @@
 package app.toque.core.machine
 
+import app.toque.core.i18n.tr
+import app.toque.core.i18n.trKey
 import app.toque.core.protocol.Direction
 import app.toque.core.protocol.Mcc
 import app.toque.core.protocol.MccProtocolException
@@ -15,19 +17,23 @@ object MonotonicClock : Clock {
     override fun nowMs(): Long = System.nanoTime() / 1_000_000L
 }
 
-enum class LinkState(val label: String) {
-    OFFLINE("Base non connectée"),
-    ARMING("Connexion…"),
-    READY("Prête"),
-    LOST("Connexion perdue"),
+enum class LinkState(private val fr: String) {
+    OFFLINE(trKey("Base non connectée")),
+    ARMING(trKey("Connexion…")),
+    READY(trKey("Prête")),
+    LOST(trKey("Connexion perdue"));
+
+    val label: String get() = tr(fr)
 }
 
 enum class JobState { STARTING, RUNNING, STOPPING, PAUSED, FINISHED, ABORTED }
 
-enum class PauseReason(val label: String) {
-    USER("En pause"),
-    LID("Couvercle ouvert"),
-    SAFETY("Interrompu par sécurité"),
+enum class PauseReason(private val fr: String) {
+    USER(trKey("En pause")),
+    LID(trKey("Couvercle ouvert")),
+    SAFETY(trKey("Interrompu par sécurité"));
+
+    val label: String get() = tr(fr)
 }
 
 enum class FaultCode {
@@ -191,10 +197,10 @@ class MachineController(
         if (t.lidOpen != lastLidOpen) {
             lastLidOpen = t.lidOpen
             if (t.lidOpen) {
-                emit(EventType.LID_OPENED, "Couvercle ouvert")
+                emit(EventType.LID_OPENED, tr("Couvercle ouvert"))
                 onLidOpened(now)
             } else {
-                emit(EventType.LID_CLOSED, "Couvercle fermé")
+                emit(EventType.LID_CLOSED, tr("Couvercle fermé"))
             }
         }
 
@@ -206,10 +212,10 @@ class MachineController(
         if (since != null && now - since > config.unexpectedGraceMs) {
             if (t.motorOn || t.actualRpm > 0) {
                 if (fault?.code != FaultCode.UNEXPECTED_MOTION)
-                    raiseFault(FaultCode.UNEXPECTED_MOTION, "Le moteur tourne alors qu'il devrait être arrêté. Coupez l'interrupteur principal.")
+                    raiseFault(FaultCode.UNEXPECTED_MOTION, tr("Le moteur tourne alors qu'il devrait être arrêté. Coupez l'interrupteur principal."))
             } else if (t.heaterOn) {
                 if (fault?.code != FaultCode.UNEXPECTED_HEAT)
-                    raiseFault(FaultCode.UNEXPECTED_HEAT, "La chauffe reste active alors qu'elle devrait être coupée. Coupez l'interrupteur principal.")
+                    raiseFault(FaultCode.UNEXPECTED_HEAT, tr("La chauffe reste active alors qu'elle devrait être coupée. Coupez l'interrupteur principal."))
             }
         }
     }
@@ -234,11 +240,11 @@ class MachineController(
         parser.reset()
         if (link != LinkState.OFFLINE) setLink(LinkState.OFFLINE)
         if (wasUp && (job?.active == true || turboStartedAt != null))
-            raiseFault(FaultCode.TRANSPORT_FAILED, "Liaison interrompue : $reason")
+            raiseFault(FaultCode.TRANSPORT_FAILED, tr("Liaison interrompue : %s", reason))
     }
 
     fun onWriteFailed(reason: String) {
-        raiseFault(FaultCode.WRITE_FAILED, "Impossible d'envoyer les commandes : $reason")
+        raiseFault(FaultCode.WRITE_FAILED, tr("Impossible d'envoyer les commandes : %s", reason))
     }
 
     // ------------------------------------------------------------------ émission
@@ -249,7 +255,7 @@ class MachineController(
         if ((link == LinkState.READY || link == LinkState.ARMING) && now - latestAtMs > config.staleMs) {
             setLink(LinkState.LOST)
             if (job?.active == true || turboStartedAt != null)
-                raiseFault(FaultCode.COMM_LOST, "Plus de réponse de la base moteur : tout est arrêté")
+                raiseFault(FaultCode.COMM_LOST, tr("Plus de réponse de la base moteur : tout est arrêté"))
         }
         updateTurbo(now)
         updateJob(now)
@@ -312,18 +318,18 @@ class MachineController(
         val v = ArrayList<Violation>(2)
         val t = latest
         when {
-            link == LinkState.OFFLINE -> v += Violation("offline", "Base moteur non connectée")
-            link == LinkState.LOST -> v += Violation("lost", "Connexion à la base perdue")
-            link == LinkState.ARMING -> v += Violation("arming", "Connexion en cours, patientez")
+            link == LinkState.OFFLINE -> v += Violation("offline", tr("Base moteur non connectée"))
+            link == LinkState.LOST -> v += Violation("lost", tr("Connexion à la base perdue"))
+            link == LinkState.ARMING -> v += Violation("arming", tr("Connexion en cours, patientez"))
         }
-        if (fault != null) v += Violation("fault", "Acquittez d'abord l'alerte : ${fault!!.message}")
+        if (fault != null) v += Violation("fault", tr("Acquittez d'abord l'alerte : %s", fault!!.message))
         if (t == null || !fresh(now)) {
-            if (v.isEmpty()) v += Violation("stale", "Pas de mesure récente de la base")
+            if (v.isEmpty()) v += Violation("stale", tr("Pas de mesure récente de la base"))
             return v
         }
-        if (t.lidOpen) v += Violation("lid", "Fermez et verrouillez le couvercle")
+        if (t.lidOpen) v += Violation("lid", tr("Fermez et verrouillez le couvercle"))
         if (t.errorDetected) v += Violation("board_error", Mcc.boardErrorMessage(t.errorCode))
-        if (config.requireBowl && !t.bowlNtcDetected) v += Violation("bowl", "Bol non détecté")
+        if (config.requireBowl && !t.bowlNtcDetected) v += Violation("bowl", tr("Bol non détecté"))
         return v
     }
 
@@ -332,8 +338,8 @@ class MachineController(
     fun startJob(spec: JobSpec): Verdict {
         val now = clock.nowMs()
         val j = job
-        if (j != null && !j.ended) return Verdict.refuse("busy", "Un programme est déjà en cours")
-        if (turboStartedAt != null) return Verdict.refuse("busy", "Turbo en cours")
+        if (j != null && !j.ended) return Verdict.refuse("busy", tr("Un programme est déjà en cours"))
+        if (turboStartedAt != null) return Verdict.refuse("busy", tr("Turbo en cours"))
         val v = ArrayList(baseChecks(now))
         v += SafetyPolicy.checkJob(spec, actualTemp())
         if (v.isNotEmpty()) return Verdict.refuse(v)
@@ -342,16 +348,16 @@ class MachineController(
     }
 
     fun pause(): Verdict {
-        val j = job ?: return Verdict.refuse("idle", "Aucun programme")
-        if (j.state != JobState.RUNNING && j.state != JobState.STARTING) return Verdict.refuse("state", "Rien à mettre en pause")
+        val j = job ?: return Verdict.refuse("idle", tr("Aucun programme"))
+        if (j.state != JobState.RUNNING && j.state != JobState.STARTING) return Verdict.refuse("state", tr("Rien à mettre en pause"))
         pauseJob(j, PauseReason.USER, clock.nowMs())
         return Verdict.OK
     }
 
     fun resume(hotBlendConfirmed: Boolean = false): Verdict {
         val now = clock.nowMs()
-        val j = job ?: return Verdict.refuse("idle", "Aucun programme")
-        if (j.state != JobState.PAUSED) return Verdict.refuse("state", "Le programme n'est pas en pause")
+        val j = job ?: return Verdict.refuse("idle", tr("Aucun programme"))
+        if (j.state != JobState.PAUSED) return Verdict.refuse("state", tr("Le programme n'est pas en pause"))
         if (hotBlendConfirmed && !j.spec.hotBlendConfirmed) j.spec = j.spec.copy(hotBlendConfirmed = true)
         val v = ArrayList(baseChecks(now))
         if (!j.phase.setting.isRest)
@@ -371,8 +377,8 @@ class MachineController(
         val j = job ?: return Verdict.OK
         if (!j.ended && j.state != JobState.STOPPING) {
             j.state = JobState.ABORTED
-            j.endReason = "Arrêté"
-            emit(EventType.JOB_ABORTED, "Arrêté")
+            j.endReason = tr("Arrêté")
+            emit(EventType.JOB_ABORTED, tr("Arrêté"))
         } else if (j.state == JobState.STOPPING) {
             j.state = JobState.FINISHED
         }
@@ -392,9 +398,9 @@ class MachineController(
     fun adjust(speed: Int? = null, temperatureLevel: Int? = null, direction: Direction? = null,
                totalMs: Long? = null, hotBlendConfirmed: Boolean = false): Verdict {
         val now = clock.nowMs()
-        val j = job ?: return Verdict.refuse("idle", "Aucun programme")
-        if (j.ended || j.state == JobState.STOPPING) return Verdict.refuse("state", "Programme terminé")
-        if (j.spec.kind != JobKind.MANUAL || j.spec.phases.size != 1) return Verdict.refuse("kind", "Réglage fixe pour ce programme")
+        val j = job ?: return Verdict.refuse("idle", tr("Aucun programme"))
+        if (j.ended || j.state == JobState.STOPPING) return Verdict.refuse("state", tr("Programme terminé"))
+        if (j.spec.kind != JobKind.MANUAL || j.spec.phases.size != 1) return Verdict.refuse("kind", tr("Réglage fixe pour ce programme"))
         val old = j.phase.setting
         val s = old.copy(
             speed = speed ?: old.speed,
@@ -408,7 +414,7 @@ class MachineController(
             hotBlendConfirmed = j.spec.hotBlendConfirmed || hotBlendConfirmed,
         )
         val v = ArrayList(SafetyPolicy.checkJob(spec, actualTemp()))
-        if (newTotal < j.totalElapsed + 1_000) v += Violation("past", "Durée déjà écoulée")
+        if (newTotal < j.totalElapsed + 1_000) v += Violation("past", tr("Durée déjà écoulée"))
         if (v.isNotEmpty()) return Verdict.refuse(v)
         j.spec = spec
         if (s.direction != old.direction && j.state == JobState.RUNNING) j.waitingStop = Barrier(seq, now)
@@ -418,10 +424,10 @@ class MachineController(
     fun turboPress(accessory: Accessory = Accessory.BLADE): Verdict {
         val now = clock.nowMs()
         val j = job
-        if (j != null && !j.ended) return Verdict.refuse("busy", "Arrêtez d'abord le programme en cours")
+        if (j != null && !j.ended) return Verdict.refuse("busy", tr("Arrêtez d'abord le programme en cours"))
         val v = ArrayList(baseChecks(now))
         val t = latest
-        if (v.isEmpty() && t != null && !t.motorStopped) v += Violation("moving", "Attendez l'arrêt complet du moteur")
+        if (v.isEmpty() && t != null && !t.motorStopped) v += Violation("moving", tr("Attendez l'arrêt complet du moteur"))
         v += SafetyPolicy.checkSetting(Programs.turboSetting(), JobKind.TURBO, accessory, actualTemp(), false)
         if (v.isNotEmpty()) return Verdict.refuse(v)
         turboStartedAt = now
@@ -446,9 +452,9 @@ class MachineController(
             FaultCode.UNEXPECTED_MOTION, FaultCode.STOP_TIMEOUT -> t != null && fresh(now) && t.motorStopped
             FaultCode.UNEXPECTED_HEAT -> t != null && fresh(now) && !t.heaterOn
         }
-        if (!ok) return Verdict.refuse("fault_active", "La cause est toujours présente : ${f.message}")
+        if (!ok) return Verdict.refuse("fault_active", tr("La cause est toujours présente : %s", f.message))
         fault = null
-        emit(EventType.FAULT_CLEARED, "Alerte acquittée")
+        emit(EventType.FAULT_CLEARED, tr("Alerte acquittée"))
         return Verdict.OK
     }
 
@@ -458,7 +464,7 @@ class MachineController(
         val since = turboStartedAt ?: return
         if (now - since >= Limits.MAX_MS_TURBO_PRESS) {
             turboStartedAt = null
-            emit(EventType.TURBO_END, "Turbo limité à ${Limits.MAX_MS_TURBO_PRESS / 1000} s par appui")
+            emit(EventType.TURBO_END, tr("Turbo limité à %d s par appui", Limits.MAX_MS_TURBO_PRESS / 1000))
         }
     }
 
@@ -482,7 +488,7 @@ class MachineController(
                     else emit(EventType.JOB_STARTED, j.spec.label)
                     j.everStarted = true
                 } else if (now - b.sinceMs > config.stopTimeoutMs) {
-                    raiseFault(FaultCode.STOP_TIMEOUT, "Le moteur ne s'arrête pas : démarrage annulé")
+                    raiseFault(FaultCode.STOP_TIMEOUT, tr("Le moteur ne s'arrête pas : démarrage annulé"))
                 }
             }
             JobState.RUNNING -> {
@@ -493,7 +499,7 @@ class MachineController(
                         j.waitingStop = null
                         if (!enterPhase(j, now)) return
                     } else if (now - ws.sinceMs > config.stopTimeoutMs) {
-                        raiseFault(FaultCode.STOP_TIMEOUT, "Le moteur ne s'arrête pas entre deux phases")
+                        raiseFault(FaultCode.STOP_TIMEOUT, tr("Le moteur ne s'arrête pas entre deux phases"))
                         return
                     }
                 } else {
@@ -510,18 +516,18 @@ class MachineController(
                 val b = j.barrier ?: Barrier(seq, now).also { j.barrier = it }
                 if (barrierMet(b, now)) {
                     j.state = JobState.FINISHED
-                    j.endReason = "Terminé"
+                    j.endReason = tr("Terminé")
                     emit(EventType.JOB_FINISHED, j.spec.label)
                 } else if (now - b.sinceMs > config.stopTimeoutMs) {
                     j.state = JobState.FINISHED
-                    j.endReason = "Terminé"
-                    raiseFault(FaultCode.STOP_TIMEOUT, "Le moteur ne s'est pas arrêté à la fin du programme")
+                    j.endReason = tr("Terminé")
+                    raiseFault(FaultCode.STOP_TIMEOUT, tr("Le moteur ne s'est pas arrêté à la fin du programme"))
                 }
             }
             JobState.PAUSED -> {
                 if (now - j.pausedAt > config.pauseMaxMs) {
                     j.state = JobState.ABORTED
-                    j.endReason = "Pause trop longue : programme annulé"
+                    j.endReason = tr("Pause trop longue : programme annulé")
                     emit(EventType.JOB_ABORTED, j.endReason)
                 }
             }

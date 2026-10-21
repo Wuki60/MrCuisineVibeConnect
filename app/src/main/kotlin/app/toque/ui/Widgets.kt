@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import app.toque.core.i18n.tr
 
 /** Carte de réglage : libellé, grande valeur, boutons − / +, sélection pour le bouton rotatif. */
 class ValueCard(c: Context, label: String, icon: Icon.Kind) : LinearLayout(c) {
@@ -150,7 +151,7 @@ class TempRing(c: Context) : View(c) {
         text.typeface = Ui.REGULAR
         text.color = Ui.TEXT2
         text.textSize = size * 0.075f
-        canvas.drawText(if (target > 0) "consigne $target °C" else "mesuré", cx, cy + size * 0.22f, text)
+        canvas.drawText(if (target > 0) tr("consigne %d °C", target) else tr("mesuré"), cx, cy + size * 0.22f, text)
         // barres de vitesse réelle
         val bw = size * 0.035f
         val gap = size * 0.018f

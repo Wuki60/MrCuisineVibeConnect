@@ -1,5 +1,6 @@
 package app.toque.core.machine
 
+import app.toque.core.i18n.tr
 import java.io.IOException
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
@@ -74,8 +75,8 @@ class MachineLoop(
             try {
                 t.write(frame)
             } catch (e: IOException) {
-                controller.onWriteFailed(e.message ?: "erreur d'écriture")
-                closeTransport(t, "écriture impossible")
+                controller.onWriteFailed(e.message ?: tr("erreur d'écriture"))
+                closeTransport(t, tr("écriture impossible"))
             }
         }
         onSnapshot(controller.snapshot())
@@ -113,7 +114,7 @@ class MachineLoop(
 
     private fun readLoop(t: Transport) {
         val buffer = ByteArray(256)
-        var reason = "fin de flux"
+        var reason = tr("fin de flux")
         try {
             while (true) {
                 val n = t.read(buffer)
@@ -125,7 +126,7 @@ class MachineLoop(
                 }
             }
         } catch (e: IOException) {
-            reason = e.message ?: "erreur de lecture"
+            reason = e.message ?: tr("erreur de lecture")
         } catch (e: Throwable) {
             reason = e.toString()
         }
@@ -165,7 +166,7 @@ class MachineLoop(
                 t.close()
             } catch (_: Throwable) {
             }
-            c.onTransportDown("port libéré")
+            c.onTransportDown(tr("port libéré"))
         }
         true
     }

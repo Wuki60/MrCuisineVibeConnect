@@ -11,6 +11,8 @@ import android.os.Looper
 import android.os.Message
 import android.os.Messenger
 import android.os.RemoteException
+import app.toque.core.i18n.I18n
+import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.EventType
 import app.toque.core.machine.JobSpec
@@ -86,7 +88,7 @@ class MachineClient(private val context: Context) {
     private fun sendRaw(what: Int, data: Bundle?, cb: ((Verdict) -> Unit)?) {
         val s = service
         if (s == null) {
-            cb?.let { c -> main.post { c(Verdict.refuse("ipc", "Service machine indisponible, nouvelle tentative…")) } }
+            cb?.let { c -> main.post { c(Verdict.refuse("ipc", tr("Service machine indisponible, nouvelle tentative…"))) } }
             connect()
             return
         }
@@ -94,16 +96,17 @@ class MachineClient(private val context: Context) {
         if (cb != null) {
             pending[id] = cb
             main.postDelayed({
-                pending.remove(id)?.invoke(Verdict.refuse("timeout", "La base ne répond pas"))
+                pending.remove(id)?.invoke(Verdict.refuse("timeout", tr("La base ne répond pas")))
             }, 5_000)
         }
         val m = Message.obtain(null, what, id, 0)
         m.replyTo = incoming
-        if (data != null) m.data = data
+        // La langue voyage avec chaque commande : le processus machine rédige ses messages dans la même.
+        m.data = (data ?: Bundle()).apply { putString(Ipc.LANG, I18n.lang.code) }
         try {
             s.send(m)
         } catch (e: RemoteException) {
-            pending.remove(id)?.invoke(Verdict.refuse("ipc", "Liaison avec le service perdue"))
+            pending.remove(id)?.invoke(Verdict.refuse("ipc", tr("Liaison avec le service perdue")))
         }
     }
 

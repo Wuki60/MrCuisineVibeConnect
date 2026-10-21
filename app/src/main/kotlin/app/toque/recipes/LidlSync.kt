@@ -7,6 +7,9 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import app.toque.Logbook
 import app.toque.Prefs
+import app.toque.core.i18n.I18n
+import app.toque.core.i18n.Lang
+import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.recipes.OriginalDbMapper
 import java.io.File
@@ -75,12 +78,12 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
      * (jusqu'à [maxWaitMs]), puis copie les recettes dans Toque.
      */
     fun sync(maxWaitMs: Long = 8 * 60_000L, progress: (String) -> Unit = {}): Report {
-        if (!RootShell.available()) return finish(Report(false, "Accès root indisponible"))
-        if (!installed()) return finish(Report(false, "Appli d'origine introuvable ($pkg)"))
+        if (!RootShell.available()) return finish(Report(false, tr("Accès root indisponible")))
+        if (!installed()) return finish(Report(false, tr("Appli d'origine introuvable (%s)", pkg)))
         val comp = components()
         if (comp.hardwareService != null) setVendorHardware(false)
         val before = dbStamp()
-        progress("Synchronisation avec les serveurs Lidl…")
+        progress(tr("Synchronisation avec les serveurs Lidl…"))
         var started = false
         if (comp.importService != null) started = su("am startservice -n $pkg/${comp.importService}").ok
         if (!started) log.write("synchro", "service d'import introuvable ou refusé")
@@ -95,19 +98,19 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
                 changed = true
                 last = now
                 stableSince = System.currentTimeMillis()
-                progress("Réception des recettes…")
+                progress(tr("Réception des recettes…"))
             } else if (changed && System.currentTimeMillis() - stableSince > 20_000) break
         }
         forceStop()
         val report = importNow(progress)
-        val note = if (!changed) " (aucune nouveauté reçue : si ça persiste, utilisez « Ouvrir l'appli d'origine »)" else ""
+        val note = if (!changed) " " + tr("(aucune nouveauté reçue : si ça persiste, utilisez « Ouvrir l'appli d'origine »)") else ""
         return finish(report.copy(message = report.message + note))
     }
 
     /** Copie la base actuelle de l'appli d'origine (sans relancer sa synchro). */
     fun importNow(progress: (String) -> Unit = {}): Report {
-        if (!RootShell.available()) return finish(Report(false, "Accès root indisponible"))
-        progress("Copie des recettes…")
+        if (!RootShell.available()) return finish(Report(false, tr("Accès root indisponible")))
+        progress(tr("Copie des recettes…"))
         val work = File(context.cacheDir, "lidl").apply { mkdirs() }
         work.listFiles()?.forEach { it.delete() }
         val dest = File(work, "Recipes").absolutePath
@@ -116,30 +119,30 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
                 "cp ${dbPath}-shm ${dest}-shm 2>/dev/null; true) && chmod 666 ${dest}*",
             30_000,
         )
-        if (!copy.ok || !File(dest).exists()) return finish(Report(false, "Base de l'appli d'origine introuvable"))
+        if (!copy.ok || !File(dest).exists()) return finish(Report(false, tr("Base de l'appli d'origine introuvable")))
 
         val tables = try {
             readTables(dest)
         } catch (e: Exception) {
             log.crash("synchro", e)
-            return finish(Report(false, "Base illisible : ${e.message}"))
+            return finish(Report(false, tr("Base illisible : %s", e.message)))
         }
         writeDiagnostic(tables)
-        progress("Conversion…")
+        progress(tr("Conversion…"))
         val result = OriginalDbMapper.map(tables, "fr")
-        if (result.recipes.isEmpty()) return finish(Report(false, "Aucune recette lisible. Envoyez le fichier diagnostic-recettes.txt."))
+        if (result.recipes.isEmpty()) return finish(Report(false, tr("Aucune recette lisible. Envoyez le fichier diagnostic-recettes.txt.")))
 
-        progress("Copie des photos…")
+        progress(tr("Copie des photos…"))
         val img = repo.imagesDir.absolutePath
         su("if [ -d $imagesPath ]; then for f in $imagesPath/*; do b=\${f##*/}; [ -e $img/\$b ] || cp \$f $img/; done; chmod 644 $img/* 2>/dev/null; fi; true", 300_000)
 
         repo.replaceAll(result.recipes)
         work.listFiles()?.forEach { it.delete() }
-        return finish(Report(true, "${result.recipes.size} recettes Lidl à jour", result.recipes.size))
+        return finish(Report(true, tr("%d recettes Lidl à jour", result.recipes.size), result.recipes.size))
     }
 
     private fun finish(r: Report): Report {
-        val stamp = SimpleDateFormat("dd/MM à HH:mm", Locale.FRANCE).format(Date())
+        val stamp = SimpleDateFormat(if (I18n.lang == Lang.EN) "dd/MM 'at' HH:mm" else "dd/MM à HH:mm", I18n.locale).format(Date())
         prefs.lastSyncMs = System.currentTimeMillis()
         prefs.lastSyncResult = "$stamp : ${r.message}"
         log.write("synchro", r.message)
