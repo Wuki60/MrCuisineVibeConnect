@@ -1,4 +1,4 @@
-# Rend la main à l'appli Monsieur Cuisine d'origine et retire Toque.
+﻿# Rend la main à l'appli Monsieur Cuisine d'origine et retire Toque.
 param([string]$Ip = "", [switch]$Desinstaller)
 $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
 if (-not (Test-Path $adb)) { $adb = "adb" }

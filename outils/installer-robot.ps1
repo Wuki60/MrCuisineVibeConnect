@@ -1,4 +1,4 @@
-# Installe Toque sur le Monsieur Cuisine Connect (rooté, ADB actif).
+﻿# Installe Toque sur le Monsieur Cuisine Connect (rooté, ADB actif).
 # Usage : powershell -ExecutionPolicy Bypass -File outils\installer-robot.ps1 [-Apk chemin.apk] [-Ip 192.168.1.x]
 param(
     [string]$Apk = "app\build\outputs\apk\debug\app-debug.apk",
