@@ -12,6 +12,9 @@ captures/
 *.aab
 *.keystore
 *.jks
+*.p12
+# Clé publique du projet (voir app/build.gradle.kts)
+!app/signature/toque.p12
 # Système
 .DS_Store
 Thumbs.db

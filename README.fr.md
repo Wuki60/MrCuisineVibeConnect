@@ -23,6 +23,9 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
   seule, pesée intégrée, reprise après coupure.
 - **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
+- **Mises à jour depuis GitHub** : Réglages › Mises à jour vérifie les
+  [versions publiées](https://github.com/Wuki60/MrCuisineVibeConnect/releases) de ce dépôt et installe
+  la nouvelle (sans rien demander sur un robot rooté, puis Toque redémarre). Refusé pendant un programme.
 
 ## Sécurité : ce qui change par rapport à l'appli d'origine
 
@@ -78,6 +81,18 @@ En ligne de commande : `gradlew assembleDebug` (et `gradlew :core:test` pour les
    `python outils/jumeau.py --sdk <dossier du SDK>` puis, dans Toque, Réglages › Machine ›
    Jumeau (émulateur : hôte `10.0.2.2` ; appareil réel : `adb reverse tcp:8765 tcp:8765` et
    hôte `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` ouvre le couvercle, etc.
+
+## Publier une nouvelle version
+
+1. Augmenter `versionCode` et `versionName` dans `app/build.gradle.kts`.
+2. Committer et pousser sur `main`.
+
+Le [workflow de publication](.github/workflows/release.yml) lance les tests, compile l'APK et publie la
+version `vX.Y.Z` avec. Les robots la trouvent ensuite dans Réglages › Mises à jour.
+
+Toutes les compilations sont signées avec la clé du projet (`app/signature/`, publique exprès) : un APK
+compilé sur n'importe quel PC ou par GitHub s'installe par-dessus la version précédente. N'installez que
+les APK publiés sur ce dépôt.
 
 ## Installer sur le robot
 

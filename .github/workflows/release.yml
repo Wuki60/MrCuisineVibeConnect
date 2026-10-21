@@ -1,0 +1,57 @@
+# Publie automatiquement une version de Toque quand versionName change dans app/build.gradle.kts.
+# Les robots la trouvent ensuite dans Réglages › Mises à jour.
+name: Publier une version
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Version de l'appli
+        id: version
+        run: |
+          v=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          echo "name=$v" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
+            echo "Version $v déjà publiée : rien à faire."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-java@v4
+        if: steps.version.outputs.publish == 'true'
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Tests et compilation
+        if: steps.version.outputs.publish == 'true'
+        run: ./gradlew --no-daemon :core:test :app:assembleRelease
+
+      - name: Publication sur GitHub
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.version.outputs.name }}"
+          cp app/build/outputs/apk/release/app-release.apk "Toque-$v.apk"
+          prev=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          if [ -n "$prev" ]; then range="$prev..HEAD"; else range="HEAD"; fi
+          git log --no-merges --pretty='- %s' $range > notes.md
+          gh release create "v$v" "Toque-$v.apk" --title "Toque $v" --notes-file notes.md --target "$GITHUB_SHA"

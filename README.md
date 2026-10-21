@@ -25,6 +25,9 @@ uses **the official Lidl recipes**.
   weighing, resume after a power cut.
 - **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
 - **Offline**: everything works without a network (no more "server unreachable" at startup).
+- **Updates from GitHub**: *Réglages › Mises à jour* (Settings › Updates) checks this repository's
+  [Releases](https://github.com/Wuki60/MrCuisineVibeConnect/releases) and installs the new version
+  (silently on a rooted robot, then Toque restarts). Refused while a program is running.
 
 ## Safety: what changes compared to the stock app
 
@@ -79,6 +82,18 @@ From the command line: `gradlew assembleDebug` (and `gradlew :core:test` for the
    Run `python outils/jumeau.py --sdk <SDK folder>`, then in Toque choose *Réglages › Machine ›
    Jumeau* (emulator: host `10.0.2.2`; real device: `adb reverse tcp:8765 tcp:8765` and host
    `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` opens the lid, etc.
+
+## Publish a new version
+
+1. Increase `versionCode` and `versionName` in `app/build.gradle.kts`.
+2. Commit and push to `main`.
+
+The [release workflow](.github/workflows/release.yml) runs the tests, builds the APK and publishes
+the `vX.Y.Z` release with it. Robots then find it in *Réglages › Mises à jour*.
+
+All builds are signed with the project key in `app/signature/` (public on purpose), so an APK built
+on any PC or by GitHub installs over the previous version. Only install APKs from this repository's
+releases.
 
 ## Install on the robot
 

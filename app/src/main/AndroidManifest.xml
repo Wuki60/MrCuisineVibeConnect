@@ -4,8 +4,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <!-- Mode « Jumeau numérique » uniquement (connexion à un PC). -->
+    <!-- Mises à jour depuis GitHub et mode « Jumeau numérique » (connexion à un PC). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Installation des mises à jour sur un appareil non rooté (Android 8 et plus). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:name=".ToqueApp"
@@ -53,6 +55,18 @@
         <receiver
             android:name=".recipes.SyncAlarm"
             android:exported="false" />
+
+        <receiver
+            android:name=".update.InstallResultReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".update.UpdatedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
 
         <receiver
             android:name=".recipes.BootReceiver"

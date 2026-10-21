@@ -48,7 +48,9 @@ Only do this on your home network: anyone on it could then connect to the robot.
 
 ## 3. Install Toque
 
-1. Build the APK in Android Studio (see the README).
+1. Download the latest `Toque-X.Y.Z.apk` from the
+   [Releases page](https://github.com/Wuki60/MrCuisineVibeConnect/releases), or build it in
+   Android Studio (see the README). With a downloaded APK, add `-Apk <path to the APK>` below.
 2. `powershell -ExecutionPolicy Bypass -File outils\installer-robot.ps1`
    (over Wi-Fi: add `-Ip <robot IP address>`).
 3. Allow Toque in the Magisk prompt shown on the robot ("Grant").

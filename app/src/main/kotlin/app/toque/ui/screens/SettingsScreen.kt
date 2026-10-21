@@ -11,11 +11,13 @@ import android.widget.TextView
 import app.toque.Prefs
 import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
+import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
 import app.toque.ui.Icon
 import app.toque.ui.MainActivity
 import app.toque.ui.Screen
 import app.toque.ui.Ui
+import app.toque.update.Updater
 
 class SettingsScreen(a: MainActivity) : Screen(a) {
     override val title = "Réglages"
@@ -28,6 +30,15 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
     private lateinit var linkText: TextView
     private var mode = a.prefs.mode
     private var syncing = false
+
+    private enum class Upd { IDLE, CHECKING, UP_TO_DATE, AVAILABLE, DOWNLOADING, INSTALLING, ERROR }
+    private val updater by lazy { Updater(a) }
+    private lateinit var updText: TextView
+    private lateinit var updButtons: LinearLayout
+    private var upd = Upd.IDLE
+    private var release: Release? = null
+    private var updMessage = ""
+    private var updPercent = 0
 
     override fun build(): View {
         val col = Ui.vertical(c)
@@ -76,6 +87,15 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         lidl.addView(b1, Ui.lp(t = 12))
         lidl.addView(Ui.button(c, "Ouvrir l'appli d'origine", Ui.Style.GHOST, Icon.Kind.LINK, height = 56) { a.openVendorApp() }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 10))
         lidl.addView(toggle("Synchro automatique chaque nuit", a.prefs.autoSync) { a.prefs.autoSync = it }, Ui.lp(t = 10))
+
+        // ---- Mises à jour
+        val updates = section(right, "Mises à jour", Icon.Kind.INFO)
+        updText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
+        updates.addView(updText)
+        updButtons = Ui.horizontal(c)
+        updates.addView(updButtons, Ui.lp(t = 12))
+        Updater.onInstallError = { msg -> updateFailed(msg) }
+        renderUpdate()
 
         // ---- Outils
         val tools = section(right, "Outils", Icon.Kind.SETTINGS)
@@ -248,6 +268,103 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         val last = a.prefs.lastSyncResult
         syncText.text = (if (last.isEmpty()) "Jamais synchronisé" else "Dernière synchro le $last") +
             "\n${a.app.recipes.count} recettes dans Toque"
+    }
+
+    // ------------------------------------------------------------------ mises à jour
+
+    private fun renderUpdate() {
+        val r = release
+        val installed = "Version installée : ${updater.installedVersion}"
+        updText.setTextColor(if (upd == Upd.ERROR) Ui.WARN else if (upd == Upd.AVAILABLE) Ui.TEXT else Ui.TEXT2)
+        updText.text = when (upd) {
+            Upd.IDLE -> "$installed\nLes nouvelles versions sont publiées sur GitHub."
+            Upd.CHECKING -> "$installed\nRecherche sur GitHub…"
+            Upd.UP_TO_DATE -> "$installed\nToque est à jour."
+            Upd.AVAILABLE -> "$installed\nNouvelle version disponible : ${r?.version}" + notes(r)
+            Upd.DOWNLOADING -> "Téléchargement de la version ${r?.version}… $updPercent %"
+            Upd.INSTALLING -> "Installation de la version ${r?.version}… Toque va redémarrer.\n" +
+                "Si Android demande une confirmation, touchez « Installer »."
+            Upd.ERROR -> "$installed\n$updMessage"
+        }
+        updButtons.removeAllViews()
+        when (upd) {
+            Upd.IDLE, Upd.UP_TO_DATE, Upd.ERROR ->
+                updButtons.addView(Ui.button(c, "Rechercher une mise à jour", Ui.Style.PRIMARY, Icon.Kind.SYNC, height = 58) { checkUpdate() })
+            Upd.AVAILABLE -> {
+                updButtons.addView(Ui.button(c, "Installer la version ${r?.version}", Ui.Style.PRIMARY, Icon.Kind.CHECK, height = 58) { installUpdate() },
+                    Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
+                updButtons.addView(Ui.button(c, "Plus tard", Ui.Style.GHOST, height = 58) { upd = Upd.IDLE; renderUpdate() })
+            }
+            else -> {}
+        }
+    }
+
+    private fun notes(r: Release?): String {
+        val text = r?.notes?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }?.take(4)?.joinToString("\n") ?: ""
+        if (text.isEmpty()) return ""
+        return "\n\n" + if (text.length > 280) text.substring(0, 280) + "…" else text
+    }
+
+    private fun checkUpdate() {
+        if (upd == Upd.CHECKING || upd == Upd.DOWNLOADING || upd == Upd.INSTALLING) return
+        upd = Upd.CHECKING
+        renderUpdate()
+        Thread {
+            try {
+                val r = updater.latest()
+                view.post {
+                    release = r
+                    upd = if (updater.isNewer(r)) Upd.AVAILABLE else Upd.UP_TO_DATE
+                    renderUpdate()
+                }
+            } catch (e: Updater.Failure) {
+                view.post { upd = Upd.ERROR; updMessage = e.message ?: "Erreur"; renderUpdate() }
+            } catch (e: Exception) {
+                a.app.log.crash("maj", e)
+                view.post { upd = Upd.ERROR; updMessage = "Erreur inattendue : ${e.message}"; renderUpdate() }
+            }
+        }.start()
+    }
+
+    private fun installUpdate() {
+        val r = release ?: return
+        if (a.snapshot.busy) {
+            a.toast("Arrêtez d'abord le programme en cours", Ui.WARN)
+            return
+        }
+        a.confirm(
+            "Installer la version ${r.version}",
+            "Toque va télécharger la mise à jour depuis GitHub, l'installer puis redémarrer (environ une minute). " +
+                "Le moteur reste arrêté pendant l'opération.",
+            "Installer", icon = Icon.Kind.SYNC,
+        ) {
+            a.machine.suspendPort { v ->
+                if (!v.ok) { a.refusal(v); return@suspendPort }
+                upd = Upd.DOWNLOADING
+                updPercent = 0
+                renderUpdate()
+                Thread {
+                    try {
+                        val file = updater.download(r) { p -> view.post { updPercent = p; renderUpdate() } }
+                        view.post { upd = Upd.INSTALLING; renderUpdate() }
+                        updater.install(file)
+                    } catch (e: Updater.Failure) {
+                        view.post { updateFailed(e.message ?: "Erreur") }
+                    } catch (e: Exception) {
+                        a.app.log.crash("maj", e)
+                        view.post { updateFailed("Erreur inattendue : ${e.message}") }
+                    }
+                }.start()
+            }
+        }
+    }
+
+    private fun updateFailed(message: String) {
+        a.machine.resumePort()
+        upd = Upd.ERROR
+        updMessage = message
+        renderUpdate()
+        a.toast(message, Ui.WARN)
     }
 
     override fun onShow() {

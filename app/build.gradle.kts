@@ -13,15 +13,31 @@ android {
         applicationId = "app.toque"
         minSdk = 23          // Android 6.0, celui du Monsieur Cuisine Connect
         targetSdk = 28
-        versionCode = 1
-        versionName = "0.1.0"
+        // Pour publier une mise à jour : augmenter les deux valeurs puis pousser sur GitHub
+        // (la version est publiée automatiquement, voir .github/workflows/release.yml).
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    signingConfigs {
+        // Clé du projet, publique exprès : toutes les compilations (PC, GitHub) portent la même
+        // signature, donc chaque mise à jour s'installe par-dessus la précédente.
+        create("toque") {
+            storeFile = file("signature/toque.p12")
+            storeType = "PKCS12"
+            storePassword = "toque-public"
+            keyAlias = "toque"
+            keyPassword = "toque-public"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("toque")
+        }
         release {
             isMinifyEnabled = false
-            // Signée avec la clé de débogage pour une installation directe par adb.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("toque")
         }
     }
 
