@@ -1,7 +1,7 @@
-# Toque
+# MrCuisineVibeConnect
 
-Une interface moderne et rapide pour le robot **Monsieur Cuisine Connect** (SKMC 1200), qui
-remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
+**Toque**, une interface moderne et rapide pour le robot **Monsieur Cuisine Connect** (SKMC 1200),
+qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
 
 > Projet indépendant, non affilié à Lidl, SilverCrest ni Hoyer. Le pilotage du moteur repose
 > sur une analyse publique du protocole ; il n'a **pas** encore été validé sur une vraie machine.
