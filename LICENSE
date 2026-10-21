@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 Les contributeurs de Toque
+Copyright (c) 2026 Wuki60 and Toque contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,7 +21,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---
-Le codec du protocole (core/.../protocol/Mcc.kt), les vecteurs de test
-(core/src/test/resources/mcc) et outils/jumeau.py s'appuient sur le
-« Monsieur Cuisine Developer SDK » (licence MIT) : voir
+The protocol codec (core/.../protocol/Mcc.kt), the test vectors
+(core/src/test/resources/mcc) and outils/jumeau.py are based on the
+"Monsieur Cuisine Developer SDK" (MIT License): see
 docs/LICENSE-monsieur-cuisine-developer-sdk.txt.

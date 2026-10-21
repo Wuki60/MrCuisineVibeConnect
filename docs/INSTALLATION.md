@@ -1,80 +1,98 @@
-# Installer Toque sur le Monsieur Cuisine Connect
+# Installing Toque on the Monsieur Cuisine Connect
 
-Durée : 1 à 2 heures la première fois. Les étapes 1 et 2 (root) sont les plus délicates : une
-erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commencer.
+*[Version française](INSTALLATION.fr.md)*
 
-## Ce qu'il faut
+Time: 1 to 2 hours the first time. Steps 1 and 2 (root) are the tricky ones: a mistake can leave
+the robot's tablet unusable. Read everything before you start.
 
-- Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/).
-- Un câble **USB-A mâle / USB-A mâle** (+ rallonge), un petit tournevis Torx.
-- Le guide de référence : <https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack>
-  (fichier de partition `l706_dfbh_v_695scatter.txt` et recovery TWRP `hacks/recovery.img`).
+The app's interface is in French; menu names are given below in French with a translation.
 
-## 1. Accès ADB et TWRP (guide EliasKotlyar)
+## What you need
 
-1. Robot éteint (interrupteur arrière). Dévisser la trappe de maintenance sous le robot.
-2. Brancher le PC **uniquement sur le port marqué « Android USB »** (l'autre peut détruire la carte).
-3. SP Flash Tool avec le fichier scatter : **sauvegarder la partition `boot`**
-   (adresse `0x1d20000`, longueur `0x1000000`) **et la garder précieusement**.
-   *Ne sautez pas cette étape : c'est votre seule voie de retour.*
-4. Flasher `hacks/recovery.img` dans `boot`, redémarrer : TWRP démarre.
-5. Dans `adb shell` : monter `/system`, ajouter à `/system/build.prop`
+- A Windows PC with Android Studio (for ADB) and [SP Flash Tool](https://spflashtool.com/).
+- A **USB-A male / USB-A male** cable (+ extension cable), a small Torx screwdriver.
+  If your PC has a USB-C port, a USB-C ↔ USB-A data cable also works.
+- The reference guide: <https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack>
+  (partition file `l706_dfbh_v_695scatter.txt` and TWRP recovery `hacks/recovery.img`).
+
+## 1. ADB access and TWRP (EliasKotlyar guide)
+
+1. Robot off (rear switch). Unscrew the maintenance cover under the robot.
+2. Connect the PC **only to the right-hand port, labelled "Android USB"** (the other one can
+   destroy the board).
+3. With SP Flash Tool and the scatter file, **back up the `boot` partition**
+   (address `0x1d20000`, length `0x1000000`) **and keep it safe**.
+   *Do not skip this step: it is your only way back.*
+4. Flash `hacks/recovery.img` into `boot` and reboot: TWRP starts.
+5. In `adb shell`: mount `/system`, add to `/system/build.prop`
    `persist.service.adb.enable=1`, `persist.service.debuggable=1`, `persist.sys.usb.config=mtp,adb`,
-   puis supprimer `/system/recovery-from-boot.p`.
-6. Remettre votre `boot` d'origine dans `boot` et `recovery.img` dans `recovery` (depuis TWRP).
-7. Redémarrer : l'appli d'origine démarre, `adb devices` voit le robot.
+   then delete `/system/recovery-from-boot.p`.
+6. Put your original `boot` back into `boot` and `recovery.img` into `recovery` (from TWRP).
+7. Reboot: the stock app starts and `adb devices` sees the robot.
 
 ## 2. Root (Magisk / Kitsune Mask)
 
-Installer Kitsune Mask (fork de Magisk compatible Android 6) en suivant
-l'[issue #38](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/issues/38) du même dépôt.
-Vérifier : `adb shell su -c id` doit afficher `uid=0`. Toque a besoin de la **busybox** fournie par
-Magisk (`/data/adb/magisk/busybox`).
+Install Kitsune Mask (a Magisk fork that works on Android 6) following
+[issue #38](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/issues/38) of the same
+repository. Check: `adb shell su -c id` must print `uid=0`. Toque needs the **busybox** shipped
+with Magisk (`/data/adb/magisk/busybox`).
 
-## 3. Installer Toque
+Optional, so you no longer need the cable: enable ADB over Wi-Fi.
 
-1. Compiler l'APK dans Android Studio (voir README).
+```
+adb shell su -c "setprop persist.adb.tcp.port 5555"
+adb reboot
+```
+
+Only do this on your home network: anyone on it could then connect to the robot.
+
+## 3. Install Toque
+
+1. Build the APK in Android Studio (see the README).
 2. `powershell -ExecutionPolicy Bypass -File outils\installer-robot.ps1`
-3. Autoriser Toque dans la fenêtre Magisk qui s'affiche sur le robot (« Accorder »).
+   (over Wi-Fi: add `-Ip <robot IP address>`).
+3. Allow Toque in the Magisk prompt shown on the robot ("Grant").
 
-## 4. Premier essai — bol VIDE
+## 4. First run — EMPTY bowl
 
-1. Dans Toque : **Réglages › Machine › Machine réelle › Appliquer**. Toque coupe l'appli
-   d'origine du moteur (réversible) et ouvre le port série.
-2. La pastille en haut à droite doit passer à **« Prête »**. Sinon : Réglages › Outils ›
-   Diagnostic (trames reçues ?) et Journal.
-3. Bol vide, couvercle fermé, **main près de l'interrupteur principal** :
-   - Cuisson manuelle : 10 s, vitesse 2 → le moteur tourne puis s'arrête seul.
-   - Ouvrir le couvercle pendant un essai → arrêt immédiat, « Pause : couvercle ouvert ».
-   - 30 s à 37 °C, vitesse 1 → la température affichée monte.
-   - Balance : poser un objet de poids connu, Tare.
-   - Diagnostic : retirer le bol et regarder « Bol détecté ». S'il change bien, vous pouvez
-     activer Réglages › Sécurité › « Exiger la détection du bol ».
-4. Au moindre comportement anormal : **interrupteur principal**, puis
-   `outils\restaurer-robot.ps1`.
+1. In Toque: **Réglages › Machine › Machine réelle › Appliquer** (Settings › Machine › Real
+   machine › Apply). Toque turns off the stock app's motor service (reversible) and opens the
+   serial port.
+2. The badge at the top right must switch to **« Prête »** (Ready). If not: Réglages › Outils ›
+   Diagnostic (Settings › Tools › Diagnostics: are frames received?) and Journal (Log).
+3. Empty bowl, lid closed, **hand near the main switch**:
+   - Manual cooking: 10 s, speed 2 → the motor runs, then stops on its own.
+   - Open the lid during a run → immediate stop, « Pause : couvercle ouvert » (lid open).
+   - 30 s at 37 °C, speed 1 → the displayed temperature rises.
+   - Scale: put an object of known weight on it, Tare.
+   - Diagnostics: remove the bowl and watch « Bol détecté » (bowl detected). If it changes
+     correctly, you can enable Réglages › Sécurité › « Exiger la détection du bol »
+     (Settings › Safety › Require bowl detection).
+4. At the slightest abnormal behaviour: **main switch**, then `outils\restaurer-robot.ps1`.
 
-## 5. En faire l'écran d'accueil
+## 5. Make it the home screen
 
-Bouton Accueil → choisir **Toque** → **Toujours**. (Accès caché aux paramètres Android :
-5 appuis rapides sur l'heure en haut à droite.)
+Home button → choose **Toque** → **Always**. (Hidden access to the Android settings: tap the
+clock at the top right 5 times quickly.)
 
-## 6. Recettes Lidl
+## 6. Lidl recipes
 
-**Réglages › Recettes Lidl › Synchroniser**. L'appli d'origine se synchronise avec les serveurs
-Lidl en arrière-plan, puis Toque importe ses recettes et photos (quelques minutes). Ensuite, la
-synchro se fait chaque nuit à 3 h 30.
+**Réglages › Recettes Lidl › Synchroniser** (Settings › Lidl recipes › Sync). The stock app syncs
+with Lidl's servers in the background, then Toque imports its recipes and photos (a few
+minutes). After that, the sync runs every night at 3:30 am.
 
-Si rien n'arrive : **« Ouvrir l'appli d'origine »**. Toque lui rend le moteur, elle s'ouvre
-et se synchronise comme d'habitude. Revenez avec le bouton Accueil : Toque reprend la main et
-importe tout.
+If nothing arrives: **« Ouvrir l'appli d'origine »** (Open the stock app). Toque hands the motor
+back to it, it opens and syncs as usual. Come back with the Home button: Toque takes over again
+and imports everything.
 
-Si l'import échoue, le fichier `Android/data/app.toque/files/diagnostic-recettes.txt` décrit
-la structure de la base d'origine, de quoi adapter l'import.
+If the import fails, the file `Android/data/app.toque/files/diagnostic-recettes.txt` describes the
+structure of the stock database, which is what's needed to adapt the import.
 
-## Revenir à l'appli d'origine
+## Going back to the stock app
 
-- Depuis Toque : Réglages › Outils › « Revenir à l'appli d'origine ».
-- Depuis le PC : `powershell -ExecutionPolicy Bypass -File outils\restaurer-robot.ps1 -Desinstaller`
+- From Toque: Réglages › Outils › « Revenir à l'appli d'origine » (Settings › Tools › Back to
+  the stock app).
+- From the PC: `powershell -ExecutionPolicy Bypass -File outils\restaurer-robot.ps1 -Desinstaller`
 
-Toque ne modifie ni le système ni l'appli d'origine : il désactive seulement son service moteur,
-ce que ces deux méthodes annulent.
+Toque changes neither the system nor the stock app: it only disables its motor service, which
+both methods undo.

@@ -1,91 +1,94 @@
 # MrCuisineVibeConnect
 
-**Toque**, une interface moderne et rapide pour le robot **Monsieur Cuisine Connect** (SKMC 1200),
-qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
+*[Version française](README.fr.md)*
 
-> Projet indépendant, non affilié à Lidl, SilverCrest ni Hoyer. Le pilotage du moteur repose
-> sur une analyse publique du protocole ; il n'a **pas** encore été validé sur une vraie machine.
-> À utiliser à vos risques, en suivant la procédure de premier essai.
+**Toque** is a fast, modern replacement interface for the Lidl **Monsieur Cuisine Connect**
+kitchen robot (SKMC 1200). It runs on the robot's own tablet instead of the stock app and still
+uses **the official Lidl recipes**.
 
-## Ce que fait Toque
+> Independent project, not affiliated with Lidl, SilverCrest or Hoyer. Motor control is based on
+> a public analysis of the serial protocol and has **not** been validated on a real machine yet.
+> Use at your own risk and follow the first-run procedure.
+>
+> The app's interface is currently in **French**.
 
-- **Interface sombre**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
-  tablette d'origine (1 Go de RAM, Android 6) : pas de bibliothèque lourde, images
-  sous-échantillonnées, vues recyclées.
-- **Recettes Lidl uniquement**. L'appli d'origine reste seule à dialoguer avec les serveurs
-  Lidl (avec l'identité de l'appareil, comme d'habitude). Toque copie ensuite sa base, chaque
-  nuit ou sur demande. Aucun serveur à gérer, aucun compte.
-- **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
-  (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
-- **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
-  seule, pesée intégrée, reprise après coupure.
-- **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
-- **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
+## Features
 
-## Sécurité : ce qui change par rapport à l'appli d'origine
+- **Dark interface** designed for the robot's 7" screen and rotary knob, and smooth on its
+  original tablet (1 GB RAM, Android 6): no heavy libraries, downsampled images, recycled views.
+- **Lidl recipes only.** The stock app remains the only thing talking to Lidl's servers (with the
+  device's own identity, as usual). Toque then copies its recipe database, nightly or on demand.
+  No server to run, no account.
+- **Search that works**: ignores accents, plurals and typos (« bechamle », « risoto »).
+  Search by ingredients (« poulet, curry »), filters, favorites.
+- **Guided cooking**: each step starts with one tap, the next step shows up by itself, built-in
+  weighing, resume after a power cut.
+- **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
+- **Offline**: everything works without a network (no more "server unreachable" at startup).
 
-Toutes les limites d'origine sont reprises (vitesse 3 maximum en chauffe et en sens inverse,
-durées maximales, conditions du Turbo…). Plusieurs défauts relevés par l'analyse du protocole
-sont corrigés :
+## Safety: what changes compared to the stock app
 
-| Défaut de l'appli d'origine | Toque |
+All original limits are kept (speed 3 max when heating and in reverse, maximum durations,
+Turbo conditions…). Several flaws found while analysing the protocol are fixed:
+
+| Stock app flaw | Toque |
 |---|---|
-| Le démarrage était demandé avant de vérifier le couvercle | Couvercle, erreurs et fraîcheur des mesures sont vérifiés **avant** tout démarrage |
-| Aucune détection d'une base moteur muette | Plus de réponse pendant 1,5 s : tout s'arrête et une alerte s'affiche |
-| Erreurs d'écriture série ignorées | Arrêt et alerte |
-| Un STOP suivi d'un START pouvait ne jamais émettre d'arrêt | Tout redémarrage ou changement de sens attend un échantillon confirmant **moteur arrêté** |
-| Lecture série sans resynchronisation | Trames fragmentées, collées ou corrompues gérées |
-| La lame tournait parfois en vapeur | Vapeur à vitesse 0 |
+| Start was requested before checking the lid | Lid, errors and data freshness are checked **before** any start |
+| No detection of a silent motor board | No reply for 1.5 s: everything stops and an alert is shown |
+| Serial write errors ignored | Stop and alert |
+| A STOP followed by a START could never send the stop | Any restart or direction change waits for a sample confirming **motor stopped** |
+| Serial reading without resynchronisation | Fragmented, merged or corrupted frames are handled |
+| The blade sometimes turned in steam mode | Steam at speed 0 |
 
-Autres ajouts : confirmation (et montée progressive) avant de mixer un contenu à 60 °C ou plus,
-limite de vitesse avec le fouet, alertes verrouillées jusqu'à acquittement, rien ne redémarre
-tout seul. Le pilotage tourne dans **son propre processus** : un plantage de l'interface ne coupe
-pas une cuisson, qui se termine normalement.
+Also added: confirmation (and a gradual ramp-up) before blending contents at 60 °C or more, a
+speed limit with the whisk, alerts that stay latched until acknowledged, nothing restarts on its
+own. Motor control runs in **its own process**: if the interface crashes, a cooking run is not
+cut off and finishes normally.
 
-## Structure
+## Project layout
 
 ```
-core/   Logique pure Kotlin, testée sans Android
-        protocol/  trames série (15 octets émis, 27 reçus, 4800 bauds)
-        machine/   règles de sécurité, contrôleur, boucle 100 ms, liaisons (série root, TCP, démo)
-        recipes/   modèle, import de la base d'origine, recherche
-app/    Appli Android (minSdk 23), sans AndroidX
-        machine/   service de pilotage (processus « :machine ») et IPC
-        recipes/   catalogue local, synchro Lidl
-        ui/        écrans
-outils/ jumeau.py (jumeau numérique pour tester sur PC), scripts d'installation/restauration
+core/   Pure Kotlin logic, tested without Android
+        protocol/  serial frames (15 bytes sent, 27 received, 4800 baud)
+        machine/   safety rules, controller, 100 ms loop, links (root serial, TCP, demo)
+        recipes/   model, stock database import, search
+app/    Android app (minSdk 23), no AndroidX
+        machine/   motor control service (":machine" process) and IPC
+        recipes/   local catalogue, Lidl sync
+        ui/        screens
+outils/ (tools) jumeau.py (digital twin for testing on a PC), install/restore scripts
 docs/   INSTALLATION.md
 ```
 
-## Compiler
+## Build
 
-Ouvrir le dossier dans **Android Studio**, attendre la synchronisation Gradle, puis
-**Build › Build App Bundle(s) / APK(s) › Build APK(s)**. L'APK est dans
+Open the folder in **Android Studio**, wait for the Gradle sync, then
+**Build › Build App Bundle(s) / APK(s) › Build APK(s)**. The APK is in
 `app/build/outputs/apk/debug/`.
 
-En ligne de commande : `gradlew assembleDebug` (et `gradlew :core:test` pour les tests).
+From the command line: `gradlew assembleDebug` (and `gradlew :core:test` for the tests).
 
-## Tester sans le robot
+## Try it without the robot
 
-1. **Mode Démo** (par défaut) : installer l'APK sur n'importe quel Android (ou l'émulateur
-   d'Android Studio, en paysage). La base moteur est simulée ; Réglages › Outils › Diagnostic
-   permet d'ouvrir le couvercle ou de provoquer une erreur pour voir les sécurités.
-   L'écran Recettes reste vide : les recettes Lidl n'existent que sur le robot.
-2. **Jumeau numérique** : le jumeau du [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
-   reproduit le protocole réel indépendamment de Toque.
-   `python outils/jumeau.py --sdk <dossier du SDK>` puis, dans Toque, Réglages › Machine ›
-   Jumeau (émulateur : hôte `10.0.2.2` ; appareil réel : `adb reverse tcp:8765 tcp:8765` et
-   hôte `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` ouvre le couvercle, etc.
+1. **Demo mode** (default): install the APK on any Android device (or the Android Studio
+   emulator, in landscape). The motor board is simulated; *Réglages › Outils › Diagnostic*
+   (Settings › Tools › Diagnostics) lets you open the lid or trigger an error to see the safety
+   features. The recipe screen stays empty: Lidl recipes only exist on the robot.
+2. **Digital twin**: the twin from the [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
+   reproduces the real protocol independently of Toque.
+   Run `python outils/jumeau.py --sdk <SDK folder>`, then in Toque choose *Réglages › Machine ›
+   Jumeau* (emulator: host `10.0.2.2`; real device: `adb reverse tcp:8765 tcp:8765` and host
+   `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` opens the lid, etc.
 
-## Installer sur le robot
+## Install on the robot
 
-Voir **[docs/INSTALLATION.md](docs/INSTALLATION.md)** : root, installation, premier essai à vide,
-synchronisation des recettes, retour à l'appli d'origine.
+See **[docs/INSTALLATION.md](docs/INSTALLATION.md)**: root, install, first run with an empty
+bowl, recipe sync, going back to the stock app.
 
-## Crédits
+## Credits
 
-- Protocole : [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
-- Accès au robot : [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
+- Protocol: [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
+- Robot access: [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
 
-Licence MIT. Ce dépôt ne contient aucune recette, image ni code de Lidl : les recettes sont lues
-uniquement sur le robot de l'utilisateur.
+MIT License. This repository contains no Lidl recipes, images or code: recipes are only read on
+the user's own robot.
