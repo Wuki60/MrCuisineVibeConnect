@@ -94,6 +94,9 @@ Toutes les compilations sont signées avec la clé du projet (`app/signature/`, 
 compilé sur n'importe quel PC ou par GitHub s'installe par-dessus la version précédente. N'installez que
 les APK publiés sur ce dépôt.
 
+Sans GitHub Actions : lancer `gradlew assembleRelease`, puis créer sur GitHub une version nommée `vX.Y.Z`
+et y joindre `app/build/outputs/apk/release/app-release.apk` (renommé `Toque-X.Y.Z.apk`).
+
 ## Installer sur le robot
 
 Voir **[docs/INSTALLATION.fr.md](docs/INSTALLATION.fr.md)** : root, installation, premier essai à vide,

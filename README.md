@@ -95,6 +95,9 @@ All builds are signed with the project key in `app/signature/` (public on purpos
 on any PC or by GitHub installs over the previous version. Only install APKs from this repository's
 releases.
 
+Without GitHub Actions: run `gradlew assembleRelease`, then create a release named `vX.Y.Z` on GitHub
+and attach `app/build/outputs/apk/release/app-release.apk` (renamed `Toque-X.Y.Z.apk`).
+
 ## Install on the robot
 
 See **[docs/INSTALLATION.md](docs/INSTALLATION.md)**: root, install, first run with an empty
