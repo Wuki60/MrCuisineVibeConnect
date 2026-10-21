@@ -89,7 +89,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         lidl.addView(toggle("Synchro automatique chaque nuit", a.prefs.autoSync) { a.prefs.autoSync = it }, Ui.lp(t = 10))
 
         // ---- Mises à jour
-        val updates = section(right, "Mises à jour", Icon.Kind.INFO)
+        val updates = section(left, "Mises à jour", Icon.Kind.INFO)
         updText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
         updates.addView(updText)
         updButtons = Ui.horizontal(c)
