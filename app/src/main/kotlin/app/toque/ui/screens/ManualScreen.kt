@@ -45,6 +45,10 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
     private lateinit var hint: TextView
     private lateinit var turbo: HoldButton
     private var live = false
+    private var wasLive = false
+    private var pendingEdit = false
+    private var timeEdited = false
+    private var configuredSeconds = seconds
     private val pushLive = Runnable { sendAdjust() }
 
     override fun build(): View {
@@ -132,6 +136,8 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         if (seconds > maxS) seconds = maxS
         refresh()
         if (live && s.kind?.name == "MANUAL") {
+            if (card == 0) timeEdited = true
+            pendingEdit = true
             view.removeCallbacks(pushLive)
             view.postDelayed(pushLive, 350)
         }
@@ -144,7 +150,7 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         }
         reverse = r
         refresh()
-        if (live) { view.removeCallbacks(pushLive); view.postDelayed(pushLive, 200) }
+        if (live) { pendingEdit = true; view.removeCallbacks(pushLive); view.postDelayed(pushLive, 200) }
     }
 
     private fun setAccessory(acc: Accessory) {
@@ -168,13 +174,17 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
             a.machine.resume(s.hotBlendConfirmed) { a.refusal(it) }
             return
         }
+        configuredSeconds = seconds
         a.startJob(spec())
     }
 
     private fun sendAdjust() {
+        pendingEdit = false
         val s = a.snapshot
         if (!s.jobActive || s.kind?.name != "MANUAL") return
-        val total = s.elapsedMs + seconds * 1000L
+        // La durée n'est renvoyée que si elle a été modifiée : changer la vitesse ne relance pas le minuteur.
+        val total: Long? = if (timeEdited) s.elapsedMs + seconds * 1000L else null
+        timeEdited = false
         a.machine.adjust(speed, tempLevel, reverse, total, s.hotBlendConfirmed) { v ->
             if (!v.ok && v.has(SafetyPolicy.HOT_BLEND)) {
                 a.confirm("Contenu chaud", "Le bol est à ${a.snapshot.actualTempC} °C. Passer à la vitesse $speed ?", "Confirmer", icon = Icon.Kind.THERMO) {
@@ -221,6 +231,21 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         weight.text = if (s.hasSample) "Balance : ${s.weightG} g" else "Base non connectée"
         val manualJob = s.kind?.name == "MANUAL" && (s.state == JobState.RUNNING || s.state == JobState.STARTING || s.state == JobState.PAUSED)
         live = manualJob && s.state != JobState.PAUSED
+        tempCard.repeatEnabled = !live
+        speedCard.repeatEnabled = !live
+        if (live && !pendingEdit) {
+            // Pendant la cuisson, la carte Durée affiche le temps restant.
+            val remaining = ((s.remainingMs + 999) / 1000).toInt().coerceAtLeast(1)
+            if (remaining != seconds) {
+                seconds = remaining
+                timeCard.set(Ui.clock(seconds * 1000L), "", "restant")
+            }
+        }
+        if (wasLive && !live && !manualJob) {
+            seconds = configuredSeconds
+            refresh()
+        }
+        wasLive = live
         val busy = s.busy
         startBtn.visibility = if (busy && s.state != JobState.PAUSED) View.GONE else View.VISIBLE
         (startBtn.getChildAt(1) as TextView).text = if (s.state == JobState.PAUSED && manualJob) "Reprendre" else "Démarrer"

@@ -21,6 +21,8 @@ class ValueCard(c: Context, label: String, icon: Icon.Kind) : LinearLayout(c) {
     var onMinus: () -> Unit = {}
     var onPlus: () -> Unit = {}
     var onSelect: () -> Unit = {}
+    /** Répétition à l'appui long (désactivée pendant une cuisson pour vitesse et température). */
+    var repeatEnabled = true
     private var isSel = false
 
     init {
@@ -39,8 +41,8 @@ class ValueCard(c: Context, label: String, icon: Icon.Kind) : LinearLayout(c) {
         val buttons = Ui.horizontal(c)
         minus = Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.MINUS, height = 60) { onSelect(); onMinus() }
         plus = Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.PLUS, height = 60) { onSelect(); onPlus() }
-        repeatOnHold(minus) { onMinus() }
-        repeatOnHold(plus) { onPlus() }
+        repeatOnHold(minus, { repeatEnabled }) { onMinus() }
+        repeatOnHold(plus, { repeatEnabled }) { onPlus() }
         buttons.addView(minus, LayoutParams(0, Ui.u(60), 1f).apply { rightMargin = Ui.u(10) })
         buttons.addView(plus, LayoutParams(0, Ui.u(60), 1f))
         addView(buttons, Ui.lp(t = 14))
@@ -73,17 +75,27 @@ class ValueCard(c: Context, label: String, icon: Icon.Kind) : LinearLayout(c) {
     }
 
     companion object {
-        /** Répète l'action tant que le bouton reste appuyé (après 450 ms). */
-        fun repeatOnHold(v: View, action: () -> Unit) {
+        /**
+         * Répète l'action tant que le bouton reste appuyé (après 450 ms). S'arrête de lui-même si
+         * le bouton n'est plus enfoncé ou après 40 répétitions, même si le relâchement est perdu.
+         */
+        fun repeatOnHold(v: View, enabled: () -> Boolean = { true }, action: () -> Unit) {
+            var count = 0
             val r = object : Runnable {
                 override fun run() {
+                    if (!v.isPressed || !enabled() || count >= 40) return
+                    count++
                     action()
                     v.postDelayed(this, 110)
                 }
             }
             v.setOnTouchListener { view, e ->
                 when (e.action) {
-                    MotionEvent.ACTION_DOWN -> view.postDelayed(r, 450)
+                    MotionEvent.ACTION_DOWN -> {
+                        count = 0
+                        view.removeCallbacks(r)
+                        view.postDelayed(r, 450)
+                    }
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> view.removeCallbacks(r)
                 }
                 false
