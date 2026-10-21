@@ -1,0 +1,269 @@
+{
+  "format": "toque-recettes-1",
+  "recipes": [
+    {
+      "id": "veloute-potiron",
+      "title": "Velouté de potiron",
+      "category": "Soupes",
+      "tags": ["automne", "végétarien", "légumes"],
+      "servings": 4, "prepMinutes": 10, "totalMinutes": 40, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "1", "name": "oignon", "note": "coupé en deux"},
+        {"qty": "1", "name": "gousse d'ail"},
+        {"qty": "20", "unit": "g", "name": "huile d'olive"},
+        {"qty": "600", "unit": "g", "name": "potiron", "note": "en cubes de 3 cm"},
+        {"qty": "200", "unit": "g", "name": "pomme de terre", "note": "en cubes de 3 cm"},
+        {"qty": "600", "unit": "g", "name": "eau"},
+        {"qty": "1", "name": "cube de bouillon de légumes"},
+        {"qty": "100", "unit": "g", "name": "crème liquide"},
+        {"name": "sel, poivre"}
+      ]}],
+      "steps": [
+        {"text": "Mettez l'oignon et l'ail dans le bol, puis hachez.", "machine": {"program": "manuel", "seconds": 5, "speed": 5}},
+        {"text": "Raclez les parois avec la spatule, ajoutez l'huile et faites revenir.", "machine": {"program": "manuel", "seconds": 180, "speed": 1, "tempC": 120}},
+        {"text": "Ajoutez le potiron, la pomme de terre, l'eau et le cube de bouillon.", "weigh": {"label": "potiron", "grams": 600}},
+        {"text": "Faites cuire.", "machine": {"program": "manuel", "seconds": 1500, "speed": 1, "tempC": 100}},
+        {"text": "Ajoutez la crème, salez, poivrez. Vérifiez que le gobelet est en place, puis mixez.", "machine": {"program": "manuel", "seconds": 60, "speed": 7}}
+      ]
+    },
+    {
+      "id": "bechamel",
+      "title": "Sauce béchamel",
+      "category": "Sauces",
+      "tags": ["base", "gratin", "rapide"],
+      "servings": 4, "prepMinutes": 2, "totalMinutes": 12, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "50", "unit": "g", "name": "beurre", "note": "en morceaux"},
+        {"qty": "50", "unit": "g", "name": "farine"},
+        {"qty": "500", "unit": "g", "name": "lait"},
+        {"qty": "1", "unit": "pincée", "name": "sel"},
+        {"qty": "1", "unit": "pincée", "name": "muscade"}
+      ]}],
+      "steps": [
+        {"text": "Mettez tous les ingrédients dans le bol et mélangez à froid pour disperser la farine.", "machine": {"program": "manuel", "seconds": 10, "speed": 4}},
+        {"text": "Faites cuire jusqu'à épaississement.", "machine": {"program": "manuel", "seconds": 540, "speed": 3, "tempC": 90}},
+        {"text": "Utilisez aussitôt ou couvrez au contact d'un film pour éviter la peau."}
+      ]
+    },
+    {
+      "id": "pate-pizza",
+      "title": "Pâte à pizza",
+      "category": "Pâtes & pains",
+      "tags": ["pâte", "levée", "italien"],
+      "servings": 2, "prepMinutes": 10, "totalMinutes": 75, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "250", "unit": "g", "name": "eau"},
+        {"qty": "5", "unit": "g", "name": "levure boulangère sèche"},
+        {"qty": "1", "unit": "c. à café", "name": "sucre"},
+        {"qty": "450", "unit": "g", "name": "farine T55"},
+        {"qty": "1", "unit": "c. à café", "name": "sel"},
+        {"qty": "20", "unit": "g", "name": "huile d'olive"}
+      ]}],
+      "steps": [
+        {"text": "Mettez l'eau, la levure et le sucre dans le bol, puis tiédissez.", "machine": {"program": "manuel", "seconds": 120, "speed": 2, "tempC": 37}},
+        {"text": "Ajoutez la farine, le sel et l'huile, puis pétrissez.", "weigh": {"label": "farine", "grams": 450}, "machine": {"program": "petrir", "seconds": 120}},
+        {"text": "Formez une boule, couvrez et laissez lever 1 h dans un endroit tiède."}
+      ]
+    },
+    {
+      "id": "houmous",
+      "title": "Houmous",
+      "category": "Apéritif",
+      "tags": ["végétarien", "pois chiches", "sans cuisson"],
+      "servings": 6, "prepMinutes": 5, "totalMinutes": 5, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "1", "name": "gousse d'ail"},
+        {"qty": "400", "unit": "g", "name": "pois chiches cuits", "note": "égouttés"},
+        {"qty": "60", "unit": "g", "name": "tahini"},
+        {"qty": "40", "unit": "g", "name": "jus de citron"},
+        {"qty": "40", "unit": "g", "name": "huile d'olive"},
+        {"qty": "50", "unit": "g", "name": "eau froide"},
+        {"qty": "1", "unit": "c. à café", "name": "cumin"},
+        {"qty": "1", "unit": "c. à café", "name": "sel"}
+      ]}],
+      "steps": [
+        {"text": "Mettez l'ail dans le bol et hachez.", "machine": {"program": "manuel", "seconds": 3, "speed": 7}},
+        {"text": "Ajoutez tous les autres ingrédients et mixez.", "machine": {"program": "manuel", "seconds": 60, "speed": 6}},
+        {"text": "Raclez les parois puis mixez de nouveau jusqu'à obtenir une texture lisse.", "machine": {"program": "manuel", "seconds": 30, "speed": 8}}
+      ]
+    },
+    {
+      "id": "risotto-champignons",
+      "title": "Risotto aux champignons",
+      "category": "Plats",
+      "tags": ["riz", "végétarien", "italien"],
+      "servings": 4, "prepMinutes": 10, "totalMinutes": 35, "difficulty": 2,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "50", "unit": "g", "name": "parmesan", "note": "en morceaux"},
+        {"qty": "1", "name": "oignon", "note": "coupé en deux"},
+        {"qty": "30", "unit": "g", "name": "huile d'olive"},
+        {"qty": "300", "unit": "g", "name": "riz arborio"},
+        {"qty": "100", "unit": "g", "name": "vin blanc sec"},
+        {"qty": "250", "unit": "g", "name": "champignons de Paris", "note": "émincés"},
+        {"qty": "800", "unit": "g", "name": "eau"},
+        {"qty": "1", "name": "cube de bouillon de volaille ou de légumes"},
+        {"qty": "30", "unit": "g", "name": "beurre"},
+        {"name": "sel, poivre"}
+      ]}],
+      "steps": [
+        {"text": "Mettez le parmesan dans le bol bien sec, râpez, puis réservez.", "machine": {"program": "manuel", "seconds": 10, "speed": 9}},
+        {"text": "Mettez l'oignon dans le bol et hachez.", "machine": {"program": "manuel", "seconds": 5, "speed": 5}},
+        {"text": "Ajoutez l'huile et faites revenir.", "machine": {"program": "manuel", "seconds": 180, "speed": 1, "tempC": 120}},
+        {"text": "Ajoutez le riz et nacrez-le en sens inverse.", "weigh": {"label": "riz", "grams": 300}, "machine": {"program": "manuel", "seconds": 120, "speed": 1, "tempC": 120, "reverse": true}},
+        {"text": "Versez le vin blanc par l'orifice du couvercle.", "machine": {"program": "manuel", "seconds": 60, "speed": 1, "tempC": 100, "reverse": true}},
+        {"text": "Ajoutez les champignons, l'eau et le cube de bouillon.", "machine": {"program": "manuel", "seconds": 960, "speed": 1, "tempC": 100, "reverse": true}},
+        {"text": "Ajoutez le beurre et le parmesan, mélangez à la spatule et laissez reposer 2 minutes avant de servir."}
+      ]
+    },
+    {
+      "id": "compote-pommes",
+      "title": "Compote de pommes",
+      "category": "Desserts",
+      "tags": ["fruits", "enfants", "sans gluten"],
+      "servings": 6, "prepMinutes": 10, "totalMinutes": 30, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "800", "unit": "g", "name": "pommes", "note": "épluchées, en quartiers"},
+        {"qty": "40", "unit": "g", "name": "sucre"},
+        {"qty": "50", "unit": "g", "name": "eau"},
+        {"qty": "1", "unit": "c. à café", "name": "cannelle", "note": "facultatif"}
+      ]}],
+      "steps": [
+        {"text": "Mettez tous les ingrédients dans le bol.", "weigh": {"label": "pommes", "grams": 800}},
+        {"text": "Faites cuire.", "machine": {"program": "manuel", "seconds": 900, "speed": 1, "tempC": 100}},
+        {"text": "Mixez selon la texture souhaitée.", "machine": {"program": "manuel", "seconds": 20, "speed": 5}}
+      ]
+    },
+    {
+      "id": "creme-anglaise",
+      "title": "Crème anglaise",
+      "category": "Desserts",
+      "tags": ["vanille", "sauce", "œufs"],
+      "servings": 6, "prepMinutes": 5, "totalMinutes": 15, "difficulty": 2,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "500", "unit": "g", "name": "lait entier"},
+        {"qty": "5", "name": "jaunes d'œufs"},
+        {"qty": "80", "unit": "g", "name": "sucre"},
+        {"qty": "1", "name": "gousse de vanille", "note": "fendue et grattée"}
+      ]}],
+      "steps": [
+        {"text": "Mettez tous les ingrédients dans le bol.", "machine": {"program": "manuel", "seconds": 10, "speed": 3}},
+        {"text": "Faites cuire sans dépasser 80 °C.", "machine": {"program": "manuel", "seconds": 540, "speed": 3, "tempC": 80}},
+        {"text": "Versez aussitôt dans un saladier froid et laissez refroidir en remuant de temps en temps."}
+      ]
+    },
+    {
+      "id": "smoothie-fraise-banane",
+      "title": "Smoothie fraise-banane",
+      "category": "Boissons",
+      "tags": ["fruits", "sans cuisson", "rapide"],
+      "servings": 2, "prepMinutes": 5, "totalMinutes": 5, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "250", "unit": "g", "name": "fraises", "note": "équeutées"},
+        {"qty": "1", "name": "banane", "note": "en morceaux"},
+        {"qty": "150", "unit": "g", "name": "yaourt nature"},
+        {"qty": "150", "unit": "g", "name": "lait"},
+        {"qty": "4", "name": "glaçons"},
+        {"qty": "20", "unit": "g", "name": "miel"}
+      ]}],
+      "steps": [
+        {"text": "Mettez tous les ingrédients dans le bol.", "weigh": {"label": "fraises", "grams": 250}},
+        {"text": "Mixez.", "machine": {"program": "manuel", "seconds": 40, "speed": 10}}
+      ]
+    },
+    {
+      "id": "pate-crepes",
+      "title": "Pâte à crêpes",
+      "category": "Desserts",
+      "tags": ["pâte", "chandeleur", "rapide"],
+      "servings": 15, "prepMinutes": 5, "totalMinutes": 35, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "250", "unit": "g", "name": "farine"},
+        {"qty": "4", "name": "œufs"},
+        {"qty": "500", "unit": "g", "name": "lait"},
+        {"qty": "30", "unit": "g", "name": "sucre"},
+        {"qty": "1", "unit": "pincée", "name": "sel"},
+        {"qty": "50", "unit": "g", "name": "beurre fondu"}
+      ]}],
+      "steps": [
+        {"text": "Mettez tous les ingrédients dans le bol, le lait en premier.", "weigh": {"label": "lait", "grams": 500}},
+        {"text": "Mélangez.", "machine": {"program": "manuel", "seconds": 30, "speed": 5}},
+        {"text": "Raclez les parois et mélangez encore.", "machine": {"program": "manuel", "seconds": 10, "speed": 5}},
+        {"text": "Laissez reposer 30 minutes avant de cuire les crêpes."}
+      ]
+    },
+    {
+      "id": "chantilly",
+      "title": "Crème chantilly",
+      "category": "Desserts",
+      "tags": ["fouet", "rapide", "sans cuisson"],
+      "servings": 6, "prepMinutes": 5, "totalMinutes": 5, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "300", "unit": "g", "name": "crème liquide entière", "note": "30 % minimum, très froide"},
+        {"qty": "30", "unit": "g", "name": "sucre glace"},
+        {"qty": "1", "unit": "sachet", "name": "sucre vanillé"}
+      ]}],
+      "steps": [
+        {"text": "Mettez le fouet en place, puis versez la crème bien froide et les sucres."},
+        {"text": "Fouettez en surveillant : arrêtez dès que la crème se tient.", "machine": {"program": "manuel", "seconds": 120, "speed": 4, "accessory": "whisk"}}
+      ]
+    },
+    {
+      "id": "legumes-vapeur",
+      "title": "Légumes vapeur",
+      "category": "Accompagnements",
+      "tags": ["vapeur", "léger", "sans gluten"],
+      "servings": 4, "prepMinutes": 10, "totalMinutes": 30, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "500", "unit": "g", "name": "eau"},
+        {"qty": "600", "unit": "g", "name": "légumes", "note": "brocoli, carottes, courgettes en morceaux"},
+        {"name": "sel"}
+      ]}],
+      "steps": [
+        {"text": "Versez l'eau dans le bol.", "weigh": {"label": "eau", "grams": 500}},
+        {"text": "Placez les légumes dans le panier vapeur, mettez-le en place et fermez."},
+        {"text": "Cuisez à la vapeur.", "machine": {"program": "vapeur", "seconds": 1200}},
+        {"text": "Salez et servez aussitôt."}
+      ]
+    },
+    {
+      "id": "oignons-rissoles",
+      "title": "Oignons rissolés",
+      "category": "Accompagnements",
+      "tags": ["rissoler", "garniture"],
+      "servings": 4, "prepMinutes": 3, "totalMinutes": 12, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "300", "unit": "g", "name": "oignons", "note": "en quartiers"},
+        {"qty": "30", "unit": "g", "name": "huile d'olive"}
+      ]}],
+      "steps": [
+        {"text": "Mettez les oignons dans le bol et hachez grossièrement.", "machine": {"program": "manuel", "seconds": 3, "speed": 4}},
+        {"text": "Ajoutez l'huile puis rissolez.", "machine": {"program": "rissoler", "seconds": 420}},
+        {"text": "Parfait sur une pizza, un burger ou une omelette."}
+      ]
+    },
+    {
+      "id": "soupe-lentilles-corail",
+      "title": "Soupe de lentilles corail",
+      "category": "Soupes",
+      "tags": ["végétarien", "épices", "légumineuses"],
+      "servings": 4, "prepMinutes": 5, "totalMinutes": 35, "difficulty": 1,
+      "ingredients": [{"group": "", "items": [
+        {"qty": "1", "name": "oignon", "note": "coupé en deux"},
+        {"qty": "1", "name": "carotte", "note": "en morceaux"},
+        {"qty": "20", "unit": "g", "name": "huile d'olive"},
+        {"qty": "200", "unit": "g", "name": "lentilles corail", "note": "rincées"},
+        {"qty": "800", "unit": "g", "name": "eau"},
+        {"qty": "1", "name": "cube de bouillon de légumes"},
+        {"qty": "1", "unit": "c. à café", "name": "cumin"},
+        {"qty": "1", "unit": "c. à café", "name": "curry"},
+        {"qty": "½", "name": "citron", "note": "pressé"}
+      ]}],
+      "steps": [
+        {"text": "Mettez l'oignon et la carotte dans le bol et hachez.", "machine": {"program": "manuel", "seconds": 5, "speed": 5}},
+        {"text": "Ajoutez l'huile et faites revenir.", "machine": {"program": "manuel", "seconds": 180, "speed": 1, "tempC": 120}},
+        {"text": "Ajoutez les lentilles, l'eau, le bouillon et les épices.", "weigh": {"label": "lentilles", "grams": 200}, "machine": {"program": "manuel", "seconds": 1200, "speed": 1, "tempC": 100}},
+        {"text": "Vérifiez que le gobelet est en place, puis mixez. Ajoutez le jus de citron.", "machine": {"program": "manuel", "seconds": 45, "speed": 7}}
+      ]
+    }
+  ]
+}

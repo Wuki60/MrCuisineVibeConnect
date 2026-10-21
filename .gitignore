@@ -1,0 +1,22 @@
+# Gradle / Android Studio
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.keystore
+*.jks
+# Système
+.DS_Store
+Thumbs.db
+# Ne jamais publier de contenu Lidl (recettes, images, bases)
+Recipes
+Recipes-journal
+recipe_images/
+diagnostic-recettes.txt

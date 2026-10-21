@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Mode « Jumeau numérique » uniquement (connexion à un PC). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".ToqueApp"
+        android:allowBackup="false"
+        android:icon="@drawable/ic_launcher"
+        android:label="Toque"
+        android:largeHeap="false"
+        android:supportsRtl="false"
+        android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen">
+
+        <activity
+            android:name=".ui.MainActivity"
+            android:clearTaskOnLaunch="true"
+            android:configChanges="orientation|screenSize|keyboard|keyboardHidden|navigation|screenLayout|smallestScreenSize|locale|layoutDirection|fontScale|uiMode"
+            android:excludeFromRecents="false"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:resumeWhilePausing="true"
+            android:screenOrientation="sensorLandscape"
+            android:stateNotNeeded="true"
+            android:windowSoftInputMode="adjustPan|stateHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Écran d'accueil du robot -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Pilotage dans un processus séparé : un plantage de l'interface n'arrête pas la cuisson. -->
+        <service
+            android:name=".machine.MachineService"
+            android:exported="false"
+            android:process=":machine"
+            android:stopWithTask="false" />
+
+        <service
+            android:name=".recipes.SyncService"
+            android:exported="false" />
+
+        <receiver
+            android:name=".recipes.SyncAlarm"
+            android:exported="false" />
+
+        <receiver
+            android:name=".recipes.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>
