@@ -1,6 +1,6 @@
 # Installer Toque sur le Monsieur Cuisine Connect
 
-*[English version](INSTALLATION.md)*
+🇬🇧 **[English version](INSTALLATION.md)**
 
 Durée : 1 à 2 heures la première fois. Les étapes 1 et 2 (root) sont les plus délicates : une
 erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commencer.
@@ -50,7 +50,7 @@ pourrait alors accéder au robot.
 1. Télécharger le dernier `Toque-X.Y.Z.apk` sur la
    [page des versions](https://github.com/Wuki60/MrCuisineVibeConnect/releases), ou le compiler dans
    Android Studio (voir README). Avec un APK téléchargé, ajouter `-Apk <chemin de l'APK>` ci-dessous.
-2. `powershell -ExecutionPolicy Bypass -File outils\installer-robot.ps1`
+2. `powershell -ExecutionPolicy Bypass -File tools\install-robot.ps1`
    (par Wi-Fi : ajouter `-Ip <adresse IP du robot>`).
 3. Autoriser Toque dans la fenêtre Magisk qui s'affiche sur le robot (« Accorder »).
 
@@ -68,7 +68,7 @@ pourrait alors accéder au robot.
    - Diagnostic : retirer le bol et regarder « Bol détecté ». S'il change bien, vous pouvez
      activer Réglages › Sécurité › « Exiger la détection du bol ».
 4. Au moindre comportement anormal : **interrupteur principal**, puis
-   `outils\restaurer-robot.ps1`.
+   `tools\restore-robot.ps1`.
 
 ## 5. En faire l'écran d'accueil
 
@@ -91,7 +91,7 @@ la structure de la base d'origine, de quoi adapter l'import.
 ## Revenir à l'appli d'origine
 
 - Depuis Toque : Réglages › Outils › « Revenir à l'appli d'origine ».
-- Depuis le PC : `powershell -ExecutionPolicy Bypass -File outils\restaurer-robot.ps1 -Desinstaller`
+- Depuis le PC : `powershell -ExecutionPolicy Bypass -File tools\restore-robot.ps1 -Uninstall`
 
 Toque ne modifie ni le système ni l'appli d'origine : il désactive seulement son service moteur,
 ce que ces deux méthodes annulent.

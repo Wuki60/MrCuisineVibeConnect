@@ -1,5 +1,5 @@
 #!/system/bin/sh
-# Rend la main à l'appli Monsieur Cuisine d'origine (à lancer en root sur le robot).
+# Gives control back to the stock Monsieur Cuisine app (run as root on the robot).
 P=de.silpion.mc2
 BB=""
 for b in /data/adb/magisk/busybox /sbin/.magisk/busybox/busybox /system/xbin/busybox /system/bin/busybox; do
@@ -14,4 +14,4 @@ for c in $(dumpsys package "$P" | $BB grep -oE '[A-Za-z0-9_./$]*HardwareMachineS
   esac
 done
 pm disable app.toque >/dev/null 2>&1
-echo "Appli d'origine rétablie. Redémarrez le robot."
+echo "Stock app restored. Restart the robot."

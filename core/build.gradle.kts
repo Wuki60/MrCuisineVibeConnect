@@ -19,6 +19,6 @@ dependencies {
 }
 
 tasks.test {
-    // TwinIntegrationTest s'exécute seulement si outils/jumeau.py tourne (sinon ignoré).
+    // TwinIntegrationTest s'exécute seulement si tools/twin.py tourne (sinon ignoré).
     testLogging { events("passed", "skipped", "failed") }
 }

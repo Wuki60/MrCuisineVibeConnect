@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Lance le jumeau numérique MCC du « Monsieur Cuisine Developer SDK » sans interface graphique,
-pour tester Toque sans toucher à la vraie machine.
+Runs the MCC digital twin from the "Monsieur Cuisine Developer SDK" without a GUI,
+to test Toque without touching the real machine.
 
     git clone https://github.com/antrea/monsieur-cuisine-developer-sdk
-    python jumeau.py --sdk chemin/vers/monsieur-cuisine-developer-sdk
+    python twin.py --sdk path/to/monsieur-cuisine-developer-sdk
 
-Toque (mode « Jumeau numérique », hôte 127.0.0.1, port 8765) s'y connecte :
-  - émulateur Android : hôte 10.0.2.2 ;
-  - tablette ou téléphone : `adb reverse tcp:8765 tcp:8765` puis hôte 127.0.0.1.
+Toque (Digital twin mode, host 127.0.0.1, port 8765) connects to it:
+  - Android emulator: host 10.0.2.2;
+  - tablet or phone: `adb reverse tcp:8765 tcp:8765`, then host 127.0.0.1.
 
-Commandes au clavier (ou sur le port de contrôle 8770, une par ligne) :
-  lid 1|0        ouvrir / fermer le couvercle      error N   code d'erreur (0 = aucune)
-  temp C         forcer la température mesurée     weight G  poids sur la balance
-  silent 1|0     base muette (perte de liaison)    corrupt N corrompre N réponses
-  state          afficher l'état                   quit
+Keyboard commands (or on control port 8770, one per line):
+  lid 1|0        open / close the lid              error N   error code (0 = none)
+  temp C         force the measured temperature    weight G  weight on the scale
+  silent 1|0     silent base (link lost)           corrupt N corrupt N replies
+  state          show the state                    quit
 """
 import argparse
 import json
@@ -31,7 +31,7 @@ def main():
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--control", type=int, default=8770)
     ap.add_argument("--quiet", action="store_true")
-    ap.add_argument("--send", help="envoyer une commande à un jumeau déjà lancé, ex. --send \"lid 1\"")
+    ap.add_argument("--send", help="send a command to a running twin, e.g. --send \"lid 1\"")
     args = ap.parse_args()
     if args.send:
         with socket.create_connection(("127.0.0.1", args.control), timeout=3) as s:
@@ -50,7 +50,7 @@ def main():
     ctl.listen(4)
     ctl.setblocking(False)
     clients = []
-    print(f"Jumeau MCC prêt : Toque -> 127.0.0.1:{conn.address[1]}, contrôle -> 127.0.0.1:{args.control}", flush=True)
+    print(f"MCC twin ready: Toque -> 127.0.0.1:{conn.address[1]}, control -> 127.0.0.1:{args.control}", flush=True)
 
     def summary():
         s = twin.get_state()
@@ -84,14 +84,14 @@ def main():
             elif op == "quit":
                 raise SystemExit(0)
             else:
-                return "commande inconnue"
+                return "unknown command"
             return "ok"
         except (ValueError, TypeError) as exc:
-            return f"erreur : {exc}"
+            return f"error: {exc}"
 
     last = time.monotonic()
     last_print = 0.0
-    stdin_ok = sys.stdin.isatty() and os.name != "nt"  # sous Windows : utiliser --send
+    stdin_ok = sys.stdin.isatty() and os.name != "nt"  # on Windows: use --send
     while True:
         now = time.monotonic()
         twin.advance(min(now - last, 1.0))

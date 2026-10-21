@@ -22,6 +22,6 @@ SOFTWARE.
 
 ---
 The protocol codec (core/.../protocol/Mcc.kt), the test vectors
-(core/src/test/resources/mcc) and outils/jumeau.py are based on the
+(core/src/test/resources/mcc) and tools/twin.py are based on the
 "Monsieur Cuisine Developer SDK" (MIT License): see
 docs/LICENSE-monsieur-cuisine-developer-sdk.txt.

@@ -1,6 +1,6 @@
-# Publie automatiquement une version de Toque quand versionName change dans app/build.gradle.kts.
-# Les robots la trouvent ensuite dans Réglages › Mises à jour.
-name: Publier une version
+# Publishes a Toque release automatically when versionName changes in app/build.gradle.kts.
+# Robots then find it in Settings › Updates.
+name: Publish a release
 
 on:
   push:
@@ -22,13 +22,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Version de l'appli
+      - name: App version
         id: version
         run: |
           v=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
           echo "name=$v" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/v$v" >/dev/null; then
-            echo "Version $v déjà publiée : rien à faire."
+            echo "Version $v is already published: nothing to do."
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -40,11 +40,11 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Tests et compilation
+      - name: Tests and build
         if: steps.version.outputs.publish == 'true'
         run: ./gradlew --no-daemon :core:test :app:assembleRelease
 
-      - name: Publication sur GitHub
+      - name: Publish on GitHub
         if: steps.version.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}

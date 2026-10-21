@@ -1,6 +1,6 @@
 # MrCuisineVibeConnect
 
-*[English version](README.md)*
+🇬🇧 **[English version](README.md)**
 
 **Toque**, une interface moderne et rapide pour le robot **Monsieur Cuisine Connect** (SKMC 1200),
 qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
@@ -58,7 +58,7 @@ app/    Appli Android (minSdk 23), sans AndroidX
         machine/   service de pilotage (processus « :machine ») et IPC
         recipes/   catalogue local, synchro Lidl
         ui/        écrans
-outils/ jumeau.py (jumeau numérique pour tester sur PC), scripts d'installation/restauration
+tools/  twin.py (jumeau numérique pour tester sur PC), scripts d'installation/restauration
 docs/   INSTALLATION.md (EN), INSTALLATION.fr.md (FR)
 ```
 
@@ -78,9 +78,9 @@ En ligne de commande : `gradlew assembleDebug` (et `gradlew :core:test` pour les
    L'écran Recettes reste vide : les recettes Lidl n'existent que sur le robot.
 2. **Jumeau numérique** : le jumeau du [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
    reproduit le protocole réel indépendamment de Toque.
-   `python outils/jumeau.py --sdk <dossier du SDK>` puis, dans Toque, Réglages › Machine ›
+   `python tools/twin.py --sdk <dossier du SDK>` puis, dans Toque, Réglages › Machine ›
    Jumeau (émulateur : hôte `10.0.2.2` ; appareil réel : `adb reverse tcp:8765 tcp:8765` et
-   hôte `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` ouvre le couvercle, etc.
+   hôte `127.0.0.1`). `python tools/twin.py --send "lid 1"` ouvre le couvercle, etc.
 
 ## Ajouter une langue
 

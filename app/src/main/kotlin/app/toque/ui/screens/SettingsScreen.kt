@@ -223,7 +223,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         twinBox.visibility = if (mode == Prefs.Mode.TWIN) View.VISIBLE else View.GONE
         linkText.text = when (mode) {
             Prefs.Mode.DEMO -> tr("Base moteur simulée : pour essayer l'appli sur n'importe quel appareil Android.")
-            Prefs.Mode.TWIN -> tr("Jumeau numérique du SDK lancé sur un PC (outils/jumeau.py). Avec « adb reverse tcp:8765 tcp:8765 », gardez 127.0.0.1.")
+            Prefs.Mode.TWIN -> tr("Jumeau numérique du SDK lancé sur un PC (tools/twin.py). Avec « adb reverse tcp:8765 tcp:8765 », gardez 127.0.0.1.")
             Prefs.Mode.HARDWARE -> tr("Pilote le vrai moteur par le port série. Exige le root. L'appli d'origine est coupée du moteur (réversible).")
         }
     }

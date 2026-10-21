@@ -157,7 +157,7 @@
   "Jumeau (PC)": "Twin (PC)",
   "Jumeau numérique %s:%d": "Digital twin %s:%d",
   "Jumeau numérique (PC)": "Digital twin (PC)",
-  "Jumeau numérique du SDK lancé sur un PC (outils/jumeau.py). Avec « adb reverse tcp:8765 tcp:8765 », gardez 127.0.0.1.": "The SDK's digital twin running on a PC (outils/jumeau.py). With “adb reverse tcp:8765 tcp:8765”, keep 127.0.0.1.",
+  "Jumeau numérique du SDK lancé sur un PC (tools/twin.py). Avec « adb reverse tcp:8765 tcp:8765 », gardez 127.0.0.1.": "The SDK's digital twin running on a PC (tools/twin.py). With “adb reverse tcp:8765 tcp:8765”, keep 127.0.0.1.",
   "L'appli d'origine du robot reste seule à dialoguer avec les serveurs Lidl ; Toque copie ensuite ses recettes.": "Only the robot's stock app talks to Lidl's servers; Toque then copies its recipes.",
   "L'installation ne répond pas. Redémarrez le robot puis réessayez.": "The installation is not responding. Restart the robot and try again.",
   "La base ne répond pas": "The base is not responding",

@@ -20,7 +20,7 @@ import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Essais de bout en bout contre le jumeau numérique indépendant du SDK (outils/jumeau.py).
+ * Essais de bout en bout contre le jumeau numérique indépendant du SDK (tools/twin.py).
  * Ignorés si le jumeau n'est pas lancé.
  */
 class TwinIntegrationTest {

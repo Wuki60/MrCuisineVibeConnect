@@ -1,6 +1,6 @@
 # MrCuisineVibeConnect
 
-*[Version française](README.fr.md)*
+🇫🇷 **[Version française](README.fr.md)**
 
 **Toque** is a fast, modern replacement interface for the Lidl **Monsieur Cuisine Connect**
 kitchen robot (SKMC 1200). It runs on the robot's own tablet instead of the stock app and still
@@ -10,7 +10,8 @@ uses **the official Lidl recipes**.
 > a public analysis of the serial protocol and has **not** been validated on a real machine yet.
 > Use at your own risk and follow the first-run procedure.
 >
-> The app's interface is currently in **French**.
+> The interface is available in **English** and **French** (*Settings › Langue · Language*), and
+> other languages can be added with a single file (see below).
 
 ## Features
 
@@ -19,13 +20,13 @@ uses **the official Lidl recipes**.
 - **Lidl recipes only.** The stock app remains the only thing talking to Lidl's servers (with the
   device's own identity, as usual). Toque then copies its recipe database, nightly or on demand.
   No server to run, no account.
-- **Search that works**: ignores accents, plurals and typos (« bechamle », « risoto »).
-  Search by ingredients (« poulet, curry »), filters, favorites.
+- **Search that works**: ignores accents, plurals and typos ("bechamle", "risoto").
+  Search by ingredients (e.g. "chicken, curry"), filters, favorites.
 - **Guided cooking**: each step starts with one tap, the next step shows up by itself, built-in
   weighing, resume after a power cut.
 - **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
 - **Offline**: everything works without a network (no more "server unreachable" at startup).
-- **Updates from GitHub**: *Réglages › Mises à jour* (Settings › Updates) checks this repository's
+- **Updates from GitHub**: *Settings › Updates* checks this repository's
   [Releases](https://github.com/Wuki60/MrCuisineVibeConnect/releases) and installs the new version
   (silently on a rooted robot, then Toque restarts). Refused while a program is running.
 
@@ -59,7 +60,7 @@ app/    Android app (minSdk 23), no AndroidX
         machine/   motor control service (":machine" process) and IPC
         recipes/   local catalogue, Lidl sync
         ui/        screens
-outils/ (tools) jumeau.py (digital twin for testing on a PC), install/restore scripts
+tools/  twin.py (digital twin for testing on a PC), install/restore scripts
 docs/   INSTALLATION.md
 ```
 
@@ -74,14 +75,14 @@ From the command line: `gradlew assembleDebug` (and `gradlew :core:test` for the
 ## Try it without the robot
 
 1. **Demo mode** (default): install the APK on any Android device (or the Android Studio
-   emulator, in landscape). The motor board is simulated; *Réglages › Outils › Diagnostic*
-   (Settings › Tools › Diagnostics) lets you open the lid or trigger an error to see the safety
+   emulator, in landscape). The motor board is simulated; *Settings › Tools › Motor base
+   diagnostics* lets you open the lid or trigger an error to see the safety
    features. The recipe screen stays empty: Lidl recipes only exist on the robot.
 2. **Digital twin**: the twin from the [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
    reproduces the real protocol independently of Toque.
-   Run `python outils/jumeau.py --sdk <SDK folder>`, then in Toque choose *Réglages › Machine ›
-   Jumeau* (emulator: host `10.0.2.2`; real device: `adb reverse tcp:8765 tcp:8765` and host
-   `127.0.0.1`). `python outils/jumeau.py --send "lid 1"` opens the lid, etc.
+   Run `python tools/twin.py --sdk <SDK folder>`, then in Toque choose *Settings › Machine ›
+   Twin (PC)* (emulator: host `10.0.2.2`; real device: `adb reverse tcp:8765 tcp:8765` and host
+   `127.0.0.1`). `python tools/twin.py --send "lid 1"` opens the lid, etc.
 
 ## Add a language
 
@@ -94,7 +95,7 @@ The app is written in French; each other language is one file in
 2. Rebuild the app, or, without rebuilding, copy the file to `Android/data/app.toque/files/lang/`
    on the device and restart Toque.
 
-The language then appears in *Réglages › Langue · Language* (Settings). `gradlew :core:test` checks
+The language then appears in *Settings › Langue · Language*. `gradlew :core:test` checks
 every language file.
 
 ## Publish a new version
@@ -103,7 +104,7 @@ every language file.
 2. Commit and push to `main`.
 
 The [release workflow](.github/workflows/release.yml) runs the tests, builds the APK and publishes
-the `vX.Y.Z` release with it. Robots then find it in *Réglages › Mises à jour*.
+the `vX.Y.Z` release with it. Robots then find it in *Settings › Updates*.
 
 All builds are signed with the project key in `app/signature/` (public on purpose), so an APK built
 on any PC or by GitHub installs over the previous version. Only install APKs from this repository's
