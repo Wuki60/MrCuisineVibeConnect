@@ -28,7 +28,10 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     override val title = recipe.title
     private var index = startStep.coerceIn(0, maxOf(0, recipe.steps.size - 1))
     private val reviewed = HashSet<Int>()
+    private val done = HashSet<Int>()
     private var launchedStep = -1
+    /** Message fixe de l'étape (vérification, refus), réaffiché hors cuisson. */
+    private var panelInfo = ""
 
     private lateinit var segments: LinearLayout
     private lateinit var counter: TextView
@@ -200,8 +203,9 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
 
         val violations = m.violations()
         val step = recipe.steps[index]
+        panelInfo = ""
         if (violations.isNotEmpty()) {
-            panelState?.text = "Réglage refusé par la sécurité : ${violations.first().message}. Utilisez la cuisson manuelle."
+            panelInfo = "Réglage refusé par la sécurité : ${violations.first().message}. Utilisez la cuisson manuelle."
         }
         if (step.needsReview && index !in reviewed && violations.isEmpty()) {
             val rb = Ui.button(c, "J'ai vérifié ce réglage", Ui.Style.GHOST, Icon.Kind.CHECK, height = 56, textSize = 17f) {
@@ -211,8 +215,9 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             }
             reviewBtn = rb
             panel.addView(rb, Ui.lp(b = 10))
-            panelState?.text = "Réglage importé de l'appli d'origine : vérifiez-le avant de lancer."
+            panelInfo = "Réglage importé de l'appli d'origine : vérifiez-le avant de lancer."
         }
+        panelState?.text = panelInfo
         if (m.program == StepProgram.TURBO) {
             val t = HoldButton(c, "Maintenir pour Turbo", onDown = {
                 a.machine.turboDown(m.accessory) { v -> if (!v.ok) a.refusal(v) }
@@ -257,6 +262,15 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             if (s.busy && !mine) Ui.setButtonEnabled(startBtn, false)
             else if (reviewBtn == null && m.violations().isEmpty()) Ui.setButtonEnabled(startBtn, !s.busy)
         }
+        if (!mine && ps != null) {
+            if (index in done) {
+                ps.setTextColor(Ui.OK)
+                ps.text = "Étape terminée"
+            } else {
+                ps.setTextColor(Ui.WARN)
+                ps.text = panelInfo
+            }
+        }
         if (mine && ps != null) {
             ps.setTextColor(Ui.TEXT2)
             ps.text = when (s.state) {
@@ -277,6 +291,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     override fun onEvent(e: MachineEvent) {
         if (e.type == EventType.JOB_FINISHED && launchedStep == index) {
             val finished = index
+            done += finished
             launchedStep = -1
             view.postDelayed({
                 if (index == finished) {
