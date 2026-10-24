@@ -1,0 +1,2 @@
+# Scripts run on the robot (Android shell): always LF, even in a Windows checkout.
+*.sh text eol=lf

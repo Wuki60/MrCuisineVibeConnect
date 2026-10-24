@@ -5,8 +5,9 @@
 # 2. Makes sure Magisk's busybox is in /data/adb/magisk: Toque needs it for the serial port.
 U=$(stat -c %u /data/data/app.toque 2>/dev/null)
 [ -n "$U" ] || { echo "Toque is not installed"; exit 1; }
-magisk --sqlite "REPLACE INTO policies (uid,policy,until,logging,notification) VALUES($U,2,0,0,0)" \
-  && echo "Toque allowed in Magisk"
+if magisk --sqlite "REPLACE INTO policies (uid,policy,until,logging,notification) VALUES($U,2,0,0,0)"; then
+  echo "Toque allowed in Magisk"
+fi
 if [ ! -x /data/adb/magisk/busybox ]; then
   for b in /data/app/com.topjohnwu.magisk*/lib/arm*/libbusybox.so; do
     [ -f "$b" ] || continue
