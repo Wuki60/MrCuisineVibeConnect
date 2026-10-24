@@ -13,14 +13,14 @@ import app.toque.machine.MachineService
 import app.toque.ui.MainActivity
 import java.util.Calendar
 
-/** Synchro nocturne des recettes Lidl (03 h 30), uniquement en mode machine réelle. */
+/** Synchro nocturne des recettes (03 h 30) depuis monsieur-cuisine.com. */
 @Suppress("DEPRECATION")
 class SyncService : IntentService("toque-synchro") {
     override fun onHandleIntent(intent: Intent?) {
         val app = ToqueApp.of(this)
-        if (app.prefs.mode != Prefs.Mode.HARDWARE || !app.prefs.autoSync) return
+        if (!app.prefs.autoSync) return
         if (System.currentTimeMillis() - app.prefs.lastSyncMs < 6 * 3600_000L) return
-        LidlSync(this, app.prefs, app.recipes, app.log).sync()
+        OnlineSync(this, app.prefs, app.recipes, app.log).sync()
     }
 
     companion object {

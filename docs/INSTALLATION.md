@@ -113,16 +113,15 @@ To open Toque from the PC: `adb shell am start -n app.toque/.ui.MainActivity`.
 
 ## 6. Lidl recipes
 
-**Settings › Lidl recipes › Sync**. The stock app syncs
-with Lidl's servers in the background, then Toque imports its recipes and photos (a few
-minutes). After that, the sync runs every night at 3:30 am.
+**Settings › Lidl recipes › Sync** (the robot needs Wi-Fi). Toque downloads the official
+Monsieur Cuisine connect recipes from monsieur-cuisine.com, then their photos: about 15 minutes the
+first time, then only new or changed recipes. After that, the sync runs every night at 3:30 am.
+Recipes are in the interface language (French by default).
 
-If nothing arrives: **Open the stock app**. Toque hands the motor
-back to it, it opens and syncs as usual. Come back with the **Back to Toque** button: Toque takes
-over again and imports everything.
-
-If the import fails, the file `Android/data/app.toque/files/diagnostic-recettes.txt` describes the
-structure of the stock database, which is what's needed to adapt the import.
+Other source: **Import from the stock app** copies the recipes already in the stock app (they
+replace the website's). If the stock app has none yet, **Open the stock app** lets it sync with
+Lidl's servers; come back with the **Back to Toque** button. If that import fails, the file
+`Android/data/app.toque/files/diagnostic-recettes.txt` describes the stock database.
 
 ## Going back to the stock app
 

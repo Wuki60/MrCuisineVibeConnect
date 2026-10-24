@@ -15,8 +15,8 @@ android {
         targetSdk = 28
         // Pour publier une mise à jour : augmenter les deux valeurs puis pousser sur GitHub
         // (la version est publiée automatiquement, voir .github/workflows/release.yml).
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.4.0"
     }
 
     signingConfigs {

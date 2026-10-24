@@ -14,9 +14,12 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
 - **Interface sombre**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
   tablette d'origine (1 Go de RAM, Android 6) : pas de bibliothèque lourde, images
   sous-échantillonnées, vues recyclées.
-- **Recettes Lidl uniquement**. L'appli d'origine reste seule à dialoguer avec les serveurs
-  Lidl (avec l'identité de l'appareil, comme d'habitude). Toque copie ensuite sa base, chaque
-  nuit ou sur demande. Aucun serveur à gérer, aucun compte.
+- **Recettes Lidl, directement depuis monsieur-cuisine.com**. Toque télécharge les recettes
+  officielles du Monsieur Cuisine connect (environ 1 700 en français, avec les réglages machine de
+  chaque étape) par l'API publique du site, chaque nuit ou sur demande : aucun compte, aucun
+  serveur à gérer, plus besoin de l'appli d'origine. Requêtes espacées, et seules les recettes
+  nouvelles ou modifiées sont retéléchargées. On peut toujours importer à la place celles de
+  l'appli d'origine.
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
   (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
 - **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
@@ -77,7 +80,7 @@ En ligne de commande : `gradlew assembleDebug` (et `gradlew :core:test` pour les
 1. **Mode Démo** (par défaut) : installer l'APK sur n'importe quel Android (ou l'émulateur
    d'Android Studio, en paysage). La base moteur est simulée ; Réglages › Outils › Diagnostic
    permet d'ouvrir le couvercle ou de provoquer une erreur pour voir les sécurités.
-   L'écran Recettes reste vide : les recettes Lidl n'existent que sur le robot.
+   Réglages › Recettes Lidl › Synchroniser télécharge les recettes sur n'importe quel appareil.
 2. **Jumeau numérique** : le jumeau du [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
    reproduit le protocole réel indépendamment de Toque.
    `python tools/twin.py --sdk <dossier du SDK>` puis, dans Toque, Réglages › Machine ›
@@ -123,5 +126,5 @@ synchronisation des recettes, retour à l'appli d'origine.
 - Protocole : [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
 - Accès au robot : [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
 
-Licence MIT. Ce dépôt ne contient aucune recette, image ni code de Lidl : les recettes sont lues
-uniquement sur le robot de l'utilisateur.
+Licence MIT. Ce dépôt ne contient aucune recette, image ni code de Lidl : chaque robot télécharge
+lui-même les recettes sur monsieur-cuisine.com, pour l'usage personnel de son propriétaire.

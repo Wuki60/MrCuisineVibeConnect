@@ -19,6 +19,7 @@ import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
 import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
+import app.toque.recipes.OnlineSync
 import app.toque.ui.Icon
 import app.toque.ui.MainActivity
 import app.toque.ui.Screen
@@ -91,15 +92,19 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
 
         // ---- Recettes Lidl
         val lidl = section(right, tr("Recettes Lidl"), Icon.Kind.SYNC)
-        lidl.addView(Ui.text(c, tr("L'appli d'origine du robot reste seule à dialoguer avec les serveurs Lidl ; Toque copie ensuite ses recettes."),
+        lidl.addView(Ui.text(c, tr("Toque télécharge lui-même les recettes officielles du Monsieur Cuisine connect sur monsieur-cuisine.com (sans compte)."),
             16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) })
         syncText = Ui.text(c, "", 16f, Ui.TEXT)
         lidl.addView(syncText, Ui.lp(t = 10))
         val b1 = Ui.horizontal(c)
-        b1.addView(Ui.button(c, tr("Synchroniser"), Ui.Style.PRIMARY, Icon.Kind.SYNC, height = 58) { sync(full = true) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
-        b1.addView(Ui.button(c, tr("Importer"), Ui.Style.SECONDARY, height = 58) { sync(full = false) })
+        b1.addView(Ui.button(c, tr("Synchroniser"), Ui.Style.PRIMARY, Icon.Kind.SYNC, height = 58) { sync(online = true) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
         lidl.addView(b1, Ui.lp(t = 12))
-        lidl.addView(Ui.button(c, tr("Ouvrir l'appli d'origine"), Ui.Style.GHOST, Icon.Kind.LINK, height = 56) { a.openVendorApp() }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 10))
+        lidl.addView(Ui.text(c, tr("Autre source : les recettes déjà présentes dans l'appli d'origine du robot (remplacent celles du site)."),
+            14f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 12))
+        val b2 = Ui.horizontal(c)
+        b2.addView(Ui.button(c, tr("Importer de l'appli d'origine"), Ui.Style.SECONDARY, height = 52) { sync(online = false) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
+        b2.addView(Ui.button(c, tr("Ouvrir l'appli d'origine"), Ui.Style.GHOST, Icon.Kind.LINK, height = 52) { a.openVendorApp() })
+        lidl.addView(b2, Ui.lp(t = 6))
         lidl.addView(toggle(tr("Synchro automatique chaque nuit"), a.prefs.autoSync) { a.prefs.autoSync = it }, Ui.lp(t = 10))
 
         // ---- Mises à jour
@@ -116,9 +121,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         tools.addView(link(tr("Diagnostic de la base moteur")) { a.push(DiagnosticsScreen(a)) })
         tools.addView(link(tr("Bouton rotatif")) { a.push(KnobScreen(a)) })
         tools.addView(link(tr("Journal")) { a.push(LogScreen(a)) })
-        tools.addView(link(tr("Paramètres Android")) {
-            try { a.startActivity(Intent(android.provider.Settings.ACTION_SETTINGS)) } catch (_: Exception) {}
-        })
+        tools.addView(link(tr("Paramètres Android")) { a.openAndroidSettings() })
         tools.addView(link(tr("Revenir à l'appli d'origine")) { restoreVendor() })
         val version = try { a.packageManager.getPackageInfo(a.packageName, 0).versionName } catch (_: Exception) { "?" }
         tools.addView(Ui.text(c, tr("Toque %s · protocole d'après le Monsieur Cuisine Developer SDK (licence MIT). " +
@@ -297,17 +300,17 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         }
     }
 
-    private fun sync(full: Boolean) {
+    private fun sync(online: Boolean) {
         if (syncing) return
-        if (a.prefs.mode != Prefs.Mode.HARDWARE) {
+        if (!online && a.prefs.mode != Prefs.Mode.HARDWARE) {
             a.toast(tr("Disponible une fois Toque installé sur le robot (mode Machine réelle)"), Ui.WARN)
             return
         }
         syncing = true
         syncText.text = tr("Synchronisation en cours… (quelques minutes)")
         Thread {
-            val s = LidlSync(a, a.prefs, a.app.recipes, a.app.log)
-            val r = if (full) s.sync { msg -> view.post { syncText.text = msg } } else s.importNow { msg -> view.post { syncText.text = msg } }
+            val r = if (online) OnlineSync(a, a.prefs, a.app.recipes, a.app.log).sync { msg -> view.post { syncText.text = msg } }
+            else LidlSync(a, a.prefs, a.app.recipes, a.app.log).importNow { msg -> view.post { syncText.text = msg } }
             view.post {
                 syncing = false
                 refreshSync()

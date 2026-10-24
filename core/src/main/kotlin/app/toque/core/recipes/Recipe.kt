@@ -18,7 +18,7 @@ import app.toque.core.protocol.Direction
 import app.toque.core.protocol.Mcc
 import app.toque.core.protocol.Operation
 
-/** Seule source livrée : les recettes Lidl importées depuis l'appli d'origine. */
+/** Recettes Lidl importées (site monsieur-cuisine.com ou appli d'origine) ; USER : réservé aux recettes perso. */
 enum class RecipeSource { IMPORTED, USER }
 
 data class Ingredient(val qty: String = "", val unit: String = "", val name: String, val note: String = "") {

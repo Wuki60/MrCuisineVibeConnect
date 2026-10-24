@@ -116,16 +116,17 @@ Pour ouvrir Toque depuis le PC : `adb shell am start -n app.toque/.ui.MainActivi
 
 ## 6. Recettes Lidl
 
-**Réglages › Recettes Lidl › Synchroniser**. L'appli d'origine se synchronise avec les serveurs
-Lidl en arrière-plan, puis Toque importe ses recettes et photos (quelques minutes). Ensuite, la
-synchro se fait chaque nuit à 3 h 30.
+**Réglages › Recettes Lidl › Synchroniser** (le robot doit être en Wi-Fi). Toque télécharge les
+recettes officielles du Monsieur Cuisine connect sur monsieur-cuisine.com, puis leurs photos :
+environ 15 minutes la première fois, ensuite seulement les recettes nouvelles ou modifiées. La
+synchro se refait chaque nuit à 3 h 30. Les recettes sont dans la langue de l'interface (le
+français par défaut).
 
-Si rien n'arrive : **« Ouvrir l'appli d'origine »**. Toque lui rend le moteur, elle s'ouvre
-et se synchronise comme d'habitude. Revenez avec le bouton **« Retour à Toque »** : Toque reprend
-la main et importe tout.
-
-Si l'import échoue, le fichier `Android/data/app.toque/files/diagnostic-recettes.txt` décrit
-la structure de la base d'origine, de quoi adapter l'import.
+Autre source : **« Importer de l'appli d'origine »** copie les recettes déjà présentes dans l'appli
+d'origine (elles remplacent celles du site). Si elle n'en a pas encore, **« Ouvrir l'appli
+d'origine »** la laisse se synchroniser avec les serveurs Lidl ; revenez avec le bouton **« Retour
+à Toque »**. Si cet import échoue, le fichier `Android/data/app.toque/files/diagnostic-recettes.txt`
+décrit la base d'origine.
 
 ## Revenir à l'appli d'origine
 

@@ -17,9 +17,11 @@ uses **the official Lidl recipes**.
 
 - **Dark interface** designed for the robot's 7" screen and rotary knob, and smooth on its
   original tablet (1 GB RAM, Android 6): no heavy libraries, downsampled images, recycled views.
-- **Lidl recipes only.** The stock app remains the only thing talking to Lidl's servers (with the
-  device's own identity, as usual). Toque then copies its recipe database, nightly or on demand.
-  No server to run, no account.
+- **Lidl recipes, straight from monsieur-cuisine.com.** Toque downloads the official Monsieur
+  Cuisine connect recipes (about 1,700 in French, with each step's machine settings) from the
+  site's public API, nightly or on demand: no account, no server to run, no need for the stock app.
+  Requests are spaced out and only new or changed recipes are downloaded again. The recipes already
+  in the stock app can still be imported instead.
 - **Search that works**: ignores accents, plurals and typos ("bechamle", "risoto").
   Search by ingredients (e.g. "chicken, curry"), filters, favorites.
 - **Guided cooking**: each step starts with one tap, the next step shows up by itself, built-in
@@ -79,7 +81,7 @@ From the command line: `gradlew assembleDebug` (and `gradlew :core:test` for the
 1. **Demo mode** (default): install the APK on any Android device (or the Android Studio
    emulator, in landscape). The motor board is simulated; *Settings › Tools › Motor base
    diagnostics* lets you open the lid or trigger an error to see the safety
-   features. The recipe screen stays empty: Lidl recipes only exist on the robot.
+   features. *Settings › Lidl recipes › Sync* downloads the recipes on any device too.
 2. **Digital twin**: the twin from the [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk)
    reproduces the real protocol independently of Toque.
    Run `python tools/twin.py --sdk <SDK folder>`, then in Toque choose *Settings › Machine ›
@@ -125,5 +127,5 @@ bowl, recipe sync, going back to the stock app.
 - Protocol: [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
 - Robot access: [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
 
-MIT License. This repository contains no Lidl recipes, images or code: recipes are only read on
-the user's own robot.
+MIT License. This repository contains no Lidl recipes, images or code: each robot downloads the
+recipes itself from monsieur-cuisine.com, for its owner's personal use.

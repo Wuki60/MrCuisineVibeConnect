@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
 
 /**
  * Recettes Lidl copiées localement (SQLite) + index de recherche en mémoire.
- * L'appli fonctionne entièrement hors ligne ; seule la synchro passe par l'appli d'origine.
+ * L'appli fonctionne entièrement hors ligne ; seule la synchro passe par le réseau.
  */
 class RecipeRepo(private val context: Context) {
     private val helper = object : SQLiteOpenHelper(context, "recettes.db", null, 1) {
@@ -126,6 +126,58 @@ class RecipeRepo(private val context: Context) {
             db.endTransaction()
         }
         rebuild()
+    }
+
+    /** Ajoute ou met à jour des recettes (favoris conservés). [rebuild] : recharger l'index tout de suite. */
+    fun upsertAll(recipes: List<Recipe>, rebuild: Boolean = true) {
+        exec.submit {
+            val db = helper.writableDatabase
+            db.beginTransaction()
+            try {
+                val now = System.currentTimeMillis()
+                for (r in recipes) {
+                    val v = ContentValues()
+                    v.put("id", r.id)
+                    v.put("title", r.title)
+                    v.put("json", RecipeCodec.encode(r.copy(favorite = false)))
+                    v.put("updated", now)
+                    db.insertWithOnConflict("recipes", null, v, SQLiteDatabase.CONFLICT_REPLACE)
+                }
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+            if (rebuild) rebuild()
+        }.get()
+    }
+
+    /** Identifiants de toutes les recettes enregistrées. */
+    fun ids(): Set<String> = exec.submit<Set<String>> {
+        val out = HashSet<String>()
+        helper.readableDatabase.rawQuery("SELECT id FROM recipes", null).use { c -> while (c.moveToNext()) out += c.getString(0) }
+        out
+    }.get()
+
+    /** Supprime les recettes absentes de [keep] (catalogue miroir de la source). */
+    fun removeAllExcept(keep: Set<String>, rebuild: Boolean = true) {
+        exec.submit {
+            val db = helper.writableDatabase
+            val gone = ArrayList<String>()
+            db.rawQuery("SELECT id FROM recipes", null).use { c -> while (c.moveToNext()) c.getString(0).let { if (it !in keep) gone += it } }
+            db.beginTransaction()
+            try {
+                for (id in gone) db.delete("recipes", "id = ?", arrayOf(id))
+                db.setTransactionSuccessful()
+            } finally {
+                db.endTransaction()
+            }
+            if (rebuild) rebuild()
+        }.get()
+    }
+
+    /** Recharge l'index de recherche (après des mises à jour sans [rebuild]). */
+    fun refresh() {
+        exec.submit { rebuild() }.get()
     }
 
     fun imageFile(name: String): File? {
