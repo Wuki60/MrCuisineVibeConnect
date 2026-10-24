@@ -5,7 +5,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 
-/** Exécution de commandes via `su` (Magisk / Kitsune Mask). */
+/** Exécution de commandes via `su` (Magisk). */
 object RootShell {
     class Result(val code: Int, val out: String, val err: String) {
         val ok: Boolean get() = code == 0

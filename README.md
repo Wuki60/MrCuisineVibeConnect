@@ -60,7 +60,7 @@ app/    Android app (minSdk 23), no AndroidX
         machine/   motor control service (":machine" process) and IPC
         recipes/   local catalogue, Lidl sync
         ui/        screens
-tools/  twin.py (digital twin for testing on a PC), install/restore scripts
+tools/  twin.py (digital twin for testing on a PC), root (TWRP), install and restore scripts
 docs/   INSTALLATION.md
 ```
 

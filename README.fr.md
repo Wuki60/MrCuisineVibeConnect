@@ -58,7 +58,7 @@ app/    Appli Android (minSdk 23), sans AndroidX
         machine/   service de pilotage (processus « :machine ») et IPC
         recipes/   catalogue local, synchro Lidl
         ui/        écrans
-tools/  twin.py (jumeau numérique pour tester sur PC), scripts d'installation/restauration
+tools/  twin.py (jumeau numérique pour tester sur PC), scripts de root (TWRP), d'installation et de restauration
 docs/   INSTALLATION.md (EN), INSTALLATION.fr.md (FR)
 ```
 

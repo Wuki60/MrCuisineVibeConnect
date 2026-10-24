@@ -12,7 +12,7 @@ if ($Ip -ne "") { & $adb connect "${Ip}:5555" | Out-Host }
 & $adb devices | Out-Host
 
 $root = (& $adb shell "su -c 'id -u'" 2>$null | Out-String).Trim()
-if ($root -ne "0") { Write-Host "No root access: install Magisk / Kitsune Mask first (see docs\INSTALLATION.md)."; exit 1 }
+if ($root -ne "0") { Write-Host "No root access: install Magisk first (see docs\INSTALLATION.md)."; exit 1 }
 
 Write-Host "Installing Toque..."
 & $adb install -r $Apk | Out-Host

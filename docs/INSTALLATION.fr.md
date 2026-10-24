@@ -7,33 +7,66 @@ erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commen
 
 ## Ce qu'il faut
 
-- Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/).
-- Un câble **USB-A mâle / USB-A mâle** (+ rallonge), un petit tournevis Torx.
-  Si le PC a un port USB-C, un câble de données USB-C ↔ USB-A convient aussi.
+- Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/)
+  (v5.1924 testée).
+- Un câble de données **USB-A mâle / USB-A mâle** et un petit tournevis Torx. Un câble USB-A ↔ USB-C
+  ne marche **pas** : le port du robot est un port « appareil », le port USB-C du PC ne le détecte
+  jamais.
+- Le pilote **MediaTek PreLoader USB VCOM** : le chercher sur le
+  [catalogue Microsoft Update](https://www.catalog.update.microsoft.com/), extraire le `.cab` (en
+  gardant le dossier `x64`) et l'installer en administrateur : `pnputil /add-driver cdc-acm.inf /install`.
+  Sous Windows 11, si Windows affiche « Impossible de charger un pilote sur cet appareil :
+  usb2ser.sys », désactiver **l'intégrité de la mémoire** (Sécurité Windows › Sécurité de
+  l'appareil › Isolation du noyau) et redémarrer. La réactiver à la fin (retirer d'abord le pilote :
+  `pnputil /enum-drivers` pour trouver son `oemXX.inf`, puis `pnputil /delete-driver oemXX.inf /uninstall`).
 - Le guide de référence : <https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack>
   (fichier de partition `l706_dfbh_v_695scatter.txt` et recovery TWRP `hacks/recovery.img`).
+- L'APK officiel de [Magisk](https://github.com/topjohnwu/Magisk/releases) (v31.0 testée ; Android 6
+  est pris en charge).
 
-## 1. Accès ADB et TWRP (guide EliasKotlyar)
+> **Allumer le robot câble débranché.** Allumé avec le câble branché, il reste bloqué sur un écran
+> de batterie (charge). Brancher le câble une fois qu'il a démarré. Seule exception : SP Flash Tool,
+> où il faut au contraire allumer le robot *avec* le câble branché.
+
+## 1. Sauvegarde et TWRP
 
 1. Robot éteint (interrupteur arrière). Dévisser la trappe de maintenance sous le robot.
 2. Brancher le PC **uniquement sur le port de droite, marqué « Android USB »** (l'autre peut
    détruire la carte).
-3. SP Flash Tool avec le fichier scatter : **sauvegarder la partition `boot`**
-   (adresse `0x1d20000`, longueur `0x1000000`) **et la garder précieusement**.
-   *Ne sautez pas cette étape : c'est votre seule voie de retour.*
-4. Flasher `hacks/recovery.img` dans `boot`, redémarrer : TWRP démarre.
-5. Dans `adb shell` : monter `/system`, ajouter à `/system/build.prop`
-   `persist.service.adb.enable=1`, `persist.service.debuggable=1`, `persist.sys.usb.config=mtp,adb`,
-   puis supprimer `/system/recovery-from-boot.p`.
-6. Remettre votre `boot` d'origine dans `boot` et `recovery.img` dans `recovery` (depuis TWRP).
-7. Redémarrer : l'appli d'origine démarre, `adb devices` voit le robot.
+3. SP Flash Tool, fichier scatter chargé, onglet **Readback** : ajouter `boot` (début `0x1d20000`,
+   longueur `0x1000000`, région `EMMC_USER`) et `recovery` (début `0x2d20000`, longueur
+   `0x1000000`), cliquer sur **Read Back**, puis allumer le robot. On obtient `boot-original.img`
+   et `recovery-original.img` (16 Mo chacun) : **à garder précieusement, c'est votre seule voie
+   de retour.**
+4. Onglet **Download**, *Download Only* : cocher uniquement `boot`, avec `hacks/recovery.img`
+   (TWRP). Cliquer sur **Download**, puis éteindre et rallumer le robot.
+5. Éteindre le robot, débrancher le câble, rallumer : **TWRP** démarre. Rebrancher le câble :
+   `adb devices` affiche le robot en mode `recovery`.
 
-## 2. Root (Magisk / Kitsune Mask)
+## 2. ADB et root (Magisk)
 
-Installer Kitsune Mask (fork de Magisk compatible Android 6) en suivant
-l'[issue #38](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack/issues/38) du même dépôt.
-Vérifier : `adb shell su -c id` doit afficher `uid=0`. Toque a besoin de la **busybox** fournie par
-Magisk (`/data/adb/magisk/busybox`).
+1. Depuis le dossier du dépôt, TWRP affiché :
+   ```
+   adb push Magisk-v31.0.apk /tmp/magisk.apk
+   adb push boot-original.img /tmp/boot.img
+   adb push %USERPROFILE%\.android\adbkey.pub /tmp/adbkey.pub
+   adb push tools\robot\twrp-root.sh /tmp/
+   adb shell sh /tmp/twrp-root.sh
+   adb pull /tmp/magisk/new-boot.img boot-magisk.img
+   ```
+   [`twrp-root.sh`](../tools/robot/twrp-root.sh) patche votre `boot` d'origine avec Magisk
+   (`boot-magisk.img`), active ADB dans Android (`/system/build.prop`), supprime
+   `/system/recovery-from-boot.p` (sinon Android remet le recovery d'origine par-dessus TWRP) et
+   autorise la clé ADB de votre PC (aucune confirmation à faire sur l'écran du robot).
+2. SP Flash Tool, *Download Only* : cocher `boot` = `boot-magisk.img` et `recovery` =
+   `hacks/recovery.img`, cliquer sur **Download**, éteindre et rallumer le robot.
+3. Éteindre le robot, débrancher le câble, rallumer : l'appli d'origine démarre. Brancher le câble.
+4. `adb install Magisk-v31.0.apk`, puis `adb shell su -c id` et appuyer sur **Autoriser** sur le
+   robot : la commande doit afficher `uid=0`. Toque utilise la **busybox** fournie par Magisk
+   (`/data/adb/magisk/busybox`).
+
+Pour retirer le root : flasher `boot-original.img` dans `boot` avec SP Flash Tool (et
+`recovery-original.img` dans `recovery` pour retirer TWRP).
 
 Facultatif, pour ne plus avoir besoin du câble : activer ADB par Wi-Fi.
 
