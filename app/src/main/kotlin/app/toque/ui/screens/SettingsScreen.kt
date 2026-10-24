@@ -248,6 +248,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
 
     private fun save() {
         a.prefs.mode = mode
+        a.prefs.bootLaunch = true
         a.prefs.twinHost = host.text.toString().trim().ifEmpty { "127.0.0.1" }
         a.prefs.twinPort = port.text.toString().trim().toIntOrNull() ?: 8765
         a.machine.reconfigure { v -> if (v.ok) a.toast(tr("Mode : %s", mode.label), Ui.OK) else a.refusal(v) }
@@ -277,10 +278,11 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         a.confirm(
             tr("Revenir à l'appli d'origine"),
             tr("Toque libère le moteur, rend l'accès à l'appli Monsieur Cuisine d'origine et passe en mode Démo. " +
-                "Choisissez ensuite l'appli d'origine comme écran d'accueil."),
+                "Toque ne s'ouvrira plus au démarrage du robot."),
             tr("Revenir"),
         ) {
             a.prefs.mode = Prefs.Mode.DEMO
+            a.prefs.bootLaunch = false
             a.machine.reconfigure {
                 Thread {
                     val sync = LidlSync(a, a.prefs, a.app.recipes, a.app.log)

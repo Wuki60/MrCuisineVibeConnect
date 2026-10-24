@@ -8,6 +8,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Installation des mises à jour sur un appareil non rooté (Android 8 et plus). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Bouton « Retour à Toque » par-dessus l'appli d'origine (le robot n'a pas de bouton Accueil). -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
         android:name=".ToqueApp"
@@ -50,6 +52,10 @@
 
         <service
             android:name=".recipes.SyncService"
+            android:exported="false" />
+
+        <service
+            android:name=".ui.ReturnBubble"
             android:exported="false" />
 
         <receiver

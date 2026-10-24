@@ -86,7 +86,8 @@ class RootSerialTransport(
 
     override fun open() {
         val probe = RootShell.run(
-            "id -u; for b in /data/adb/magisk/busybox /sbin/.magisk/busybox/busybox /system/xbin/busybox /system/bin/busybox; " +
+            "id -u; for b in /data/adb/magisk/busybox /sbin/.magisk/busybox/busybox /data/app/com.topjohnwu.magisk*/lib/arm*/libbusybox.so " +
+                "/system/xbin/busybox /system/bin/busybox; " +
                 "do if [ -x \$b ]; then echo BB=\$b; break; fi; done; [ -e $device ] && echo DEV=ok",
             10_000,
         )

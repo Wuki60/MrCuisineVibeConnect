@@ -26,6 +26,8 @@ uses **the official Lidl recipes**.
   weighing, resume after a power cut.
 - **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
 - **Offline**: everything works without a network (no more "server unreachable" at startup).
+- **Made for a robot without Android buttons**: Toque opens at startup, and a **Back to Toque**
+  button stays on top of the stock app when you open it.
 - **Updates from GitHub**: *Settings › Updates* checks this repository's
   [Releases](https://github.com/Wuki60/MrCuisineVibeConnect/releases) and installs the new version
   (silently on a rooted robot, then Toque restarts). Refused while a program is running.

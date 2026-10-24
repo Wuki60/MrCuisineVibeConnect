@@ -79,10 +79,7 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
             if (now - adminFirst > 3_000) { adminFirst = now; adminTaps = 0 }
             if (++adminTaps >= 5) {
                 adminTaps = 0
-                try {
-                    a.startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS))
-                } catch (_: Exception) {
-                }
+                a.openAndroidSettings()
             }
         }
     }

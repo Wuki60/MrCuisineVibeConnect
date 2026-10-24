@@ -23,6 +23,8 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
   seule, pesée intégrée, reprise après coupure.
 - **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
+- **Pensé pour un robot sans boutons Android** : Toque s'ouvre au démarrage, et un bouton
+  **« Retour à Toque »** reste affiché par-dessus l'appli d'origine quand on l'ouvre.
 - **Mises à jour depuis GitHub** : Réglages › Mises à jour vérifie les
   [versions publiées](https://github.com/Wuki60/MrCuisineVibeConnect/releases) de ce dépôt et installe
   la nouvelle (sans rien demander sur un robot rooté, puis Toque redémarre). Refusé pendant un programme.

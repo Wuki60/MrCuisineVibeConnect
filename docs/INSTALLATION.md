@@ -83,7 +83,9 @@ Only do this on your home network: anyone on it could then connect to the robot.
    Android Studio (see the README). With a downloaded APK, add `-Apk <path to the APK>` below.
 2. `powershell -ExecutionPolicy Bypass -File tools\install-robot.ps1`
    (over Wi-Fi: add `-Ip <robot IP address>`).
-3. Allow Toque in the Magisk prompt shown on the robot ("Grant").
+3. The script also allows Toque in Magisk (no prompt on the robot: Magisk's prompt closes by
+   itself after 10 s and then refuses for good) and checks that Magisk's busybox, which Toque
+   needs for the serial port, is in place.
 
 ## 4. First run — EMPTY bowl
 
@@ -100,10 +102,14 @@ Only do this on your home network: anyone on it could then connect to the robot.
      enable Settings › Safety › Require bowl detection.
 4. At the slightest abnormal behaviour: **main switch**, then `tools\restore-robot.ps1`.
 
-## 5. Make it the home screen
+## 5. Toque at startup
 
-Home button → choose **Toque** → **Always**. (Hidden access to the Android settings: tap the
-clock at the top right 5 times quickly.)
+The robot has no Android Home or Back button. Toque opens by itself when the robot starts, and
+whenever it opens another app (the stock app, the Android settings), a **Back to Toque** button
+stays on top of it (you can drag it). Hidden access to the Android settings: tap the clock at the
+top right 5 times quickly.
+
+To open Toque from the PC: `adb shell am start -n app.toque/.ui.MainActivity`.
 
 ## 6. Lidl recipes
 
@@ -112,8 +118,8 @@ with Lidl's servers in the background, then Toque imports its recipes and photos
 minutes). After that, the sync runs every night at 3:30 am.
 
 If nothing arrives: **Open the stock app**. Toque hands the motor
-back to it, it opens and syncs as usual. Come back with the Home button: Toque takes over again
-and imports everything.
+back to it, it opens and syncs as usual. Come back with the **Back to Toque** button: Toque takes
+over again and imports everything.
 
 If the import fails, the file `Android/data/app.toque/files/diagnostic-recettes.txt` describes the
 structure of the stock database, which is what's needed to adapt the import.
@@ -124,4 +130,4 @@ structure of the stock database, which is what's needed to adapt the import.
 - From the PC: `powershell -ExecutionPolicy Bypass -File tools\restore-robot.ps1 -Uninstall`
 
 Toque changes neither the system nor the stock app: it only disables its motor service, which
-both methods undo.
+both methods undo. Toque then no longer opens at startup.

@@ -116,6 +116,8 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         immersive()
+        prefs.returnBubble = false
+        ReturnBubble.stop(this)
         if (prefs.vendorSession) endVendorSession()
     }
 
@@ -381,12 +383,20 @@ class MainActivity : Activity() {
         confirm(
             tr("Ouvrir l'appli d'origine"),
             tr("Toque libère le moteur et lance l'appli Monsieur Cuisine d'origine, qui se synchronise avec les serveurs Lidl comme d'habitude.\n\n" +
-                "Revenez ensuite à Toque avec le bouton Accueil : les recettes seront importées automatiquement."),
+                "Revenez ensuite à Toque avec le bouton « Retour à Toque » affiché par-dessus (vous pouvez le déplacer) : les recettes seront importées automatiquement."),
             tr("Ouvrir"), icon = Icon.Kind.SYNC,
         ) {
             machine.suspendPort { v ->
                 if (!v.ok) { refusal(v); return@suspendPort }
                 Thread {
+                    // Sans bouton de retour, impossible de revenir à Toque : on n'ouvre pas.
+                    if (!ReturnBubble.ensurePermission(this)) {
+                        main.post {
+                            toast(tr("Impossible d'afficher le bouton « Retour à Toque » (root ?) : ouverture annulée"), Ui.WARN)
+                            machine.resumePort()
+                        }
+                        return@Thread
+                    }
                     val sync = LidlSync(this, prefs, app.recipes, app.log)
                     val enabled = sync.setVendorHardware(true)
                     val launch = sync.components().launch
@@ -396,12 +406,35 @@ class MainActivity : Activity() {
                             machine.resumePort()
                         } else {
                             prefs.vendorSession = true
+                            prefs.returnBubble = true
+                            ReturnBubble.start(this)
                             startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                         }
                     }
                 }.start()
             }
         }
+    }
+
+    /** Paramètres Android (accès caché), avec le bouton « Retour à Toque » pour en revenir. */
+    fun openAndroidSettings() {
+        Thread {
+            val ok = ReturnBubble.ensurePermission(this)
+            main.post {
+                if (!ok) {
+                    toast(tr("Impossible d'afficher le bouton « Retour à Toque » (root ?) : ouverture annulée"), Ui.WARN)
+                    return@post
+                }
+                prefs.returnBubble = true
+                ReturnBubble.start(this)
+                try {
+                    startActivity(Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (_: Exception) {
+                    prefs.returnBubble = false
+                    ReturnBubble.stop(this)
+                }
+            }
+        }.start()
     }
 
     companion object {

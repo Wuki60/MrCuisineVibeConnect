@@ -26,6 +26,7 @@ class MachineLoop(
     private val controller = MachineController(clock, config)
     @Volatile private var transport: Transport? = null
     private var nextOpenAt = 0L
+    private var openFailures = 0
     @Volatile private var running = false
     @Volatile var suspended = false
         private set
@@ -86,20 +87,21 @@ class MachineLoop(
         val t = try {
             transportFactory()
         } catch (e: Throwable) {
-            nextOpenAt = now + 3_000
+            nextOpenAt = now + retryDelayMs(++openFailures)
             log("transport indisponible : $e")
             return
         }
         try {
             t.open()
         } catch (e: Throwable) {
-            nextOpenAt = now + 3_000
+            nextOpenAt = now + retryDelayMs(++openFailures)
             controller.transportName = t.name
             log("ouverture impossible (${t.name}) : ${e.message}")
             lastOpenError = e.message ?: e.toString()
             return
         }
         lastOpenError = ""
+        openFailures = 0
         transport = t
         controller.onTransportUp(t.name)
         log("liaison ouverte : ${t.name}")
@@ -175,6 +177,7 @@ class MachineLoop(
         post {
             suspended = false
             nextOpenAt = 0
+            openFailures = 0
         }
     }
 
@@ -213,5 +216,13 @@ class MachineLoop(
             t.write(controller.stopFrame())
         } catch (_: Throwable) {
         }
+    }
+
+    companion object {
+        /**
+         * Délai avant de retenter d'ouvrir la liaison : 3 s, puis de plus en plus espacé jusqu'à
+         * 1 min (évite, par exemple, une demande root toutes les 3 s quand Magisk refuse).
+         */
+        fun retryDelayMs(failures: Int): Long = minOf(3_000L shl (failures - 1).coerceIn(0, 5), 60_000L)
     }
 }

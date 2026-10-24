@@ -99,6 +99,20 @@ class Prefs(context: Context) {
             p.edit().putBoolean("vendorSession", v).commit()
         }
 
+    /** Bouton « Retour à Toque » à afficher : Toque a ouvert une autre appli (robot sans bouton Accueil). */
+    var returnBubble: Boolean
+        get() = p.getBoolean("returnBubble", false)
+        set(v) {
+            p.edit().putBoolean("returnBubble", v).commit()
+        }
+
+    /** Ouvrir Toque au démarrage du robot (désactivé par « Revenir à l'appli d'origine »). */
+    var bootLaunch: Boolean
+        get() = p.getBoolean("bootLaunch", true)
+        set(v) {
+            p.edit().putBoolean("bootLaunch", v).commit()
+        }
+
     var knobLeft: Int
         get() = p.getInt("knobLeft", -1)
         set(v) {

@@ -119,6 +119,7 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
             30_000,
         )
         if (!copy.ok || !File(dest).exists()) return finish(Report(false, tr("Base de l'appli d'origine introuvable")))
+        adopt("${dest}*")
 
         val tables = try {
             readTables(dest)
@@ -134,10 +135,26 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
         progress(tr("Copie des photos…"))
         val img = repo.imagesDir.absolutePath
         su("if [ -d $imagesPath ]; then for f in $imagesPath/*; do b=\${f##*/}; [ -e $img/\$b ] || cp \$f $img/; done; chmod 644 $img/* 2>/dev/null; fi; true", 300_000)
+        adopt(img)
 
         repo.replaceAll(result.recipes)
         work.listFiles()?.forEach { it.delete() }
         return finish(Report(true, tr("%d recettes Lidl à jour", result.recipes.size), result.recipes.size))
+    }
+
+    /**
+     * Les fichiers copiés en root n'ont ni le propriétaire ni le contexte SELinux de Toque
+     * (catégories de l'utilisateur) : Android lui en refuse alors l'ouverture. On les lui rend.
+     */
+    private fun adopt(paths: String) {
+        val uid = android.os.Process.myUid()
+        val ctx = appContextLabel
+        val label = if (ctx != null) "chcon -R $ctx $paths 2>/dev/null || restorecon -R $paths" else "restorecon -R $paths"
+        su("chown -R $uid:$uid $paths; $label; true", 120_000)
+    }
+
+    private val appContextLabel: String? by lazy {
+        su("ls -dZ ${context.filesDir.absolutePath}").out.split(Regex("\\s+")).firstOrNull { it.startsWith("u:object_r:") }
     }
 
     private fun finish(r: Report): Report {
@@ -149,7 +166,8 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
     }
 
     private fun readTables(path: String): Map<String, OriginalDbMapper.Table> {
-        val db = SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READONLY or SQLiteDatabase.NO_LOCALIZED_COLLATORS)
+        // Lecture-écriture : la copie peut contenir un journal en cours que SQLite doit annuler (sur notre copie).
+        val db = SQLiteDatabase.openDatabase(path, null, SQLiteDatabase.OPEN_READWRITE or SQLiteDatabase.NO_LOCALIZED_COLLATORS)
         try {
             val names = ArrayList<String>()
             db.rawQuery("SELECT name FROM sqlite_master WHERE type='table'", null).use { c -> while (c.moveToNext()) names += c.getString(0) }
