@@ -13,10 +13,12 @@ import android.widget.PopupWindow
 import android.widget.ScrollView
 import android.widget.TextView
 import app.toque.Prefs
+import app.toque.TimeSync
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
+import app.toque.core.time.ZoneLookup
 import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
 import app.toque.recipes.OnlineSync
@@ -35,6 +37,8 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
     private lateinit var syncText: TextView
     private lateinit var bowlText: TextView
     private lateinit var linkText: TextView
+    private lateinit var timeText: TextView
+    private var settingTime = false
     private var mode = a.prefs.mode
     private var syncing = false
 
@@ -98,6 +102,21 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
             a.prefs.language = code
             a.applyLanguage()
         }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
+
+        // ---- Date et heure
+        val time = section(right, tr("Date et heure"), Icon.Kind.CLOCK)
+        val zones = listOf(ZoneLookup.AUTO to tr("Automatique (d'après la connexion Internet)")) +
+            (ZoneLookup.COMMON + listOf(TimeSync.current(), a.prefs.timeZone))
+                .filter { it != ZoneLookup.AUTO }.distinct().map { it to it.replace('_', ' ') }
+        time.addView(dropdown(zones, a.prefs.timeZone) { z ->
+            a.prefs.timeZone = z
+            setClock()
+        }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
+        timeText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
+        time.addView(timeText, Ui.lp(t = 10))
+        time.addView(Ui.button(c, tr("Mettre à l'heure"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 52) { setClock() },
+            Ui.lp(Ui.WRAP, Ui.WRAP, t = 10))
+        refreshTime()
 
         // ---- Recettes Lidl
         val lidl = section(right, tr("Recettes Lidl"), Icon.Kind.SYNC)
@@ -203,7 +222,8 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
                 addView(list)
                 background = Ui.round(Ui.SURFACE3, 16f, Ui.STROKE, 1f)
             }
-            val popup = PopupWindow(scroll, box.width, ViewGroup.LayoutParams.WRAP_CONTENT, false)
+            val height = if (options.size > 7) Ui.u(400) else ViewGroup.LayoutParams.WRAP_CONTENT
+            val popup = PopupWindow(scroll, box.width, height, false)
             for ((code, name) in options) {
                 val row = Ui.text(c, name, 19f, if (code == selected) Ui.ACCENT else Ui.TEXT)
                 row.setPadding(Ui.u(16), Ui.u(14), Ui.u(16), Ui.u(14))
@@ -324,6 +344,31 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
                 syncing = false
                 refreshSync()
                 a.toast(r.message, if (r.ok) Ui.OK else Ui.WARN)
+            }
+        }.start()
+    }
+
+    private fun refreshTime(message: String? = null) {
+        val zone = TimeSync.current()
+        val mode = if (a.prefs.timeZone == ZoneLookup.AUTO) tr("automatique") else tr("choisi à la main")
+        timeText.text = tr("Il est %s · fuseau %s (%s)", TimeSync.clock(), zone.replace('_', ' '), mode) +
+            (message?.let { "\n" + it } ?: "")
+    }
+
+    private fun setClock() {
+        if (settingTime) return
+        settingTime = true
+        timeText.text = tr("Réglage de l'heure…")
+        Thread {
+            val r = try {
+                TimeSync(a, a.prefs, a.app.log).run()
+            } catch (e: Exception) {
+                TimeSync.Result(false, TimeSync.current(), e.message ?: e.toString())
+            }
+            a.runOnUiThread {
+                settingTime = false
+                refreshTime(if (r.ok) null else r.message)
+                if (r.ok) a.toast(r.message, Ui.OK)
             }
         }.start()
     }

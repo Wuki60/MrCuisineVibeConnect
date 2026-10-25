@@ -20,6 +20,7 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.toque.Prefs
+import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.recipes.RecipeFilter
 import app.toque.core.recipes.SearchIndex
@@ -238,6 +239,7 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
         fun bind(e: SearchIndex.Entry) {
             title.text = e.title
             val parts = ArrayList<String>()
+            if (e.ratingCount > 0) parts += "★ " + String.format(I18n.locale, "%.1f", e.rating)
             if (e.totalMinutes > 0) parts += "${e.totalMinutes} min"
             if (e.category.isNotBlank()) parts += e.category
             meta.text = parts.joinToString(" · ")

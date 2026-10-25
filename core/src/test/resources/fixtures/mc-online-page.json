@@ -1,6 +1,49 @@
-{"code":0,"message":"Recipes are returned","data":{"language":"fr-FR","total":3,"pageSize":100,"currentPage":1,"totalPage":1,
-"recipes":[
- {"id":900001,"name":"Soupe d'essai","lastUpdated":"2026-04-19 09:00:02","deviceTypes":["MC2.0","MC3.0"],"servingSizes":[{"id":1,"amount":4}]},
- {"id":900002,"name":"Pâte d'essai","lastUpdated":"2025-01-02 10:00:00","deviceTypes":["MC2.0"]},
- {"id":"900003","name":"Sans date"}
-]}}
+{
+  "code": 0,
+  "message": "Recipes are returned",
+  "data": {
+    "language": "fr-FR",
+    "total": 3,
+    "pageSize": 100,
+    "currentPage": 1,
+    "totalPage": 1,
+    "recipes": [
+      {
+        "id": 900001,
+        "name": "Soupe d'essai",
+        "lastUpdated": "2026-04-19 09:00:02",
+        "deviceTypes": [
+          "MC2.0",
+          "MC3.0"
+        ],
+        "servingSizes": [
+          {
+            "id": 1,
+            "amount": 4
+          }
+        ],
+        "author": {
+          "id": 1,
+          "name": "Chef d'essai",
+          "avatar": null
+        },
+        "rating": 4.4,
+        "totalRating": 500
+      },
+      {
+        "id": 900002,
+        "name": "Pâte d'essai",
+        "lastUpdated": "2025-01-02 10:00:00",
+        "deviceTypes": [
+          "MC2.0"
+        ],
+        "rating": "3,5",
+        "totalRating": 2
+      },
+      {
+        "id": "900003",
+        "name": "Sans date"
+      }
+    ]
+  }
+}

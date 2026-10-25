@@ -22,6 +22,7 @@ class Logbook(context: Context) {
                 old.delete()
                 file.renameTo(old)
             }
+            fmt.timeZone = java.util.TimeZone.getDefault()
             file.appendText("${fmt.format(Date())} [$tag] $line\n")
         } catch (_: Throwable) {
         }

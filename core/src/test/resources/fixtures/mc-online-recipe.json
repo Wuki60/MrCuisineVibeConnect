@@ -1,30 +1,275 @@
-{"code":0,"message":"A recipe is returned","data":{"recipe":{
- "id":900001,"translationId":1,"language":"fr-FR","name":"Soupe d'essai ","status":"publish",
- "deviceType":"MC2.0","deviceTypes":["MC2.0","MC3.0"],"lastUpdated":"2026-04-19 09:00:02",
- "thumbnail":{"landscape":"https://cdn.example.test/uploads/2021/11/123essai.jpg","portrait":null},
- "detailsImage":{"landscape":"https://cdn.example.test/uploads/2021/11/123essai-grand.jpg","portrait":null},
- "complexity":"Moyen","complexityLevel":2,"preparationDuration":15,"duration":40,
- "categories":[{"id":1,"name":"Soupes"},{"id":2,"name":"Végétarien"}],"tags":[],
- "description":"","hintsAndTips":"<p>Astuce&nbsp;: servir <b>chaud</b>.</p>",
- "defaultServingSizeId":1,
- "servingSizes":[{"id":1,"amount":4,"servingUnit":"portions","instruction":"Texte complet.","modules":[],
-  "ingredientGroups":[{"order":0,"id":77,"name":"POUR LA GARNITURE"}],
-  "ingredients":[
-   {"order":1,"amount":"200","unit":"g","systemIngredientId":10,"ingredientGroupId":null,"name":"carottes","ingredientCategory":null},
-   {"order":0,"amount":"1","unit":"","systemIngredientId":11,"ingredientGroupId":null,"name":"oignon","ingredientCategory":null},
-   {"order":2,"amount":"10","unit":"g","systemIngredientId":12,"ingredientGroupId":77,"name":"persil","ingredientCategory":null},
-   {"order":3,"amount":"","unit":"","systemIngredientId":13,"ingredientGroupId":null,"name":null,"ingredientCategory":null}
-  ],
-  "steps":[
-   {"id":1,"step":1,"order":0,"name":"Mettre l'oignon dans le bol mixeur.","description":"Mettre l'oignon dans le bol mixeur.","deviceSetting":null},
-   {"id":2,"step":2,"order":1,"name":"Mode","description":null,"deviceSetting":{"reverse":false,"turbo":false,"mode":"customized","settings":[{"order":0,"speed":5,"speedFloat":5,"temperature":0,"time":5,"weight":null}]}},
-   {"id":3,"step":3,"order":2,"name":"Ajouter 200 g de carottes.","description":"Ajouter 200 g de carottes.","deviceSetting":{"reverse":false,"turbo":false,"mode":"scale","settings":[{"order":0,"speed":null,"speedFloat":null,"temperature":0,"time":null,"weight":200}]}},
-   {"id":4,"step":4,"order":3,"name":"Mode","description":null,"deviceSetting":{"reverse":true,"turbo":false,"mode":"customized","settings":[{"order":0,"speed":1,"speedFloat":1,"temperature":100,"time":1200,"weight":null}]}},
-   {"id":5,"step":5,"order":4,"name":"Appuyer sur Turbo 2 secondes.","description":"Appuyer sur Turbo 2 secondes.","deviceSetting":{"reverse":false,"turbo":false,"mode":"turbo","settings":[{"order":0,"temperature":0,"time":2}]}},
-   {"id":6,"step":6,"order":5,"name":"Mode","description":null,"deviceSetting":{"mode":"steaming","settings":[{"order":0,"time":600}]}},
-   {"id":7,"step":7,"order":6,"name":"Mode","description":null,"deviceSetting":{"mode":"roasting","settings":[{"order":0,"temperature":130,"time":90}]}},
-   {"id":8,"step":8,"order":7,"name":"Pétrir la pâte.","description":"Pétrir la pâte.","deviceSetting":{"mode":"kneading_solid_dough","settings":[{"order":0,"time":120}]}},
-   {"id":9,"step":9,"order":8,"name":"Cuire sous vide.","description":"Cuire sous vide.","deviceSetting":{"mode":"sous_vide","settings":[{"order":0,"temperature":60,"time":3600}]}},
-   {"id":10,"step":10,"order":9,"name":"Servir.","description":"Servir.","deviceSetting":null}
-  ]}]
-}}}
+{
+  "code": 0,
+  "message": "A recipe is returned",
+  "data": {
+    "recipe": {
+      "id": 900001,
+      "author": {
+        "id": 1,
+        "name": " Chef d'essai ",
+        "avatar": "https://cdn.example.test/avatar.png"
+      },
+      "translationId": 1,
+      "language": "fr-FR",
+      "name": "Soupe d'essai ",
+      "status": "publish",
+      "deviceType": "MC2.0",
+      "deviceTypes": [
+        "MC2.0",
+        "MC3.0"
+      ],
+      "lastUpdated": "2026-04-19 09:00:02",
+      "thumbnail": {
+        "landscape": "https://cdn.example.test/uploads/2021/11/123essai.jpg",
+        "portrait": null
+      },
+      "detailsImage": {
+        "landscape": "https://cdn.example.test/uploads/2021/11/123essai-grand.jpg",
+        "portrait": null
+      },
+      "complexity": "Moyen",
+      "complexityLevel": 2,
+      "preparationDuration": 15,
+      "duration": 40,
+      "rating": 4.4,
+      "totalRating": 500,
+      "categories": [
+        {
+          "id": 1,
+          "name": "Soupes"
+        },
+        {
+          "id": 2,
+          "name": "Végétarien"
+        }
+      ],
+      "tags": [],
+      "description": "",
+      "hintsAndTips": "<p>Astuce&nbsp;: servir <b>chaud</b>.</p>",
+      "defaultServingSizeId": 1,
+      "servingSizes": [
+        {
+          "id": 1,
+          "amount": 4,
+          "servingUnit": "portions",
+          "instruction": "Texte complet.",
+          "modules": [],
+          "ingredientGroups": [
+            {
+              "order": 0,
+              "id": 77,
+              "name": "POUR LA GARNITURE"
+            }
+          ],
+          "ingredients": [
+            {
+              "order": 1,
+              "amount": "200",
+              "unit": "g",
+              "systemIngredientId": 10,
+              "ingredientGroupId": null,
+              "name": "carottes",
+              "ingredientCategory": null
+            },
+            {
+              "order": 0,
+              "amount": "1",
+              "unit": "",
+              "systemIngredientId": 11,
+              "ingredientGroupId": null,
+              "name": "oignon",
+              "ingredientCategory": null
+            },
+            {
+              "order": 2,
+              "amount": "10",
+              "unit": "g",
+              "systemIngredientId": 12,
+              "ingredientGroupId": 77,
+              "name": "persil",
+              "ingredientCategory": null
+            },
+            {
+              "order": 3,
+              "amount": "",
+              "unit": "",
+              "systemIngredientId": 13,
+              "ingredientGroupId": null,
+              "name": null,
+              "ingredientCategory": null
+            }
+          ],
+          "steps": [
+            {
+              "id": 1,
+              "step": 1,
+              "order": 0,
+              "name": "Mettre l'oignon dans le bol mixeur.",
+              "description": "Mettre l'oignon dans le bol mixeur.",
+              "deviceSetting": null
+            },
+            {
+              "id": 2,
+              "step": 2,
+              "order": 1,
+              "name": "Mode",
+              "description": null,
+              "deviceSetting": {
+                "reverse": false,
+                "turbo": false,
+                "mode": "customized",
+                "settings": [
+                  {
+                    "order": 0,
+                    "speed": 5,
+                    "speedFloat": 5,
+                    "temperature": 0,
+                    "time": 5,
+                    "weight": null
+                  }
+                ]
+              }
+            },
+            {
+              "id": 3,
+              "step": 3,
+              "order": 2,
+              "name": "Ajouter 200 g de carottes.",
+              "description": "Ajouter 200 g de carottes.",
+              "deviceSetting": {
+                "reverse": false,
+                "turbo": false,
+                "mode": "scale",
+                "settings": [
+                  {
+                    "order": 0,
+                    "speed": null,
+                    "speedFloat": null,
+                    "temperature": 0,
+                    "time": null,
+                    "weight": 200
+                  }
+                ]
+              }
+            },
+            {
+              "id": 4,
+              "step": 4,
+              "order": 3,
+              "name": "Mode",
+              "description": null,
+              "deviceSetting": {
+                "reverse": true,
+                "turbo": false,
+                "mode": "customized",
+                "settings": [
+                  {
+                    "order": 0,
+                    "speed": 1,
+                    "speedFloat": 1,
+                    "temperature": 100,
+                    "time": 1200,
+                    "weight": null
+                  }
+                ]
+              }
+            },
+            {
+              "id": 5,
+              "step": 5,
+              "order": 4,
+              "name": "Appuyer sur Turbo 2 secondes.",
+              "description": "Appuyer sur Turbo 2 secondes.",
+              "deviceSetting": {
+                "reverse": false,
+                "turbo": false,
+                "mode": "turbo",
+                "settings": [
+                  {
+                    "order": 0,
+                    "temperature": 0,
+                    "time": 2
+                  }
+                ]
+              }
+            },
+            {
+              "id": 6,
+              "step": 6,
+              "order": 5,
+              "name": "Mode",
+              "description": null,
+              "deviceSetting": {
+                "mode": "steaming",
+                "settings": [
+                  {
+                    "order": 0,
+                    "time": 600
+                  }
+                ]
+              }
+            },
+            {
+              "id": 7,
+              "step": 7,
+              "order": 6,
+              "name": "Mode",
+              "description": null,
+              "deviceSetting": {
+                "mode": "roasting",
+                "settings": [
+                  {
+                    "order": 0,
+                    "temperature": 130,
+                    "time": 90
+                  }
+                ]
+              }
+            },
+            {
+              "id": 8,
+              "step": 8,
+              "order": 7,
+              "name": "Pétrir la pâte.",
+              "description": "Pétrir la pâte.",
+              "deviceSetting": {
+                "mode": "kneading_solid_dough",
+                "settings": [
+                  {
+                    "order": 0,
+                    "time": 120
+                  }
+                ]
+              }
+            },
+            {
+              "id": 9,
+              "step": 9,
+              "order": 8,
+              "name": "Cuire sous vide.",
+              "description": "Cuire sous vide.",
+              "deviceSetting": {
+                "mode": "sous_vide",
+                "settings": [
+                  {
+                    "order": 0,
+                    "temperature": 60,
+                    "time": 3600
+                  }
+                ]
+              }
+            },
+            {
+              "id": 10,
+              "step": 10,
+              "order": 9,
+              "name": "Servir.",
+              "description": "Servir.",
+              "deviceSetting": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

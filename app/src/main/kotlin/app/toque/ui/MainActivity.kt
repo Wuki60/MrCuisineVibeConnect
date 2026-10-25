@@ -443,7 +443,12 @@ class MainActivity : Activity() {
 
         /** MotionEvent.AXIS_SCROLL (API 26), valeur fixe pour Android 6. */
         private const val AXIS_SCROLL = 26
-        val clockFormat = SimpleDateFormat("HH:mm", Locale.FRANCE)
-        fun now(): String = clockFormat.format(Date())
+        private val clockFormat = SimpleDateFormat("HH:mm", Locale.FRANCE)
+
+        /** Heure affichée ; le fuseau peut changer en cours de route (réglage automatique). */
+        fun now(): String {
+            clockFormat.timeZone = java.util.TimeZone.getDefault()
+            return clockFormat.format(Date())
+        }
     }
 }

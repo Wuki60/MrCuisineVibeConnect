@@ -92,6 +92,8 @@ class SearchIndex(recipes: List<Recipe>) {
         val image: String,
         val machineSteps: Int,
         val normTitle: String,
+        val rating: Double = 0.0,
+        val ratingCount: Int = 0,
     )
 
     data class Hit(val entry: Entry, val score: Double, val matched: Int)
@@ -112,7 +114,7 @@ class SearchIndex(recipes: List<Recipe>) {
         val list = ArrayList<Entry>(recipes.size)
         for ((index, r) in recipes.withIndex()) {
             list += Entry(r.id, r.title, r.category, r.tags, r.favorite, r.source, r.totalMinutes, r.image,
-                r.machineSteps, TextNorm.normalize(r.title))
+                r.machineSteps, TextNorm.normalize(r.title), r.rating, r.ratingCount)
             fun add(text: String, w: Int) {
                 for (t in TextNorm.tokens(text)) {
                     val p = postings.getOrPut(t) { HashMap(4) }

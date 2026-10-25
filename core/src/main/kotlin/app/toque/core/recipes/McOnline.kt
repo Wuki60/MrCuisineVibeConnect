@@ -3,6 +3,7 @@ package app.toque.core.recipes
 import app.toque.core.i18n.tr
 import app.toque.core.json.Json
 import app.toque.core.json.bool
+import app.toque.core.json.double
 import app.toque.core.json.int
 import app.toque.core.json.list
 import app.toque.core.json.obj
@@ -49,7 +50,22 @@ object McOnline {
         else -> "fr-FR"
     }
 
-    class Entry(val apiId: Long, val updated: String, val name: String)
+    class Entry(
+        val apiId: Long,
+        val updated: String,
+        val name: String,
+        val author: String = "",
+        val rating: Double = 0.0,
+        val ratingCount: Int = 0,
+    ) {
+        /** Empreinte enregistrée dans l'index de synchro : fiche modifiée, ou seulement sa note. */
+        val stamp: String get() = "$updated|${ratingText(rating)}|$ratingCount|$author"
+    }
+
+    /** Date de mise à jour d'une empreinte d'index (les anciens index n'ont que la date). */
+    fun updatedOf(stamp: String?): String? = stamp?.substringBefore('|')
+
+    private fun ratingText(r: Double): String = String.format(java.util.Locale.US, "%.2f", r)
 
     class Page(val total: Int, val totalPages: Int, val entries: List<Entry>)
 
@@ -65,7 +81,12 @@ object McOnline {
         val entries = d["recipes"].list().mapNotNull { any ->
             val r = any.obj()
             val id = r["id"].long() ?: return@mapNotNull null
-            Entry(id, r.str("lastUpdated").orEmpty(), r.str("name")?.trim().orEmpty())
+            Entry(
+                id, r.str("lastUpdated").orEmpty(), r.str("name")?.trim().orEmpty(),
+                author = r["author"].obj().str("name")?.trim().orEmpty(),
+                rating = (r.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
+                ratingCount = (r.int("totalRating") ?: 0).coerceAtLeast(0),
+            )
         }
         return Page(d.int("total") ?: entries.size, d.int("totalPage") ?: 1, entries)
     }
@@ -112,7 +133,56 @@ object McOnline {
             source = RecipeSource.IMPORTED,
             image = thumb?.trim().orEmpty(),
             notes = notes.joinToString("\n\n"),
+            author = r["author"].obj().str("name")?.trim().orEmpty(),
+            rating = (r.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
+            ratingCount = (r.int("totalRating") ?: 0).coerceAtLeast(0),
         )
+    }
+
+    /** Recette déjà téléchargée dont seuls l'auteur ou la note ont changé sur le site. */
+    fun withScore(r: Recipe, e: Entry): Recipe =
+        r.copy(author = e.author.ifEmpty { r.author }, rating = e.rating, ratingCount = e.ratingCount)
+
+    // ------------------------------------------------------------------ avis
+
+    /** Identifiant sur le site d'une recette Toque téléchargée du site, sinon null. */
+    fun apiIdOf(toqueId: String): Long? =
+        if (toqueId.startsWith(ID_PREFIX)) toqueId.removePrefix(ID_PREFIX).toLongOrNull() else null
+
+    /** Avis publics d'une recette (le serveur exige un en-tête X-Request-Id, voir [reviewHeaders]). */
+    fun reviewsUrl(apiId: Long, page: Int, size: Int = 10): String =
+        "$API/api/v1/recipe-reviews/recipes/$apiId/reviews?page=$page&size=$size"
+
+    fun reviewHeaders(language: String): Map<String, String> =
+        headers(language) + ("X-Request-Id" to java.util.UUID.randomUUID().toString())
+
+    class Review(val author: String, val rating: Int, val message: String, val date: String, val reply: String)
+
+    class ReviewPage(val total: Int, val page: Int, val totalPages: Int, val reviews: List<Review>)
+
+    fun parseReviews(json: String): ReviewPage {
+        val d = Json.parse(json).obj()["data"].obj()
+        val reviews = d["reviews"].list().mapNotNull { any ->
+            val r = any.obj()
+            if (r.bool("isReported") == true) return@mapNotNull null
+            val message = r.str("message")?.trim().orEmpty()
+            val rating = (r.int("rating") ?: 0).coerceIn(0, 5)
+            if (message.isEmpty() && rating == 0) return@mapNotNull null
+            val reply = when (val c = r["comment"]) {
+                is String -> c
+                is Map<*, *> -> c.obj().str("message") ?: c.obj().str("comment") ?: c.obj().str("text")
+                else -> null
+            }?.trim().orEmpty()
+            Review(
+                author = r["author"].obj().str("name")?.trim().orEmpty(),
+                rating = rating,
+                message = message,
+                date = r.str("updatedAt")?.trim()?.substringBefore(' ').orEmpty(),
+                reply = reply,
+            )
+        }
+        val total = d.int("total") ?: reviews.size
+        return ReviewPage(total, d.int("currentPage") ?: 1, (d.int("totalPage") ?: 1).coerceAtLeast(1), reviews)
     }
 
     private fun ingredients(size: Map<String, Any?>): List<IngredientGroup> {

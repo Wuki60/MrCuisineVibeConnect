@@ -3,6 +3,7 @@ package app.toque.core.recipes
 import app.toque.core.i18n.tr
 import app.toque.core.json.Json
 import app.toque.core.json.bool
+import app.toque.core.json.double
 import app.toque.core.json.int
 import app.toque.core.json.list
 import app.toque.core.json.obj
@@ -132,6 +133,11 @@ data class Recipe(
     val image: String = "",
     val favorite: Boolean = false,
     val notes: String = "",
+    /** Qui a publié la recette (vide si inconnu). */
+    val author: String = "",
+    /** Note moyenne sur 5 et nombre de notes sur monsieur-cuisine.com (0 : aucune). */
+    val rating: Double = 0.0,
+    val ratingCount: Int = 0,
 ) {
     val machineSteps: Int get() = steps.count { it.machine != null }
     val allIngredients: List<Ingredient> get() = ingredients.flatMap { it.items }
@@ -154,6 +160,9 @@ object RecipeCodec {
         "image" to r.image,
         "favorite" to r.favorite,
         "notes" to r.notes,
+        "author" to r.author,
+        "rating" to r.rating,
+        "ratingCount" to r.ratingCount,
         "ingredients" to r.ingredients.map { g ->
             linkedMapOf(
                 "group" to g.title,
@@ -220,6 +229,9 @@ object RecipeCodec {
             image = m.str("image").orEmpty(),
             favorite = m.bool("favorite") ?: false,
             notes = m.str("notes").orEmpty(),
+            author = m.str("author")?.trim().orEmpty(),
+            rating = (m.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
+            ratingCount = (m.int("ratingCount") ?: 0).coerceAtLeast(0),
         )
     }
 

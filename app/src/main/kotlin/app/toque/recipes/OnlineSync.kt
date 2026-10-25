@@ -72,9 +72,22 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         }
         if (entries.isEmpty()) return LidlSync.Report(false, tr("Aucune recette reçue du serveur"))
 
-        // 2. Fiches nouvelles ou modifiées.
+        // 2. Fiches nouvelles ou modifiées ; pour les autres, seuls l'auteur et la note sont mis à jour.
         val present = repo.ids()
-        val todo = entries.filter { e -> index[e.apiId.toString()] != e.updated || McOnline.toqueId(e.apiId) !in present }
+        val todo = entries.filter { e ->
+            McOnline.updatedOf(index[e.apiId.toString()]) != e.updated || McOnline.toqueId(e.apiId) !in present
+        }
+        val todoIds = todo.map { it.apiId }.toHashSet()
+        val rescored = ArrayList<Recipe>()
+        for (e in entries) {
+            val key = e.apiId.toString()
+            if (e.apiId in todoIds || index[key] == e.stamp) continue
+            val r = repo.get(McOnline.toqueId(e.apiId)) ?: continue
+            rescored += McOnline.withScore(r, e)
+            index[key] = e.stamp
+            if (rescored.size >= 100) save(rescored, index, language)
+        }
+        save(rescored, index, language)
         val batch = ArrayList<Recipe>()
         var failures = 0
         var inARow = 0
@@ -83,7 +96,7 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
             try {
                 val r = McOnline.parseRecipe(get(McOnline.recipeUrl(e.apiId), language))
                 if (r != null) batch += r
-                index[e.apiId.toString()] = e.updated
+                index[e.apiId.toString()] = e.stamp
                 inARow = 0
             } catch (ex: IOException) {
                 failures++

@@ -1,0 +1,61 @@
+{
+  "code": 0,
+  "message": "3 reviews has been returned",
+  "data": {
+    "total": 13,
+    "resultNo": 3,
+    "pageSize": 3,
+    "currentPage": 1,
+    "totalPage": 5,
+    "hasArchivedReviews": false,
+    "reviews": [
+      {
+        "id": 1,
+        "recipeId": 900001,
+        "rating": 5,
+        "message": "Très bonne recette, toute la famille a aimé.\n",
+        "updatedAt": "2025-12-02 20:50:36",
+        "author": {
+          "id": 11,
+          "name": "Cuisinier d'essai",
+          "avatar": null,
+          "tagId": "AAAAAA"
+        },
+        "comment": null,
+        "isReported": false
+      },
+      {
+        "id": 2,
+        "recipeId": 900001,
+        "rating": 2,
+        "message": "Les quantités ne correspondent pas aux étapes.",
+        "updatedAt": "2025-01-23 18:41:42",
+        "author": {
+          "id": 12,
+          "name": "Testeur",
+          "avatar": null,
+          "tagId": "BBBBBB"
+        },
+        "comment": {
+          "message": "Merci, nous corrigeons la recette."
+        },
+        "isReported": false
+      },
+      {
+        "id": 3,
+        "recipeId": 900001,
+        "rating": 1,
+        "message": "Avis signalé",
+        "updatedAt": "2025-01-01 10:00:00",
+        "author": {
+          "id": 13,
+          "name": "X",
+          "avatar": null,
+          "tagId": "CCCCCC"
+        },
+        "comment": null,
+        "isReported": true
+      }
+    ]
+  }
+}

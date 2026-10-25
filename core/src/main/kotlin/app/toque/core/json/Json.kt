@@ -203,6 +203,12 @@ fun Map<String, Any?>.int(key: String): Int? = when (val v = this[key]) {
     is String -> v.trim().toIntOrNull() ?: v.trim().replace(',', '.').toDoubleOrNull()?.toInt()
     else -> null
 }
+fun Map<String, Any?>.double(key: String): Double? = when (val v = this[key]) {
+    is Number -> v.toDouble()
+    is String -> v.trim().replace(',', '.').toDoubleOrNull()
+    else -> null
+}
+
 fun Map<String, Any?>.bool(key: String): Boolean? = when (val v = this[key]) {
     is Boolean -> v
     is Number -> v.toInt() != 0

@@ -89,6 +89,20 @@ class Prefs(context: Context) {
             p.edit().putBoolean("sound", v).commit()
         }
 
+    /** Fuseau horaire : « auto » (d'après la connexion Internet) ou un identifiant IANA choisi à la main. */
+    var timeZone: String
+        get() = p.getString("timeZone", "auto") ?: "auto"
+        set(v) {
+            p.edit().putString("timeZone", v).commit()
+        }
+
+    /** Dernier fuseau appliqué avec succès (affiché dans les réglages). */
+    var lastZone: String
+        get() = p.getString("lastZone", "") ?: ""
+        set(v) {
+            p.edit().putString("lastZone", v).commit()
+        }
+
     var autoSync: Boolean
         get() = p.getBoolean("autoSync", true)
         set(v) {
