@@ -9,8 +9,10 @@ import app.toque.core.i18n.tr
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.EventType
 import app.toque.core.machine.JobKind
+import app.toque.core.machine.JobSpec
 import app.toque.core.machine.JobState
 import app.toque.core.machine.MachineEvent
+import app.toque.core.machine.SafetyPolicy
 import app.toque.core.machine.Snapshot
 import app.toque.core.protocol.Mcc
 import app.toque.core.recipes.Recipe
@@ -24,7 +26,9 @@ import app.toque.ui.Ui
 
 /**
  * Cuisine pas à pas. Chaque étape « machine » se lance d'un appui ; à la fin du programme,
- * l'étape suivante s'affiche toute seule. La progression est mémorisée (reprise après coupure).
+ * l'étape suivante s'affiche toute seule. Les réglages qui se suivent sans geste à faire entre
+ * eux partent ensemble, en un seul programme : la machine passe de l'un à l'autre sans arrêter
+ * la lame (sauf changement de sens). La progression est mémorisée (reprise après coupure).
  */
 class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : Screen(a) {
     override val title = recipe.title
@@ -32,6 +36,12 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     private val reviewed = HashSet<Int>()
     private val done = HashSet<Int>()
     private var launchedStep = -1
+    /** Étapes couvertes par le programme lancé (plusieurs quand elles sont enchaînées). */
+    private var launchedCount = 1
+    /** Dernière phase de la série vue à l'écran (on ne suit que les changements de phase). */
+    private var seenPhase = -1
+    /** « Mixer quand même » à chaud déjà accepté pendant cette recette : pas de nouvelle question. */
+    private var hotBlendOk = false
     /** Message fixe de l'étape (vérification, refus), réaffiché hors cuisson. */
     private var panelInfo = ""
 
@@ -199,6 +209,14 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             }
         }
         panel.addView(grid, Ui.lp(t = 6))
+        val chained = if (a.prefs.chainSteps) chainLength(index) else 0
+        if (chained > 0) {
+            val next = (index + 1..index + chained).map { recipe.steps[it].machine!!.summary }
+            val list = next.take(4).joinToString("\n") { "• $it" } +
+                if (next.size > 4) "\n" + tr("… et %d autres", next.size - 4) else ""
+            panel.addView(Ui.text(c, tr("Puis, enchaînés automatiquement :") + "\n" + list, 15f, Ui.TEXT2)
+                .apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 10))
+        }
         panelState = Ui.text(c, "", 16f, Ui.WARN).apply { setLineSpacing(0f, 1.1f) }
         panel.addView(panelState, Ui.lp(t = 12))
         panel.addView(Ui.spacer(c, weight = 1f), LinearLayout.LayoutParams(1, 0, 1f))
@@ -217,7 +235,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             }
             reviewBtn = rb
             panel.addView(rb, Ui.lp(b = 10))
-            panelInfo = tr("Réglage importé de l'appli d'origine : vérifiez-le avant de lancer.")
+            panelInfo = tr("Réglage importé : vérifiez-le avant de lancer.")
         }
         panelState?.text = panelInfo
         if (m.program == StepProgram.TURBO) {
@@ -241,12 +259,63 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     }
 
     private fun launch() {
-        val m = recipe.steps[index].machine ?: return
-        val job = m.toJob(tr("Étape %d · %s", index + 1, recipe.title)) ?: return
+        val first = index
+        val m = recipe.steps[first].machine ?: return
+        val series = series(first)
+        val job = series ?: m.toJob(tr("Étape %d · %s", first + 1, recipe.title), hotBlendConfirmed = hotBlendOk) ?: return
+        val count = series?.phases?.size ?: 1
         a.prefs.guidedRecipe = recipe.id
-        a.prefs.guidedStep = index
-        val step = index
-        a.startJob(job) { v -> if (v.ok) launchedStep = step }
+        a.prefs.guidedStep = first
+        a.startJob(job, onHotConfirmed = { hotBlendOk = true }) { v ->
+            if (v.ok) {
+                launchedStep = first
+                launchedCount = count
+                seenPhase = 0
+            }
+        }
+    }
+
+    /**
+     * Réglages enchaînés à partir de [first], réunis en un seul programme (une phase par étape) :
+     * la machine passe directement au réglage suivant, sans arrêt ni nouvel appui. Uniquement
+     * des réglages manuels avec le même accessoire ; sinon les étapes s'enchaînent une à une.
+     */
+    private fun series(first: Int): JobSpec? {
+        if (!a.prefs.chainSteps) return null
+        val n = chainLength(first)
+        if (n == 0) return null
+        val machines = (first..first + n).map { recipe.steps[it].machine ?: return null }
+        if (machines.any { it.program != StepProgram.MANUAL || it.accessory != machines[0].accessory }) return null
+        val phases = machines.map { it.toJob("", hotBlendOk)?.phases?.singleOrNull() ?: return null }
+        val spec = JobSpec(
+            kind = JobKind.MANUAL,
+            label = tr("Étapes %d à %d · %s", first + 1, first + n + 1, recipe.title),
+            phases = phases,
+            totalMs = phases.sumOf { it.durationMs },
+            cyclic = false,
+            accessory = machines[0].accessory,
+            hotBlendConfirmed = hotBlendOk,
+        )
+        return spec.takeIf { SafetyPolicy.checkJob(it, null).isEmpty() }
+    }
+
+    /**
+     * L'étape [i] continue directement la précédente : un réglage machine seul (pas de texte
+     * à suivre, pas de pesée), après une autre étape machine. Le Turbo reste toujours à l'appui.
+     */
+    private fun continues(i: Int): Boolean {
+        val s = recipe.steps.getOrNull(i) ?: return false
+        val m = s.machine ?: return false
+        val prev = recipe.steps.getOrNull(i - 1)?.machine ?: return false
+        return m.program != StepProgram.TURBO && prev.program != StepProgram.TURBO && s.weigh == null &&
+            (s.text.isBlank() || s.text == m.summary) && m.violations().isEmpty()
+    }
+
+    /** Nombre d'étapes qui s'enchaîneront après l'étape [i]. */
+    private fun chainLength(i: Int): Int {
+        var n = 0
+        while (continues(i + n + 1)) n++
+        return n
     }
 
     override fun onSnapshot(s: Snapshot) {
@@ -256,8 +325,21 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             weighBar.progress = if (w.grams > 0) s.weightG.toFloat() / w.grams else 0f
             weighBar.color = if (s.weightG > w.grams * 1.05f) Ui.WARN else Ui.COOL
         }
+        val running = launchedStep >= 0 && s.jobActive
+        if (running && launchedCount > 1 && s.phaseIndex != seenPhase &&
+            s.state != JobState.FINISHED && s.state != JobState.ABORTED) {
+            // Série en cours : à chaque nouveau réglage, l'écran passe à l'étape correspondante.
+            seenPhase = s.phaseIndex
+            val current = launchedStep + s.phaseIndex.coerceIn(0, launchedCount - 1)
+            for (k in launchedStep until current) done += k
+            reviewed += current
+            if (current != index) {
+                go(current)
+                return
+            }
+        }
         val m = recipe.steps.getOrNull(index)?.machine ?: return
-        val mine = launchedStep == index && s.jobActive
+        val mine = running && index >= launchedStep && index < launchedStep + launchedCount
         val ps = panelState
         if (m.program != StepProgram.TURBO && ::startBtn.isInitialized) {
             startBtn.visibility = if (mine && s.state != JobState.FINISHED && s.state != JobState.ABORTED) View.GONE else View.VISIBLE
@@ -291,16 +373,25 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     }
 
     override fun onEvent(e: MachineEvent) {
-        if (e.type == EventType.JOB_FINISHED && launchedStep == index) {
-            val finished = index
-            done += finished
+        if (e.type == EventType.JOB_FINISHED && launchedStep >= 0 && index >= launchedStep && index < launchedStep + launchedCount) {
+            val finished = launchedStep + launchedCount - 1
+            for (k in launchedStep..finished) done += k
             launchedStep = -1
+            launchedCount = 1
+            if (index != finished) go(finished)
+            // Étapes non réunissables en un programme (vapeur puis réglage…) : la suivante part seule.
+            val chain = a.prefs.chainSteps && continues(finished + 1)
             view.postDelayed({
                 if (index == finished) {
                     a.machine.clearFinished()
-                    if (index < recipe.steps.size - 1) go(index + 1)
+                    if (index < recipe.steps.size - 1) {
+                        // Étape enchaînée : le réglage a été vu avec la première étape de la série.
+                        if (chain) reviewed += finished + 1
+                        go(finished + 1)
+                        if (chain) launch()
+                    }
                 }
-            }, 1_500)
+            }, if (chain) 400L else 1_500L)
         }
     }
 

@@ -23,7 +23,9 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
   (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
 - **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
-  seule, pesée intégrée, reprise après coupure.
+  seule, pesée intégrée, reprise après coupure. Les réglages qui se suivent sans geste à faire
+  entre eux (rinçage, mixages en plusieurs vitesses…) partent ensemble d'un seul appui : la lame
+  passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter.
 - **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
 - **Pensé pour un robot sans boutons Android** : Toque s'ouvre au démarrage, et un bouton
@@ -49,7 +51,7 @@ sont corrigés :
 
 Autres ajouts : confirmation (et montée progressive) avant de mixer un contenu à 60 °C ou plus,
 limite de vitesse avec le fouet, alertes verrouillées jusqu'à acquittement, rien ne redémarre
-tout seul. Le pilotage tourne dans **son propre processus** : un plantage de l'interface ne coupe
+tout seul après une pause ou une alerte. À froid, la lame va directement à la vitesse demandée. Le pilotage tourne dans **son propre processus** : un plantage de l'interface ne coupe
 pas une cuisson, qui se termine normalement.
 
 ## Structure

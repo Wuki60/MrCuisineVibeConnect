@@ -2,14 +2,19 @@ package app.toque.core
 
 import app.toque.core.machine.Accessory
 import app.toque.core.machine.Clock
+import app.toque.core.machine.ControllerConfig
 import app.toque.core.machine.EventType
 import app.toque.core.machine.FaultCode
+import app.toque.core.machine.JobKind
+import app.toque.core.machine.JobSpec
 import app.toque.core.machine.JobState
 import app.toque.core.machine.LinkState
 import app.toque.core.machine.MachineController
 import app.toque.core.machine.MachineEvent
+import app.toque.core.machine.Phase
 import app.toque.core.machine.Programs
 import app.toque.core.machine.SafetyPolicy
+import app.toque.core.machine.Setting
 import app.toque.core.machine.SimBoard
 import app.toque.core.protocol.Direction
 import app.toque.core.protocol.Mcc
@@ -24,10 +29,10 @@ class FakeClock(var now: Long = 1_000_000L) : Clock {
 }
 
 /** Banc d'essai : contrôleur + base simulée, cadencés à 100 ms, sans fil d'exécution. */
-class Bench {
+class Bench(config: ControllerConfig = ControllerConfig()) {
     val clock = FakeClock()
     val board = SimBoard(clock)
-    val c = MachineController(clock)
+    val c = MachineController(clock, config)
     val events = ArrayList<MachineEvent>()
     /** Trames émises : (temps, opération, vitesse, temp, sens) */
     val tx = ArrayList<IntArray>()
@@ -86,14 +91,13 @@ class ControllerTest {
         assertTrue("trames actives : $running", running in 95..102)
     }
 
-    @Test fun rampsUpSpeedProgressively() {
+    @Test fun coldGoesStraightToTheRequestedSpeed() {
         val b = Bench().ready()
         b.c.startJob(Programs.manual(10, 0, Direction.CLOCKWISE, 20_000))
         b.step(4_000)
         val speeds = b.tx.filter { it[1] == Operation.STANDARD.wire }.map { it[2] }
-        assertEquals(1, speeds.first())
-        for (i in 1 until speeds.size) assertTrue(speeds[i] - speeds[i - 1] <= 1)
-        assertEquals(10, speeds.last())
+        assertTrue(speeds.isNotEmpty())
+        assertTrue("vitesses : $speeds", speeds.all { it == 10 })
     }
 
     @Test fun refusesToStartWithLidOpen() {
@@ -217,7 +221,60 @@ class ControllerTest {
         b.step(10_000)
         val speeds = b.tx.subList(mark, b.tx.size).filter { it[1] == Operation.STANDARD.wire }.map { it[2] }
         val firstTop = speeds.indexOf(7)
-        assertTrue("montée trop rapide à chaud : $firstTop", firstTop >= 55)
+        assertEquals(1, speeds.first())
+        for (i in 1 until speeds.size) assertTrue(speeds[i] - speeds[i - 1] <= 1)
+        assertTrue("montée à chaud : $firstTop", firstTop in 12..20)
+    }
+
+    /** Étapes de recette enchaînées en un seul programme : pas d'arrêt entre deux réglages de même sens. */
+    @Test fun chainedSettingsFollowEachOtherWithoutStopping() {
+        val b = Bench().ready()
+        val phases = listOf(
+            Phase(Setting(Operation.STANDARD, 5, 0, Direction.CLOCKWISE), 3_000),
+            Phase(Setting(Operation.STANDARD, 8, 0, Direction.CLOCKWISE), 3_000),
+            Phase(Setting(Operation.STANDARD, 2, 0, Direction.CLOCKWISE), 2_000),
+        )
+        assertTrue(b.c.startJob(JobSpec(JobKind.MANUAL, "série", phases, 8_000, cyclic = false)).ok)
+        b.step(9_500)
+        val ops = b.tx.map { it[1] }
+        val first = ops.indexOf(Operation.STANDARD.wire)
+        val last = ops.lastIndexOf(Operation.STANDARD.wire)
+        assertTrue(first >= 0)
+        assertTrue("arrêt entre deux réglages", ops.subList(first, last + 1).all { it == Operation.STANDARD.wire })
+        val speeds = b.tx.subList(first, last + 1).map { it[2] }
+        assertEquals(listOf(5, 8, 2), speeds.distinct())
+        assertEquals(JobState.FINISHED.name, b.snap.jobState)
+    }
+
+    /** Un réglage rapide qui suit une chauffe dans la même série redemande la confirmation « contenu chaud ». */
+    @Test fun chainPausesBeforeBlendingHotContents() {
+        val b = Bench().ready()
+        val phases = listOf(
+            Phase(Setting(Operation.STANDARD, 1, 13, Direction.CLOCKWISE), 250_000),
+            Phase(Setting(Operation.STANDARD, 7, 0, Direction.CLOCKWISE), 10_000),
+        )
+        assertTrue(b.c.startJob(JobSpec(JobKind.MANUAL, "série", phases, 260_000, cyclic = false)).ok)
+        b.step(252_000)
+        assertEquals(JobState.PAUSED.name, b.snap.jobState)
+        assertTrue(b.events.any { it.type == EventType.JOB_PAUSED })
+        assertTrue(b.tx.takeLast(5).all { it[2] == 0 })
+        assertFalse(b.c.resume().ok)
+        assertTrue(b.c.resume(hotBlendConfirmed = true).ok)
+        b.step(3_000)
+        assertEquals(JobState.RUNNING.name, b.snap.jobState)
+        assertEquals(7, b.tx.last()[2])
+    }
+
+    @Test fun hotRampCanBeTurnedOff() {
+        val b = Bench(ControllerConfig(hotRamp = false)).ready()
+        b.c.startJob(Programs.manual(1, 13, Direction.CLOCKWISE, 300_000))
+        b.step(200_000)
+        b.c.stop(); b.step(3_000); b.c.clearFinished()
+        assertTrue(b.c.startJob(Programs.manual(7, 0, Direction.CLOCKWISE, 30_000, hotBlendConfirmed = true)).ok)
+        val mark = b.tx.size
+        b.step(3_000)
+        val speeds = b.tx.subList(mark, b.tx.size).filter { it[1] == Operation.STANDARD.wire }.map { it[2] }
+        assertTrue("vitesses : $speeds", speeds.isNotEmpty() && speeds.all { it == 7 })
     }
 
     @Test fun turboRules() {

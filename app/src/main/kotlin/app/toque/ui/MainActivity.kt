@@ -335,16 +335,17 @@ class MainActivity : Activity() {
      * Démarre un programme ; si le contenu est chaud, demande d'abord la confirmation
      * de mixage (comme l'appli d'origine, mais avant tout mouvement).
      */
-    fun startJob(spec: JobSpec, done: (Verdict) -> Unit = {}) {
+    fun startJob(spec: JobSpec, onHotConfirmed: () -> Unit = {}, done: (Verdict) -> Unit = {}) {
         machine.start(spec) { v ->
             if (!v.ok && v.has(SafetyPolicy.HOT_BLEND) && v.violations.size == 1) {
                 confirm(
                     tr("Contenu chaud"),
                     tr("Le bol est à %d °C. Mixer chaud peut provoquer des projections.\n\n" +
-                        "Vérifiez que le couvercle est verrouillé, que le gobelet est en place et que le bol n'est pas trop rempli. " +
-                        "La vitesse montera progressivement.", snapshot.actualTempC),
+                        "Vérifiez que le couvercle est verrouillé, que le gobelet est en place et que le bol n'est pas trop rempli.", snapshot.actualTempC) +
+                        if (prefs.hotRamp) " " + tr("La vitesse montera progressivement.") else "",
                     tr("Mixer quand même"), icon = Icon.Kind.THERMO,
                 ) {
+                    onHotConfirmed()
                     machine.start(spec.copy(hotBlendConfirmed = true)) { v2 -> refusal(v2); done(v2) }
                 }
             } else {

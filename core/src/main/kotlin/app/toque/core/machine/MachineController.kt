@@ -75,9 +75,12 @@ class ControllerConfig(
     val pauseMaxMs: Long = 10 * 60_000L,
     /** Un retard d'ordonnanceur ne fait jamais avancer le minuteur de plus que ceci. */
     val maxTickGapMs: Long = 500,
-    /** Montée progressive : un niveau toutes les… */
-    val rampStepMs: Long = 200,
-    val hotRampStepMs: Long = 1_000,
+    /** Montée progressive de la vitesse : un niveau toutes les… (0 = vitesse demandée directement). */
+    val rampStepMs: Long = 0,
+    /** … et quand le contenu est chaud (≥ 60 °C), pour limiter les projections. */
+    val hotRampStepMs: Long = 250,
+    /** Montée progressive à chaud (désactivable dans les réglages). */
+    val hotRamp: Boolean = true,
     /** Exiger le capteur du bol (bit NTC) avant tout démarrage. */
     val requireBowl: Boolean = false,
 )
@@ -294,6 +297,13 @@ class MachineController(
             rampAtMs = now
             return target
         }
+        val hot = (latest?.actualTemperature ?: 0) >= Limits.HOT_C
+        val step = if (hot) (if (config.hotRamp) config.hotRampStepMs else 0L) else config.rampStepMs
+        if (step <= 0) {
+            rampLevel = target.speed
+            rampAtMs = now
+            return target
+        }
         val sameMotion = lastWire.operation == target.operation && lastWire.direction == target.direction && lastWire.speed > 0
         if (!sameMotion) rampLevel = 0
         if (target.speed <= rampLevel) {
@@ -301,8 +311,6 @@ class MachineController(
             rampAtMs = now
             return target
         }
-        val hot = (latest?.actualTemperature ?: 0) >= Limits.HOT_C
-        val step = if (hot) config.hotRampStepMs else config.rampStepMs
         if (rampLevel == 0 || now - rampAtMs >= step) {
             rampLevel++
             rampAtMs = now
@@ -566,7 +574,9 @@ class MachineController(
         when {
             nxt.isRest && !cur.isRest -> j.waitingStop = Barrier(seq, now)
             directionChange -> j.waitingStop = Barrier(seq, now)
-            cur.isRest && !nxt.isRest -> if (!enterPhase(j, now)) return
+            // Même sens : on passe directement au réglage suivant, après l'avoir revérifié
+            // (le contenu a pu chauffer pendant la phase précédente).
+            !nxt.isRest -> if (!enterPhase(j, now)) return
         }
         emit(EventType.PHASE_CHANGED, j.spec.label)
     }

@@ -21,8 +21,8 @@ object McOnline {
     /** Monsieur Cuisine connect. */
     const val DEVICE = "MC2.0"
     const val PAGE_SIZE = 100
-    /** Préfixe des identifiants Toque des recettes en ligne. */
-    const val ID_PREFIX = "mc-"
+    /** Préfixe des identifiants Toque des recettes du site (« mc- » : celles de l'appli d'origine). */
+    const val ID_PREFIX = "web-"
 
     /** En-têtes attendus par l'API ; « device-type: web » fait renvoyer le nom des ingrédients. */
     fun headers(language: String): Map<String, String> =

@@ -69,6 +69,20 @@ class Prefs(context: Context) {
             p.edit().putBoolean("requireBowl", v).commit()
         }
 
+    /** Montée progressive de la vitesse quand le contenu est chaud (≥ 60 °C). */
+    var hotRamp: Boolean
+        get() = p.getBoolean("hotRamp", true)
+        set(v) {
+            p.edit().putBoolean("hotRamp", v).commit()
+        }
+
+    /** Recettes : enchaîner sans appui les étapes machine qui se suivent sans geste à faire. */
+    var chainSteps: Boolean
+        get() = p.getBoolean("chainSteps", true)
+        set(v) {
+            p.edit().putBoolean("chainSteps", v).commit()
+        }
+
     var sound: Boolean
         get() = p.getBoolean("sound", true)
         set(v) {

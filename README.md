@@ -25,7 +25,9 @@ uses **the official Lidl recipes**.
 - **Search that works**: ignores accents, plurals and typos ("bechamle", "risoto").
   Search by ingredients (e.g. "chicken, curry"), filters, favorites.
 - **Guided cooking**: each step starts with one tap, the next step shows up by itself, built-in
-  weighing, resume after a power cut.
+  weighing, resume after a power cut. Settings that follow each other with nothing to do in
+  between (rinsing, blending at several speeds…) start together with a single tap: the blade goes
+  straight from one speed and temperature to the next without stopping.
 - **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
 - **Offline**: everything works without a network (no more "server unreachable" at startup).
 - **Made for a robot without Android buttons**: Toque opens at startup, and a **Back to Toque**
@@ -50,7 +52,7 @@ Turbo conditions…). Several flaws found while analysing the protocol are fixed
 
 Also added: confirmation (and a gradual ramp-up) before blending contents at 60 °C or more, a
 speed limit with the whisk, alerts that stay latched until acknowledged, nothing restarts on its
-own. Motor control runs in **its own process**: if the interface crashes, a cooking run is not
+own after a pause or an alert. When cold, the blade goes straight to the requested speed. Motor control runs in **its own process**: if the interface crashes, a cooking run is not
 cut off and finishes normally.
 
 ## Project layout

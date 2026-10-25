@@ -23,7 +23,7 @@ class McOnlineTest {
 
     @Test fun recipe() {
         val r = McOnline.parseRecipe(fixture("mc-online-recipe.json"))!!
-        assertEquals("mc-900001", r.id)
+        assertEquals("web-900001", r.id)
         assertEquals("Soupe d'essai", r.title)
         assertEquals("Soupes", r.category)
         assertEquals(listOf("Végétarien"), r.tags)

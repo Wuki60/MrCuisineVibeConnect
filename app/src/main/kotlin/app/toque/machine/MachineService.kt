@@ -109,7 +109,7 @@ class MachineService : Service() {
         }
         val l = MachineLoop(
             transportFactory = factory,
-            config = ControllerConfig(requireBowl = prefs.requireBowl),
+            config = ControllerConfig(requireBowl = prefs.requireBowl, hotRamp = prefs.hotRamp),
             onSnapshot = { s -> main.post { publish(s) } },
             onEvent = { e -> main.post { broadcastEvent(e) } },
             log = { line -> log.write("machine", line) },
