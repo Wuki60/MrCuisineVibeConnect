@@ -2,6 +2,11 @@
 
 🇫🇷 **[Version française](INSTALLATION.fr.md)**
 
+> **With an AI agent** (Claude, ChatGPT…) that operates your PC: give it the repository link and
+> ask it to follow [AGENTS.md](../AGENTS.md). The script
+> [`tools/setup/toque-setup.ps1`](../tools/setup/toque-setup.ps1) automates the steps below; you can
+> also run it yourself (`-Step status` tells you where you are).
+
 Time: 1 to 2 hours the first time. Steps 1 and 2 (root) are the tricky ones: a mistake can leave
 the robot's tablet unusable. Read everything before you start.
 

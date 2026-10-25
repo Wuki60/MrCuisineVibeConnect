@@ -2,6 +2,11 @@
 
 🇬🇧 **[English version](INSTALLATION.md)**
 
+> **Avec un agent IA** (Claude, ChatGPT…) qui pilote votre PC : donnez-lui le lien du dépôt et
+> demandez-lui de suivre [AGENTS.md](../AGENTS.md). Le script
+> [`tools/setup/toque-setup.ps1`](../tools/setup/toque-setup.ps1) automatise les étapes ci-dessous ;
+> vous pouvez aussi le lancer vous-même (`-Step status` dit où vous en êtes).
+
 Durée : 1 à 2 heures la première fois. Les étapes 1 et 2 (root) sont les plus délicates : une
 erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commencer.
 

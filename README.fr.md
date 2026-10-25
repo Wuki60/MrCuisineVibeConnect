@@ -6,8 +6,31 @@
 qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
 
 > Projet indépendant, non affilié à Lidl, SilverCrest ni Hoyer. Le pilotage du moteur repose
-> sur une analyse publique du protocole ; il n'a **pas** encore été validé sur une vraie machine.
-> À utiliser à vos risques, en suivant la procédure de premier essai.
+> sur une analyse publique du protocole ; il tourne au quotidien sur un robot (SKMC 1200, Android 6)
+> depuis octobre 2026, mais n'a été essayé que sur celui-là. À utiliser à vos risques, en suivant la
+> procédure de premier essai.
+
+## Installer avec un agent IA
+
+Le plus simple : confiez l'installation à un agent IA qui peut piloter votre PC Windows (Claude,
+ChatGPT, Copilot…). Donnez-lui ce message :
+
+> Installe Toque sur mon Monsieur Cuisine Connect en suivant le fichier AGENTS.md de
+> https://github.com/Wuki60/MrCuisineVibeConnect
+
+Le fichier [AGENTS.md](AGENTS.md) lui décrit toute la procédure, et le script
+[`tools/setup/toque-setup.ps1`](tools/setup/toque-setup.ps1) fait le travail étape par étape
+(téléchargements vérifiés, pilote, sauvegarde, root, installation, ADB par Wi-Fi). L'agent ne vous
+demande que ce qu'il ne peut pas faire lui-même :
+
+- avoir un câble **USB-A mâle ↔ USB-A mâle** et un petit tournevis Torx ;
+- dévisser la trappe sous le robot, brancher le câble sur le port **« Android USB »**, éteindre et
+  rallumer le robot quand il le dit ;
+- répondre aux fenêtres de sécurité de Windows (et, si besoin, désactiver l'intégrité de la mémoire
+  le temps de l'installation) ;
+- appuyer une fois sur **Autoriser** sur l'écran du robot.
+
+Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.fr.md).
 
 ## Ce que fait Toque
 
@@ -20,6 +43,8 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
   serveur à gérer, plus besoin de l'appli d'origine. Requêtes espacées, et seules les recettes
   nouvelles ou modifiées sont retéléchargées. On peut toujours importer à la place celles de
   l'appli d'origine.
+- **Auteur, notes et avis** : chaque recette affiche qui l'a publiée et sa note sur le site, et la
+  fiche charge les commentaires des utilisateurs (avec les réponses de Monsieur Cuisine).
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
   (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
 - **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
@@ -28,6 +53,8 @@ qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les re
   passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter.
 - **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
+- **Heure toujours juste** : le fuseau horaire est trouvé d'après la connexion Internet et l'heure
+  vient du réseau (le robot n'a pas de pile d'horloge) ; réglable à la main dans Réglages › Date et heure.
 - **Pensé pour un robot sans boutons Android** : Toque s'ouvre au démarrage, et un bouton
   **« Retour à Toque »** reste affiché par-dessus l'appli d'origine quand on l'ouvre.
 - **Mises à jour depuis GitHub** : Réglages › Mises à jour vérifie les
@@ -65,8 +92,10 @@ app/    Appli Android (minSdk 23), sans AndroidX
         machine/   service de pilotage (processus « :machine ») et IPC
         recipes/   catalogue local, synchro Lidl
         ui/        écrans
-tools/  twin.py (jumeau numérique pour tester sur PC), scripts de root (TWRP), d'installation et de restauration
+tools/  setup/toque-setup.ps1 (installation complète, pilotable par un agent IA), scripts de root (TWRP),
+        d'installation, de restauration et de publication, twin.py (jumeau numérique pour tester sur PC)
 docs/   INSTALLATION.md (EN), INSTALLATION.fr.md (FR)
+AGENTS.md  procédure d'installation pour un agent IA
 ```
 
 ## Compiler
@@ -115,12 +144,15 @@ Toutes les compilations sont signées avec la clé du projet (`app/signature/`, 
 compilé sur n'importe quel PC ou par GitHub s'installe par-dessus la version précédente. N'installez que
 les APK publiés sur ce dépôt.
 
-Sans GitHub Actions : lancer `gradlew assembleRelease`, puis créer sur GitHub une version nommée `vX.Y.Z`
-et y joindre `app/build/outputs/apk/release/app-release.apk` (renommé `Toque-X.Y.Z.apk`).
+Sans GitHub Actions : `gradlew assembleRelease`, puis
+`powershell -ExecutionPolicy Bypass -File tools\publish-release.ps1 -Apk app\build\outputs\apk\release\app-release.apk`
+crée la version `vX.Y.Z` et y joint l'APK (jeton GitHub : `GH_TOKEN`, `gh`, ou les identifiants déjà
+enregistrés pour git).
 
 ## Installer sur le robot
 
-Voir **[docs/INSTALLATION.fr.md](docs/INSTALLATION.fr.md)** : root, installation, premier essai à vide,
+Avec un agent IA : **[AGENTS.md](AGENTS.md)** (voir plus haut). À la main :
+**[docs/INSTALLATION.fr.md](docs/INSTALLATION.fr.md)** : root, installation, premier essai à vide,
 synchronisation des recettes, retour à l'appli d'origine.
 
 ## Crédits

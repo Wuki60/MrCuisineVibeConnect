@@ -97,7 +97,7 @@ class McOnlineTest {
             assertEquals("Cuisinier d'essai", author); assertEquals(5, rating); assertEquals("2025-12-02", date)
             assertEquals("Très bonne recette, toute la famille a aimé.", message); assertEquals("", reply)
         }
-        assertEquals("Merci, nous corrigeons la recette.", p.reviews[1].reply)
+        assertEquals("Bonjour,\nMerci, nous corrigeons la recette.\n\nMeilleures salutations", p.reviews[1].reply)
         assertEquals(900001L, McOnline.apiIdOf("web-900001"))
         assertNull(McOnline.apiIdOf("mc-26946"))
         assertTrue(McOnline.reviewsUrl(900001, 2).endsWith("/api/v1/recipe-reviews/recipes/900001/reviews?page=2&size=10"))

@@ -165,14 +165,14 @@ object McOnline {
         val reviews = d["reviews"].list().mapNotNull { any ->
             val r = any.obj()
             if (r.bool("isReported") == true) return@mapNotNull null
-            val message = r.str("message")?.trim().orEmpty()
+            val message = plain(r.str("message")).orEmpty()
             val rating = (r.int("rating") ?: 0).coerceIn(0, 5)
             if (message.isEmpty() && rating == 0) return@mapNotNull null
             val reply = when (val c = r["comment"]) {
                 is String -> c
                 is Map<*, *> -> c.obj().str("message") ?: c.obj().str("comment") ?: c.obj().str("text")
                 else -> null
-            }?.trim().orEmpty()
+            }.let { plain(it) }.orEmpty()
             Review(
                 author = r["author"].obj().str("name")?.trim().orEmpty(),
                 rating = rating,
@@ -286,7 +286,7 @@ object McOnline {
             .replace(Regex("<[^>]+>"), "")
             .replace("&nbsp;", " ").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
             .replace("&quot;", "\"").replace("&#39;", "'").replace("&rsquo;", "’")
-            .lines().joinToString("\n") { it.trim() }
+            .lines().joinToString("\n") { it.replace(Regex("[ \\t\u00a0]{2,}"), " ").trim() }
             .replace(Regex("\n{3,}"), "\n\n")
             .trim()
         return t.ifEmpty { null }
