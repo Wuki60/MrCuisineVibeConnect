@@ -109,6 +109,33 @@ class ControllerTest {
         assertTrue(v.has("lid"))
     }
 
+    @Test fun requiredBowlRefusesToStartWithoutIt() {
+        val b = Bench(ControllerConfig(requireBowl = true)).ready()
+        assertTrue(b.snap.bowlDetected)
+        b.board.bowlPresent = false
+        b.step(200)
+        assertFalse(b.snap.bowlDetected)
+        val v = b.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000))
+        assertFalse(v.ok)
+        assertTrue(v.has("bowl"))
+    }
+
+    /** Base qui signale le bol à l'envers : bit NTC à 1 quand le bol est retiré. */
+    @Test fun invertedBowlSensorIsReadTheOtherWayRound() {
+        val b = Bench(ControllerConfig(requireBowl = true, invertBowl = true)).ready()
+        // Bit à 1 : sur cette base, le bol est retiré.
+        assertFalse(b.snap.bowlDetected)
+        val refused = b.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000))
+        assertFalse(refused.ok)
+        assertTrue(refused.has("bowl"))
+        // Bit à 0 : le bol est en place.
+        b.board.bowlPresent = false
+        b.step(200)
+        assertTrue(b.snap.bowlDetected)
+        val v = b.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000))
+        assertTrue(v.message, v.ok)
+    }
+
     @Test fun lidOpeningPausesAndNothingRestartsAlone() {
         val b = Bench().ready()
         b.c.startJob(Programs.manual(3, 13, Direction.CLOCKWISE, 60_000))

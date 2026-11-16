@@ -69,6 +69,13 @@ class Prefs(context: Context) {
             p.edit().putBoolean("requireBowl", v).commit()
         }
 
+    /** Capteur du bol lu à l'envers (bases qui signalent « bol » quand il est retiré). */
+    var invertBowl: Boolean
+        get() = p.getBoolean("invertBowl", false)
+        set(v) {
+            p.edit().putBoolean("invertBowl", v).commit()
+        }
+
     /** Montée progressive de la vitesse quand le contenu est chaud (≥ 60 °C). */
     var hotRamp: Boolean
         get() = p.getBoolean("hotRamp", true)
