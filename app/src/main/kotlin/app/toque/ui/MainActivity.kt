@@ -51,6 +51,8 @@ class MainActivity : Activity() {
     private var tone: ToneGenerator? = null
     private var toastView: TextView? = null
     private var lastKnobMs = 0L
+    private lateinit var standby: Standby
+    private var swallowTouch = false
     var knobListener: ((KeyEvent) -> Unit)? = null
 
     val prefs: Prefs get() = app.prefs
@@ -79,6 +81,7 @@ class MainActivity : Activity() {
         overlay.visibility = View.GONE
         root.addView(overlay, Ui.flp())
         setContentView(root)
+        standby = Standby(this, root)
 
         try {
             tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
@@ -108,9 +111,11 @@ class MainActivity : Activity() {
             topBar.update(s)
             machineBar.update(s)
             stack.lastOrNull()?.onSnapshot(s)
+            standby.onSnapshot(s)
         }
         unsubscribeEvents = app.machine.onEvent { e -> onMachineEvent(e) }
         topBar.startClock()
+        standby.start()
     }
 
     override fun onResume() {
@@ -125,6 +130,7 @@ class MainActivity : Activity() {
         unsubscribe?.invoke()
         unsubscribeEvents?.invoke()
         topBar.stopClock()
+        standby.stop()
         super.onStop()
     }
 
@@ -205,7 +211,20 @@ class MainActivity : Activity() {
 
     // ------------------------------------------------------------------ bouton rotatif
 
+    // ------------------------------------------------------------------ veille
+
+    /** Le geste qui réveille l'écran ne fait rien d'autre (on ne lance rien en le touchant dans le noir). */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) swallowTouch = standby.onInput()
+        if (swallowTouch) {
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) swallowTouch = false
+            return true
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN && standby.onKnob()) return true
         knobListener?.let { l ->
             if (event.action == KeyEvent.ACTION_DOWN) l(event)
             return true
@@ -228,6 +247,7 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_SCROLL && standby.onKnob()) return true
         if (event.action == MotionEvent.ACTION_SCROLL) {
             // Encodeur rotatif (AXIS_SCROLL) ou molette (AXIS_VSCROLL)
             val v = event.getAxisValue(AXIS_SCROLL).let { if (it == 0f) -event.getAxisValue(MotionEvent.AXIS_VSCROLL) else it }
@@ -244,6 +264,7 @@ class MainActivity : Activity() {
 
     private fun onMachineEvent(e: MachineEvent) {
         current?.onEvent(e)
+        if (e.type != EventType.LINK_CHANGED && e.type != EventType.PHASE_CHANGED) standby.poke()
         when (e.type) {
             EventType.JOB_FINISHED -> chime(2)
             EventType.FAULT -> { chime(3); toast(e.message, Ui.DANGER) }

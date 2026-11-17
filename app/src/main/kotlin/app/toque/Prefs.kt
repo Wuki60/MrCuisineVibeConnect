@@ -89,6 +89,20 @@ class Prefs(context: Context) {
             p.edit().putBoolean("sound", v).commit()
         }
 
+    /** Mise en veille de l'écran après ce nombre de minutes sans geste (0 : jamais). */
+    var standbyMinutes: Int
+        get() = p.getInt("standbyMinutes", 10)
+        set(v) {
+            p.edit().putInt("standbyMinutes", v).commit()
+        }
+
+    /** Pendant la veille, la molette reste allumée en veilleuse (blanc faible). */
+    var standbyKnobLight: Boolean
+        get() = p.getBoolean("standbyKnobLight", true)
+        set(v) {
+            p.edit().putBoolean("standbyKnobLight", v).commit()
+        }
+
     /** Fuseau horaire : « auto » (d'après la connexion Internet) ou un identifiant IANA choisi à la main. */
     var timeZone: String
         get() = p.getString("timeZone", "auto") ?: "auto"

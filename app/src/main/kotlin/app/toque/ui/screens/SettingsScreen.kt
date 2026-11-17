@@ -103,6 +103,18 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
             a.applyLanguage()
         }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
 
+        // ---- Écran
+        val screen = section(right, tr("Écran"), Icon.Kind.CLOCK)
+        val delays = listOf("0" to tr("Jamais")) + listOf(2, 5, 10, 15, 30).map { it.toString() to tr("Après %d min", it) }
+        screen.addView(Ui.text(c, tr("Mise en veille"), 18f, Ui.TEXT))
+        screen.addView(dropdown(delays, a.prefs.standbyMinutes.toString()) { m -> a.prefs.standbyMinutes = m.toInt() },
+            Ui.lp(Ui.MATCH, Ui.u(58), t = 8))
+        screen.addView(Ui.text(c, tr("Sans geste ni programme en cours, l'écran s'assombrit et n'affiche plus que l'heure. Touchez-le ou tournez le bouton pour reprendre ; le couvercle et la balance le réveillent aussi."),
+            15f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 8))
+        screen.addView(toggle(tr("Molette en veilleuse pendant la veille"), a.prefs.standbyKnobLight) {
+            a.prefs.standbyKnobLight = it
+        }, Ui.lp(t = 12))
+
         // ---- Date et heure
         val time = section(right, tr("Date et heure"), Icon.Kind.CLOCK)
         val zones = listOf(ZoneLookup.AUTO to tr("Automatique (d'après la connexion Internet)")) +
@@ -211,8 +223,10 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         val box = Ui.horizontal(c)
         box.setPadding(Ui.u(16), 0, Ui.u(14), 0)
         box.background = Ui.pressable(Ui.round(Ui.SURFACE2, 16f, Ui.STROKE, 1f), 16f)
-        val label = options.firstOrNull { it.first == selected }?.second ?: options.first().second
-        box.addView(Ui.text(c, label, 19f, Ui.TEXT), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        var current = selected
+        fun labelOf(code: String) = options.firstOrNull { it.first == code }?.second ?: options.first().second
+        val label = Ui.text(c, labelOf(current), 19f, Ui.TEXT)
+        box.addView(label, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         box.addView(Icon(c, Icon.Kind.CHEVRON, Ui.TEXT2).apply { rotation = 90f }, LinearLayout.LayoutParams(Ui.u(22), Ui.u(22)))
         box.isClickable = true
         box.setOnClickListener {
@@ -225,13 +239,18 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
             val height = if (options.size > 7) Ui.u(400) else ViewGroup.LayoutParams.WRAP_CONTENT
             val popup = PopupWindow(scroll, box.width, height, false)
             for ((code, name) in options) {
-                val row = Ui.text(c, name, 19f, if (code == selected) Ui.ACCENT else Ui.TEXT)
+                val row = Ui.text(c, name, 19f, if (code == current) Ui.ACCENT else Ui.TEXT)
                 row.setPadding(Ui.u(16), Ui.u(14), Ui.u(16), Ui.u(14))
                 row.background = Ui.pressable(Ui.round(0, 0f), 0f)
                 row.isClickable = true
                 row.setOnClickListener {
                     popup.dismiss()
-                    if (code != selected) onPick(code)
+                    if (code != current) {
+                        // Le choix s'affiche tout de suite (avant, il fallait rouvrir les réglages).
+                        current = code
+                        label.text = labelOf(code)
+                        onPick(code)
+                    }
                 }
                 list.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP))
             }

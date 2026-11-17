@@ -32,6 +32,8 @@ abstract class Screen(val a: MainActivity) {
     open fun onKnob(delta: Int): Boolean = false
     open fun onKnobPress(): Boolean = false
     open fun canLeave(): Boolean = true
+    /** Empêche la mise en veille tant que cet écran est affiché (balance). */
+    open val keepAwake: Boolean get() = false
 }
 
 /** Barre supérieure : retour, titre, état de la base, heure. */
