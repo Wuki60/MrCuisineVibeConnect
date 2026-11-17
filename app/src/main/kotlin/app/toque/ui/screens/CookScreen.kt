@@ -141,7 +141,10 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
         text.text = step.text.ifBlank { step.machine?.summary ?: "" }
         val w = step.weigh
         weighBox.visibility = if (w != null) View.VISIBLE else View.GONE
-        if (w != null) weighLabel.text = tr("Pesez %d g", w.grams) + if (w.label.isNotBlank()) " · ${w.label}" else ""
+        if (w != null) {
+            weighLabel.text = (if (w.originalGrams > 0) tr("Pesez %d g (recette : %d g)", w.grams, w.originalGrams) else tr("Pesez %d g", w.grams)) +
+                if (w.label.isNotBlank()) " · ${w.label}" else ""
+        }
         Ui.setButtonEnabled(prevBtn, index > 0)
         nextLabel.text = if (index == n - 1) tr("Terminer") else tr("Suivant")
         buildPanel()

@@ -22,7 +22,14 @@ import app.toque.core.protocol.Operation
 /** Recettes Lidl importées (site monsieur-cuisine.com ou appli d'origine) ; USER : réservé aux recettes perso. */
 enum class RecipeSource { IMPORTED, USER }
 
-data class Ingredient(val qty: String = "", val unit: String = "", val name: String, val note: String = "") {
+data class Ingredient(
+    val qty: String = "",
+    val unit: String = "",
+    val name: String,
+    val note: String = "",
+    /** Quantité de la recette quand l'utilisateur l'a adaptée (voir [RecipeAdjustments]) ; vide sinon. Non enregistrée. */
+    val originalQty: String = "",
+) {
     val display: String
         get() = buildString {
             if (qty.isNotBlank()) append(qty.trim()).append(' ')
@@ -108,7 +115,8 @@ data class StepMachine(
     val valid: Boolean get() = violations().isEmpty()
 }
 
-data class Weigh(val label: String, val grams: Int)
+/** [originalGrams] : poids de la recette quand l'utilisateur l'a adapté (voir [RecipeAdjustments]) ; 0 sinon. Non enregistré. */
+data class Weigh(val label: String, val grams: Int, val originalGrams: Int = 0)
 
 data class Step(
     val text: String,

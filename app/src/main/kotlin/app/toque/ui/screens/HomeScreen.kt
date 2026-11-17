@@ -62,7 +62,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         resumeCard.addView(resumeText, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         resumeCard.isClickable = true
         resumeCard.setOnClickListener {
-            val r = a.app.recipes.get(a.prefs.guidedRecipe)
+            val r = a.app.recipes.getAdjusted(a.prefs.guidedRecipe)
             if (r != null) a.push(CookScreen(a, r, a.prefs.guidedStep)) else { a.prefs.guidedRecipe = ""; refresh() }
         }
         left.addView(resumeCard, Ui.lp(Ui.MATCH, Ui.WRAP, t = 16))
