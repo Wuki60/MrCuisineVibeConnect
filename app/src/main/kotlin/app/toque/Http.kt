@@ -12,6 +12,21 @@ object Http {
 
     var userAgent = "Toque (Android; +https://github.com/Wuki60/MrCuisineVibeConnect)"
 
+    /** Heure du serveur (en-tête Date) quel que soit le code de réponse ; 0 si absente. */
+    fun serverDate(url: String, timeoutMs: Int = 8_000): Long {
+        val c = URL(url).openConnection() as HttpURLConnection
+        try {
+            c.connectTimeout = timeoutMs
+            c.readTimeout = timeoutMs
+            c.instanceFollowRedirects = false
+            c.setRequestProperty("User-Agent", userAgent)
+            c.responseCode
+            return c.date
+        } finally {
+            c.disconnect()
+        }
+    }
+
     fun get(url: String, headers: Map<String, String> = emptyMap(), timeoutMs: Int = 15_000, maxBytes: Int = 1024 * 1024): Response {
         val c = URL(url).openConnection() as HttpURLConnection
         try {
