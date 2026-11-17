@@ -8,6 +8,7 @@ import app.toque.Prefs
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.json.Json
+import app.toque.core.json.int
 import app.toque.core.json.obj
 import app.toque.core.json.str
 import app.toque.core.recipes.McOnline
@@ -51,7 +52,8 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
     private fun run(progress: (String) -> Unit): LidlSync.Report {
         val language = McOnline.languageFor(I18n.code)
         val stored = readIndex()
-        val index = if (stored.first == language) HashMap(stored.second) else HashMap()
+        // Autre langue ou lecture des fiches améliorée depuis : toutes les fiches sont relues.
+        val index = if (stored.language == language && stored.parser == McOnline.PARSER) HashMap(stored.recipes) else HashMap()
 
         // 1. Liste complète (résumés).
         progress(tr("Liste des recettes…"))
@@ -213,18 +215,20 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         }
     }
 
-    private fun readIndex(): Pair<String, Map<String, String>> = try {
+    private class Index(val language: String, val parser: Int, val recipes: Map<String, String>)
+
+    private fun readIndex(): Index = try {
         val m = Json.parse(indexFile.readText()).obj()
         val ids = m["recipes"].obj().mapValues { (_, v) -> v?.toString().orEmpty() }
-        (m.str("language").orEmpty()) to ids
+        Index(m.str("language").orEmpty(), m.int("parser") ?: 1, ids)
     } catch (_: Exception) {
-        "" to emptyMap()
+        Index("", 0, emptyMap())
     }
 
     private fun writeIndex(language: String, index: Map<String, String>) {
         try {
             val tmp = File(indexFile.path + ".part")
-            tmp.writeText(Json.write(linkedMapOf("language" to language, "recipes" to index)))
+            tmp.writeText(Json.write(linkedMapOf("language" to language, "parser" to McOnline.PARSER, "recipes" to index)))
             tmp.renameTo(indexFile)
         } catch (e: Exception) {
             log.write("synchro", "index non enregistré : $e")

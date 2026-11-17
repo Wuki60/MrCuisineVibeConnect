@@ -34,7 +34,7 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
 
 ## Ce que fait Toque
 
-- **Interface sombre**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
+- **Interface sombre, bleu nuit**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
   tablette d'origine (1 Go de RAM, Android 6) : pas de bibliothèque lourde, images
   sous-échantillonnées, vues recyclées.
 - **Recettes Lidl, directement depuis monsieur-cuisine.com**. Toque télécharge les recettes
@@ -47,19 +47,43 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
   fiche charge les commentaires des utilisateurs (avec les réponses de Monsieur Cuisine).
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
   (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
+  Listes **Récentes** (dernières recettes cuisinées) et **Fréquentes** (les plus cuisinées), aussi
+  accessibles d'un appui sous la barre de recherche de l'accueil.
 - **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
   seule, pesée intégrée, reprise après coupure. Les réglages qui se suivent sans geste à faire
   entre eux (rinçage, mixages en plusieurs vitesses…) partent ensemble d'un seul appui : la lame
-  passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter.
+  passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter. Les étapes du
+  site en **montée progressive de vitesse** (« ramp ») deviennent une étape machine par palier.
+  Une recette en cours s'affiche sur l'accueil et peut y être **abandonnée** (✕), sauf pendant un
+  programme.
+- **Notes et quantités personnelles** : une note libre sur chaque recette, et un appui sur la
+  quantité d'un ingrédient la change (1000 g d'eau → 800 g) ; les pesées et les mentions des étapes
+  qui l'utilisent suivent en proportion (pavé numérique, fractions comprises). Favoris, notes et quantités corrigées suivent la recette
+  quand une synchronisation la remplace par la même recette de l'autre source (site ou appli
+  d'origine).
+- **Sons** : une cloche sonne quand la quantité à peser est atteinte (son au choix dans les
+  Réglages), et une mélodie forte retentit à la fin du dernier programme de la recette. Un réglage
+  vérifié (« J'ai vérifié ce réglage ») est mémorisé pour les prochaines fois.
 - **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
 - **Heure toujours juste** : le fuseau horaire est trouvé d'après la connexion Internet et l'heure
-  vient du réseau (le robot n'a pas de pile d'horloge) ; réglable à la main dans Réglages › Date et heure.
+  vient du réseau (le robot n'a pas de pile d'horloge). Juste après l'allumage, l'horloge est réglée
+  d'après le premier serveur qui répond : l'heure est juste en quelques secondes au lieu de rester
+  sur 01:00. Réglable à la main dans Réglages › Date et heure.
+- **Mise en veille**, comme l'appli d'origine : après quelques minutes sans toucher l'écran ni le
+  bouton rotatif (de 2 à 30 min, ou jamais, dans Réglages › Écran), un écran noir assombri affiche
+  l'heure, et la température du bol quand il est chaud. Jamais pendant un programme ni sur la
+  balance. Le geste qui réveille ne fait rien d'autre. Pendant la veille, l'anneau de la molette
+  reste allumé en veilleuse blanche très faible (désactivable).
+- **Capteur du bol inversé** : sur certains robots (vu sur un SKMC 1200 C3), la base signale le bol
+  présent quand il est retiré ; Réglages › Sécurité › Inverser le capteur du bol corrige cela.
 - **Pensé pour un robot sans boutons Android** : Toque s'ouvre au démarrage, et un bouton
   **« Retour à Toque »** reste affiché par-dessus l'appli d'origine quand on l'ouvre.
 - **Mises à jour depuis GitHub** : Réglages › Mises à jour vérifie les
   [versions publiées](https://github.com/Wuki60/MrCuisineVibeConnect/releases) de ce dépôt et installe
   la nouvelle (sans rien demander sur un robot rooté, puis Toque redémarre). Refusé pendant un programme.
+  Les certificats racines récents absents d'Android 6 (ISRG Root X1/X2 pour le serveur de
+  téléchargement de GitHub, Sectigo, Google) sont embarqués : les téléchargements HTTPS marchent sur le robot.
 
 ## Sécurité : ce qui change par rapport à l'appli d'origine
 

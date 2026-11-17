@@ -69,6 +69,13 @@ class Prefs(context: Context) {
             p.edit().putBoolean("requireBowl", v).commit()
         }
 
+    /** Capteur du bol lu à l'envers (bases qui signalent « bol » quand il est retiré). */
+    var invertBowl: Boolean
+        get() = p.getBoolean("invertBowl", false)
+        set(v) {
+            p.edit().putBoolean("invertBowl", v).commit()
+        }
+
     /** Montée progressive de la vitesse quand le contenu est chaud (≥ 60 °C). */
     var hotRamp: Boolean
         get() = p.getBoolean("hotRamp", true)
@@ -87,6 +94,20 @@ class Prefs(context: Context) {
         get() = p.getBoolean("sound", true)
         set(v) {
             p.edit().putBoolean("sound", v).commit()
+        }
+
+    /** Mise en veille de l'écran après ce nombre de minutes sans geste (0 : jamais). */
+    var standbyMinutes: Int
+        get() = p.getInt("standbyMinutes", 10)
+        set(v) {
+            p.edit().putInt("standbyMinutes", v).commit()
+        }
+
+    /** Pendant la veille, la molette reste allumée en veilleuse (blanc faible). */
+    var standbyKnobLight: Boolean
+        get() = p.getBoolean("standbyKnobLight", true)
+        set(v) {
+            p.edit().putBoolean("standbyKnobLight", v).commit()
         }
 
     /** Fuseau horaire : « auto » (d'après la connexion Internet) ou un identifiant IANA choisi à la main. */
@@ -188,5 +209,19 @@ class Prefs(context: Context) {
         get() = p.getInt("guidedStep", 0)
         set(v) {
             p.edit().putInt("guidedStep", v).commit()
+        }
+
+    /** Réglages importés déjà vérifiés (« J'ai vérifié ce réglage »), clé = recette, étape et réglage. */
+    var reviewedSteps: Set<String>
+        get() = HashSet(p.getStringSet("reviewedSteps", emptySet()) ?: emptySet())
+        set(v) {
+            p.edit().putStringSet("reviewedSteps", HashSet(v)).commit()
+        }
+
+    /** Son joué quand la quantité à peser est atteinte (voir Sounds.WEIGH_SOUNDS). */
+    var weighSound: String
+        get() = p.getString("weighSound", "ding") ?: "ding"
+        set(v) {
+            p.edit().putString("weighSound", v).commit()
         }
 }

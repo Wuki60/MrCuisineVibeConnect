@@ -35,10 +35,24 @@ import java.util.concurrent.Executors
  * Catalogue des recettes Lidl : recherche instantanée tolérante (accents, pluriels, fautes de
  * frappe), filtres, et recherche par ingrédients (séparés par des virgules).
  */
-class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, favorites: Boolean = false) : Screen(a) {
-    override val title = if (favorites) tr("Favoris") else tr("Recettes")
+class RecipesScreen(
+    a: MainActivity,
+    private val focusSearch: Boolean = false,
+    favorites: Boolean = false,
+    initialUsage: Usage = Usage.NONE,
+) : Screen(a) {
+    /** Listes tirées des cuissons : dernières recettes cuisinées, ou les plus cuisinées. */
+    enum class Usage { NONE, RECENT, MOST }
+
+    override val title = when {
+        favorites -> tr("Favoris")
+        initialUsage == Usage.RECENT -> tr("Récentes")
+        initialUsage == Usage.MOST -> tr("Fréquentes")
+        else -> tr("Recettes")
+    }
 
     private var filter = RecipeFilter(favoritesOnly = favorites)
+    private var usage = initialUsage
     private var query = ""
     private var results: List<SearchIndex.Hit> = emptyList()
     private var generation = 0
@@ -132,23 +146,35 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
 
     private fun buildChips() {
         chips.removeAllViews()
-        fun chip(label: String, selected: Boolean, f: RecipeFilter) {
-            chips.addView(Ui.toggleChip(c, label, selected) { filter = f; buildChips(); search() }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
+        fun chip(label: String, selected: Boolean, f: RecipeFilter, u: Usage = Usage.NONE) {
+            chips.addView(Ui.toggleChip(c, label, selected) { filter = f; usage = u; buildChips(); search() }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
         }
         val base = RecipeFilter()
-        chip(tr("Toutes"), filter == base, base)
-        chip(tr("Favoris"), filter.favoritesOnly, base.copy(favoritesOnly = true))
-        chip(tr("30 min max"), filter.maxMinutes == 30, base.copy(maxMinutes = 30))
-        for (cat in a.app.recipes.index.categories.take(30)) chip(cat, filter.category == cat, base.copy(category = cat))
+        val plain = usage == Usage.NONE
+        chip(tr("Toutes"), plain && filter == base, base)
+        chip(tr("Récentes"), usage == Usage.RECENT, base, Usage.RECENT)
+        chip(tr("Fréquentes"), usage == Usage.MOST, base, Usage.MOST)
+        chip(tr("Favoris"), plain && filter.favoritesOnly, base.copy(favoritesOnly = true))
+        chip(tr("30 min max"), plain && filter.maxMinutes == 30, base.copy(maxMinutes = 30))
+        for (cat in a.app.recipes.index.categories.take(30)) chip(cat, plain && filter.category == cat, base.copy(category = cat))
     }
 
     private fun search() {
         val gen = ++generation
         val q = query
         val f = filter
-        val index = a.app.recipes.index
+        val u = usage
+        val repo = a.app.recipes
+        val index = repo.index
         searchExec.execute {
-            val hits = if (q.contains(',')) index.withIngredients(q.split(','), f) else index.search(q, f)
+            val found = if (q.contains(',')) index.withIngredients(q.split(','), f) else index.search(q, f)
+            val hits = if (u == Usage.NONE) found else {
+                // Ordre des cuissons ; la recherche tapée, s'il y en a une, ne fait que filtrer.
+                val ids = if (u == Usage.RECENT) repo.recentIds() else repo.mostCookedIds()
+                val byId = index.entries.associateBy { it.id }
+                val keep = if (q.isBlank()) null else found.mapTo(HashSet()) { it.entry.id }
+                ids.filter { keep == null || it in keep }.mapNotNull { id -> byId[id]?.let { SearchIndex.Hit(it, 0.0, 0) } }
+            }
             view.post {
                 if (gen != generation) return@post
                 results = hits
@@ -167,6 +193,7 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
             none && a.prefs.mode == Prefs.Mode.HARDWARE ->
                 tr("Les recettes Lidl apparaîtront après la première synchronisation.\nRéglages › Recettes Lidl › Synchroniser.")
             none -> tr("Les recettes Lidl apparaîtront après la première synchronisation, une fois Toque installé sur le robot.")
+            usage != Usage.NONE && query.isBlank() -> tr("Aucune recette cuisinée pour l'instant.\nLes recettes apparaissent ici dès leur première cuisson.")
             filter.favoritesOnly && query.isBlank() -> tr("Aucun favori pour l'instant.\nTouchez l'étoile d'une recette pour l'ajouter.")
             else -> tr("Aucune recette ne correspond.\nAstuce : séparez plusieurs ingrédients par des virgules.")
         }
@@ -189,6 +216,21 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
     override fun onKnob(delta: Int): Boolean {
         grid.smoothScrollBy(delta * Ui.u(240), 150)
         return true
+    }
+
+    /** « Aujourd'hui », « Hier », « Il y a 3 jours », puis la date. */
+    private fun ago(ms: Long): String {
+        val day = 86_400_000L
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0); cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0); cal.set(java.util.Calendar.MILLISECOND, 0)
+        val midnight = cal.timeInMillis
+        return when {
+            ms >= midnight -> tr("Aujourd'hui")
+            ms >= midnight - day -> tr("Hier")
+            ms >= midnight - 6 * day -> tr("Il y a %d jours", ((midnight - ms) / day + 1).toInt())
+            else -> java.text.SimpleDateFormat(tr("d MMM"), I18n.locale).format(java.util.Date(ms))
+        }
     }
 
     private companion object {
@@ -239,6 +281,9 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
         fun bind(e: SearchIndex.Entry) {
             title.text = e.title
             val parts = ArrayList<String>()
+            val u = a.app.recipes.usage(e.id)
+            if (u != null && usage == Usage.MOST) parts += if (u.count == 1) tr("1 fois") else tr("%d fois", u.count)
+            if (u != null && usage == Usage.RECENT) parts += ago(u.lastMs)
             if (e.ratingCount > 0) parts += "★ " + String.format(I18n.locale, "%.1f", e.rating)
             if (e.totalMinutes > 0) parts += "${e.totalMinutes} min"
             if (e.category.isNotBlank()) parts += e.category

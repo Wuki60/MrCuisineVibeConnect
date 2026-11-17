@@ -29,9 +29,13 @@ abstract class Screen(val a: MainActivity) {
     open fun onHide() {}
     open fun onSnapshot(s: Snapshot) {}
     open fun onEvent(e: MachineEvent) {}
+    /** L'écran joue lui-même le son de fin de ce programme (fin de recette) : pas de bip habituel. */
+    open fun ownsFinishSound(e: MachineEvent): Boolean = false
     open fun onKnob(delta: Int): Boolean = false
     open fun onKnobPress(): Boolean = false
     open fun canLeave(): Boolean = true
+    /** Empêche la mise en veille tant que cet écran est affiché (balance). */
+    open val keepAwake: Boolean get() = false
 }
 
 /** Barre supérieure : retour, titre, état de la base, heure. */
@@ -57,7 +61,7 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
         orientation = HORIZONTAL
         setGravity(Gravity.CENTER_VERTICAL)
         setPadding(Ui.u(10), 0, Ui.u(18), 0)
-        setBackgroundColor(Ui.BG)
+        // Transparente : le dégradé du fond passe aussi derrière la barre du haut.
         back.setPadding(Ui.u(10), Ui.u(10), Ui.u(10), Ui.u(10))
         back.background = Ui.pressable(Ui.round(0, 30f), 30f)
         back.setOnClickListener { a.back() }

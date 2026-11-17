@@ -83,6 +83,8 @@ class ControllerConfig(
     val hotRamp: Boolean = true,
     /** Exiger le capteur du bol (bit NTC) avant tout démarrage. */
     val requireBowl: Boolean = false,
+    /** Certaines bases signalent le bol à l'envers (bit NTC à 1 quand le bol est retiré) : inverser la lecture. */
+    val invertBowl: Boolean = false,
 )
 
 /**
@@ -320,6 +322,9 @@ class MachineController(
 
     // ------------------------------------------------------------------ commandes
 
+    /** Bol présent d'après la base, en tenant compte de l'inversion réglée pour ce robot. */
+    private fun bowlPresent(t: Telemetry): Boolean = t.bowlNtcDetected != config.invertBowl
+
     private fun fresh(now: Long): Boolean = latest != null && now - latestAtMs <= config.freshMs
 
     private fun baseChecks(now: Long): List<Violation> {
@@ -337,7 +342,7 @@ class MachineController(
         }
         if (t.lidOpen) v += Violation("lid", tr("Fermez et verrouillez le couvercle"))
         if (t.errorDetected) v += Violation("board_error", Mcc.boardErrorMessage(t.errorCode))
-        if (config.requireBowl && !t.bowlNtcDetected) v += Violation("bowl", tr("Bol non détecté"))
+        if (config.requireBowl && !bowlPresent(t)) v += Violation("bowl", tr("Bol non détecté"))
         return v
     }
 
@@ -641,7 +646,7 @@ class MachineController(
             scaleStable = t?.scaleStable ?: false,
             scaleState = t?.androidScaleState ?: "",
             lidOpen = t?.lidOpen ?: false,
-            bowlDetected = t?.bowlNtcDetected ?: false,
+            bowlDetected = t?.let { bowlPresent(it) } ?: false,
             motorOn = t?.motorOn ?: false,
             heaterOn = t?.heaterOn ?: false,
             boardErrorCode = if (t?.errorDetected == true) t.errorCode else 0,

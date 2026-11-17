@@ -7,10 +7,13 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Handler
 import android.os.Looper
 import app.toque.core.recipes.Recipe
+import app.toque.core.recipes.RecipeAdjustments
 import app.toque.core.recipes.RecipeCodec
 import app.toque.core.recipes.RecipeSource
 import app.toque.core.recipes.SearchIndex
+import app.toque.core.recipes.adjusted
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
 /**
@@ -24,6 +27,17 @@ class RecipeRepo(private val context: Context) {
             db.execSQL("CREATE TABLE favorites (id TEXT PRIMARY KEY)")
         }
 
+        // Table ajoutée sans changer le numéro de version de la base : une version plus ancienne
+        // de l'appli, qui l'ignore, peut toujours ouvrir la même base.
+        override fun onOpen(db: SQLiteDatabase) {
+            if (!db.isReadOnly) {
+                db.execSQL("CREATE TABLE IF NOT EXISTS adjustments (id TEXT PRIMARY KEY, json TEXT NOT NULL)")
+                // Recettes cuisinées : nombre de fois et dernière fois (ms), pour « Récentes » et
+                // « Les plus cuisinées ».
+                db.execSQL("CREATE TABLE IF NOT EXISTS cooked (id TEXT PRIMARY KEY, count INTEGER NOT NULL, last INTEGER NOT NULL)")
+            }
+        }
+
         override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
     }
     private val exec = Executors.newSingleThreadExecutor { r -> Thread(r, "toque-recettes").apply { priority = Thread.NORM_PRIORITY - 1 } }
@@ -35,6 +49,12 @@ class RecipeRepo(private val context: Context) {
     @Volatile var loaded = false
         private set
     private val favorites = HashSet<String>()
+    /** Une recette cuisinée [count] fois, la dernière à [lastMs]. */
+    class Usage(val count: Int, val lastMs: Long)
+    private val cooked = ConcurrentHashMap<String, Usage>()
+    /** Adaptations personnelles (note, quantités, pesées), par identifiant de recette. */
+    private val adjustments = ConcurrentHashMap<String, RecipeAdjustments>()
+    @Volatile private var adjustmentsLoaded = false
 
     val imagesDir: File get() = File(context.filesDir, "images").apply { mkdirs() }
 
@@ -48,7 +68,8 @@ class RecipeRepo(private val context: Context) {
     fun load() = exec.execute { rebuild() }
 
     private fun rebuild() {
-        val db = helper.readableDatabase
+        val db = helper.writableDatabase
+        loadAdjustments(db)
         val favs = HashSet<String>()
         db.rawQuery("SELECT id FROM favorites", null).use { c -> while (c.moveToNext()) favs += c.getString(0) }
         val list = ArrayList<Recipe>()
@@ -66,6 +87,12 @@ class RecipeRepo(private val context: Context) {
             favorites.clear()
             favorites += favs
         }
+        val usage = HashMap<String, Usage>()
+        db.rawQuery("SELECT id, count, last FROM cooked", null).use { c ->
+            while (c.moveToNext()) usage[c.getString(0)] = Usage(c.getInt(1), c.getLong(2))
+        }
+        cooked.clear()
+        cooked.putAll(usage)
         index = SearchIndex(list)
         loaded = true
         notifyChanged()
@@ -83,6 +110,42 @@ class RecipeRepo(private val context: Context) {
                 null
             } ?: return null
             return r.copy(favorite = isFavorite(id))
+        }
+    }
+
+    /** La recette avec les adaptations de l'utilisateur (quantités et pesées corrigées). */
+    fun getAdjusted(id: String): Recipe? = get(id)?.let { it.adjusted(adjustmentsOf(it.id)) }
+
+    private fun loadAdjustments(db: SQLiteDatabase) {
+        if (adjustmentsLoaded) return
+        synchronized(adjustments) {
+            if (adjustmentsLoaded) return
+            db.rawQuery("SELECT id, json FROM adjustments", null).use { c ->
+                while (c.moveToNext()) {
+                    val a = RecipeAdjustments.decode(c.getString(1))
+                    if (!a.isEmpty) adjustments[c.getString(0)] = a
+                }
+            }
+            adjustmentsLoaded = true
+        }
+    }
+
+    /** Adaptations de l'utilisateur pour cette recette. Conservées d'une synchronisation à l'autre. */
+    fun adjustmentsOf(id: String): RecipeAdjustments {
+        if (!adjustmentsLoaded) loadAdjustments(helper.writableDatabase)
+        return adjustments[id] ?: RecipeAdjustments()
+    }
+
+    fun setAdjustments(id: String, a: RecipeAdjustments) {
+        if (!adjustmentsLoaded) loadAdjustments(helper.writableDatabase)
+        if (a.isEmpty) adjustments.remove(id) else adjustments[id] = a
+        exec.execute {
+            val db = helper.writableDatabase
+            if (a.isEmpty) db.delete("adjustments", "id = ?", arrayOf(id))
+            else db.insertWithOnConflict("adjustments", null, ContentValues().apply {
+                put("id", id)
+                put("json", a.encode())
+            }, SQLiteDatabase.CONFLICT_REPLACE)
         }
     }
 
@@ -108,6 +171,7 @@ class RecipeRepo(private val context: Context) {
 
     private fun replaceAllNow(recipes: List<Recipe>) {
         val db = helper.writableDatabase
+        val before = titles(db)
         db.beginTransaction()
         try {
             db.delete("recipes", null, null)
@@ -121,6 +185,8 @@ class RecipeRepo(private val context: Context) {
                 db.insertWithOnConflict("recipes", null, v, SQLiteDatabase.CONFLICT_REPLACE)
                 if (r.favorite) db.execSQL("INSERT OR IGNORE INTO favorites (id) VALUES (?)", arrayOf(r.id))
             }
+            val kept = recipes.map { it.id }.toHashSet()
+            carryOver(db, before.filterKeys { it !in kept })
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
@@ -162,17 +228,103 @@ class RecipeRepo(private val context: Context) {
     fun removeAllExcept(keep: Set<String>, rebuild: Boolean = true) {
         exec.submit {
             val db = helper.writableDatabase
-            val gone = ArrayList<String>()
-            db.rawQuery("SELECT id FROM recipes", null).use { c -> while (c.moveToNext()) c.getString(0).let { if (it !in keep) gone += it } }
+            val gone = titles(db).filterKeys { it !in keep }
             db.beginTransaction()
             try {
-                for (id in gone) db.delete("recipes", "id = ?", arrayOf(id))
+                for (id in gone.keys) db.delete("recipes", "id = ?", arrayOf(id))
+                carryOver(db, gone)
                 db.setTransactionSuccessful()
             } finally {
                 db.endTransaction()
             }
             if (rebuild) rebuild()
         }.get()
+    }
+
+    private fun titles(db: SQLiteDatabase): Map<String, String> {
+        val out = HashMap<String, String>()
+        db.rawQuery("SELECT id, title FROM recipes", null).use { c -> while (c.moveToNext()) out[c.getString(0)] = c.getString(1) }
+        return out
+    }
+
+    /**
+     * Favoris et adaptations des recettes retirées ([gone] : id → titre), reportés sur la recette
+     * restante de même titre : passer des recettes de l'appli d'origine à celles du site (ou
+     * l'inverse) ne les fait pas disparaître. Les anciennes lignes restent, pour un retour en arrière.
+     */
+    private fun carryOver(db: SQLiteDatabase, gone: Map<String, String>) {
+        if (gone.isEmpty()) return
+        loadAdjustments(db)
+        val favs = HashSet<String>()
+        db.rawQuery("SELECT id FROM favorites", null).use { c -> while (c.moveToNext()) favs += c.getString(0) }
+        val usage = HashMap<String, Usage>()
+        db.rawQuery("SELECT id, count, last FROM cooked", null).use { c ->
+            while (c.moveToNext()) usage[c.getString(0)] = Usage(c.getInt(1), c.getLong(2))
+        }
+        val wanted = gone.filterKeys { it in favs || adjustments.containsKey(it) || usage.containsKey(it) }
+        if (wanted.isEmpty()) return
+        val byTitle = HashMap<String, String>()
+        for ((id, title) in titles(db)) byTitle.putIfAbsent(RecipeAdjustments.titleKey(title), id)
+        for ((id, title) in wanted) {
+            val target = byTitle[RecipeAdjustments.titleKey(title)] ?: continue
+            if (target == id) continue
+            if (id in favs) db.execSQL("INSERT OR IGNORE INTO favorites (id) VALUES (?)", arrayOf(target))
+            usage[id]?.let { u ->
+                val t = usage[target]
+                val merged = Usage(u.count + (t?.count ?: 0), maxOf(u.lastMs, t?.lastMs ?: 0L))
+                usage[target] = merged
+                db.insertWithOnConflict("cooked", null, ContentValues().apply {
+                    put("id", target)
+                    put("count", merged.count)
+                    put("last", merged.lastMs)
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+                // Déplacé, pas copié : des allers-retours entre sources ne gonflent pas le compte.
+                db.execSQL("DELETE FROM cooked WHERE id = ?", arrayOf(id))
+                usage.remove(id)
+            }
+            adjustments[id]?.let { a ->
+                val r = get(target) ?: return@let
+                val merged = a.carriedTo(r, adjustments[target] ?: RecipeAdjustments())
+                if (merged.isEmpty) return@let
+                adjustments[target] = merged
+                db.insertWithOnConflict("adjustments", null, ContentValues().apply {
+                    put("id", target)
+                    put("json", merged.encode())
+                }, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+        }
+    }
+
+    /** Note qu'une recette vient d'être cuisinée (une fois par cuisson). */
+    fun markCooked(id: String) {
+        val now = System.currentTimeMillis()
+        exec.execute {
+            val u = cooked[id]
+            val next = Usage((u?.count ?: 0) + 1, now)
+            helper.writableDatabase.insertWithOnConflict("cooked", null, ContentValues().apply {
+                put("id", id)
+                put("count", next.count)
+                put("last", next.lastMs)
+            }, SQLiteDatabase.CONFLICT_REPLACE)
+            cooked[id] = next
+            notifyChanged()
+        }
+    }
+
+    fun usage(id: String): Usage? = cooked[id]
+
+    /** Recettes cuisinées, de la plus récente à la plus ancienne (seulement celles du catalogue). */
+    fun recentIds(limit: Int = 60): List<String> {
+        val known = index.entries.mapTo(HashSet()) { it.id }
+        return cooked.entries.filter { it.key in known }.sortedByDescending { it.value.lastMs }.take(limit).map { it.key }
+    }
+
+    /** Recettes les plus cuisinées (à égalité, la plus récente d'abord). */
+    fun mostCookedIds(limit: Int = 60): List<String> {
+        val known = index.entries.mapTo(HashSet()) { it.id }
+        return cooked.entries.filter { it.key in known }
+            .sortedWith(compareByDescending<Map.Entry<String, Usage>> { it.value.count }.thenByDescending { it.value.lastMs })
+            .take(limit).map { it.key }
     }
 
     /** Recharge l'index de recherche (après des mises à jour sans [rebuild]). */

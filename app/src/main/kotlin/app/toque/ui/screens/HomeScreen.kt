@@ -4,10 +4,8 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
-import app.toque.Prefs
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
-import app.toque.core.machine.Snapshot
 import app.toque.ui.Icon
 import app.toque.ui.MainActivity
 import app.toque.ui.Screen
@@ -16,13 +14,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 class HomeScreen(a: MainActivity) : Screen(a) {
-    override val title = "Toque"
+    // Pas de titre sur l'accueil : la barre du haut ne garde que l'état de la machine et l'heure.
+    override val title = ""
     private lateinit var clock: TextView
     private lateinit var date: TextView
     private lateinit var greeting: TextView
     private lateinit var recipesSub: TextView
     private lateinit var favSub: TextView
-    private lateinit var settingsSub: TextView
     private lateinit var resumeCard: LinearLayout
     private lateinit var resumeText: TextView
     private var unsub: (() -> Unit)? = null
@@ -54,15 +52,33 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         search.setOnClickListener { a.push(RecipesScreen(a, focusSearch = true)) }
         left.addView(search, Ui.lp(Ui.MATCH, Ui.u(72), t = 34))
 
+        // Raccourcis sous la recherche : dernières recettes cuisinées, et les plus cuisinées.
+        val shortcuts = Ui.horizontal(c)
+        shortcuts.addView(Ui.button(c, tr("Récentes"), Ui.Style.SECONDARY, Icon.Kind.CLOCK, height = 56, textSize = 18f) {
+            a.push(RecipesScreen(a, initialUsage = RecipesScreen.Usage.RECENT))
+        }, LinearLayout.LayoutParams(0, Ui.WRAP, 1f).apply { rightMargin = Ui.u(12) })
+        shortcuts.addView(Ui.button(c, tr("Fréquentes"), Ui.Style.SECONDARY, Icon.Kind.FLAME, height = 56, textSize = 18f) {
+            a.push(RecipesScreen(a, initialUsage = RecipesScreen.Usage.MOST))
+        }, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        left.addView(shortcuts, Ui.lp(Ui.MATCH, Ui.WRAP, t = 14))
+
         resumeCard = Ui.horizontal(c)
         resumeCard.setPadding(Ui.u(22), Ui.u(16), Ui.u(18), Ui.u(16))
         resumeCard.background = Ui.pressable(Ui.round(Ui.ACCENT_DIM, 24f), 24f)
         resumeCard.addView(Icon(c, Icon.Kind.PLAY, Ui.ACCENT), LinearLayout.LayoutParams(Ui.u(26), Ui.u(26)).apply { rightMargin = Ui.u(14) })
         resumeText = Ui.ellipsize(Ui.text(c, "", 19f, Ui.TEXT, Ui.MEDIUM), 2)
         resumeCard.addView(resumeText, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        // Zone de toucher plus grande que l'icône (au doigt, sur la carte).
+        val cancel = android.widget.FrameLayout(c)
+        cancel.addView(Icon(c, Icon.Kind.CLOSE, Ui.TEXT2), Ui.flp(Ui.u(24), Ui.u(24), Gravity.CENTER))
+        cancel.background = Ui.pressable(Ui.round(0, 28f), 28f)
+        cancel.isClickable = true
+        cancel.contentDescription = tr("Abandonner la recette")
+        cancel.setOnClickListener { abandonGuided() }
+        resumeCard.addView(cancel, LinearLayout.LayoutParams(Ui.u(56), Ui.u(56)).apply { leftMargin = Ui.u(8) })
         resumeCard.isClickable = true
         resumeCard.setOnClickListener {
-            val r = a.app.recipes.get(a.prefs.guidedRecipe)
+            val r = a.app.recipes.getAdjusted(a.prefs.guidedRecipe)
             if (r != null) a.push(CookScreen(a, r, a.prefs.guidedStep)) else { a.prefs.guidedRecipe = ""; refresh() }
         }
         left.addView(resumeCard, Ui.lp(Ui.MATCH, Ui.WRAP, t = 16))
@@ -74,15 +90,13 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         val (t1, s1) = tile(Icon.Kind.BOOK, tr("Recettes")) { a.push(RecipesScreen(a)) }
         recipesSub = s1
         row1.addView(t1, tileLp(true))
-        row1.addView(tile(Icon.Kind.POT, tr("Cuisson\nmanuelle"), tr("Temps, chaleur, vitesse")) { a.push(ManualScreen(a)) }.first, tileLp(true))
+        row1.addView(tile(Icon.Kind.POT, tr("Cuisson\nmanuelle"), hasSub = false) { a.push(ManualScreen(a)) }.first, tileLp(true))
         row1.addView(tile(Icon.Kind.KNEAD, tr("Programmes"), tr("Pétrir, vapeur, rissoler")) { a.push(ProgramsScreen(a)) }.first, tileLp(false))
         row2.addView(tile(Icon.Kind.SCALE, tr("Balance"), tr("Peser au gramme")) { a.push(ScaleScreen(a)) }.first, tileLp(true))
         val (t5, s5) = tile(Icon.Kind.STAR, tr("Favoris")) { a.push(RecipesScreen(a, favorites = true)) }
         favSub = s5
         row2.addView(t5, tileLp(true))
-        val (t6, s6) = tile(Icon.Kind.SETTINGS, tr("Réglages")) { a.push(SettingsScreen(a)) }
-        settingsSub = s6
-        row2.addView(t6, tileLp(false))
+        row2.addView(tile(Icon.Kind.SETTINGS, tr("Réglages"), hasSub = false) { a.push(SettingsScreen(a)) }.first, tileLp(false))
         grid.addView(row1, LinearLayout.LayoutParams(Ui.MATCH, 0, 1f).apply { bottomMargin = Ui.u(16) })
         grid.addView(row2, LinearLayout.LayoutParams(Ui.MATCH, 0, 1f))
         root.addView(grid, LinearLayout.LayoutParams(0, Ui.MATCH, 0.58f))
@@ -91,18 +105,23 @@ class HomeScreen(a: MainActivity) : Screen(a) {
 
     private fun tileLp(gap: Boolean) = LinearLayout.LayoutParams(0, Ui.MATCH, 1f).apply { if (gap) rightMargin = Ui.u(16) }
 
-    private fun tile(icon: Icon.Kind, title: String, sub: String = "", onClick: () -> Unit): Pair<LinearLayout, TextView> {
-        val t = Ui.vertical(c)
-        t.setPadding(Ui.u(20), Ui.u(20), Ui.u(18), Ui.u(18))
-        t.background = Ui.pressable(Ui.round(Ui.SURFACE, 26f), 26f)
+    private fun tile(icon: Icon.Kind, title: String, sub: String = "", hasSub: Boolean = true, onClick: () -> Unit): Pair<LinearLayout, TextView> {
+        // Tuile centrée : grande pastille d'icône, titre et sous-titre dessous. La pastille est à la
+        // même hauteur dans toutes les tuiles, quel que soit le texte (une ou deux lignes, avec ou
+        // sans sous-titre) : espace fixe au-dessus, texte accroché sous la pastille.
+        val t = Ui.vertical(c, Gravity.CENTER_HORIZONTAL)
+        t.setPadding(Ui.u(14), Ui.u(14), Ui.u(14), Ui.u(14))
+        t.background = Ui.pressable(Ui.round(Ui.SURFACE, 26f, Ui.STROKE, 1f), 26f)
+        t.addView(View(c), LinearLayout.LayoutParams(1, 0, 2f))
         val badge = android.widget.FrameLayout(c)
-        badge.background = Ui.round(Ui.ACCENT_DIM, 26f)
-        badge.addView(Icon(c, icon, Ui.ACCENT), Ui.flp(Ui.u(28), Ui.u(28), Gravity.CENTER))
-        t.addView(badge, LinearLayout.LayoutParams(Ui.u(52), Ui.u(52)))
-        t.addView(Ui.spacer(c, weight = 1f), LinearLayout.LayoutParams(1, 0, 1f))
-        t.addView(Ui.text(c, title, 23f, Ui.TEXT, Ui.MEDIUM).apply { setLineSpacing(0f, 1.05f) })
-        val s = Ui.ellipsize(Ui.text(c, sub, 16f, Ui.TEXT2), 2)
-        t.addView(s, Ui.lp(t = 6))
+        badge.background = Ui.round(Ui.ACCENT_DIM, 44f)
+        badge.addView(Icon(c, icon, Ui.ACCENT), Ui.flp(Ui.u(46), Ui.u(46), Gravity.CENTER))
+        t.addView(badge, LinearLayout.LayoutParams(Ui.u(84), Ui.u(84)))
+        val text = Ui.vertical(c, Gravity.CENTER_HORIZONTAL or Gravity.TOP)
+        text.addView(Ui.text(c, title, 22f, Ui.TEXT, Ui.MEDIUM).apply { gravity = Gravity.CENTER }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 12))
+        val s = Ui.ellipsize(Ui.text(c, sub, 15f, Ui.TEXT2).apply { gravity = Gravity.CENTER }, 2)
+        if (hasSub) text.addView(s, Ui.lp(Ui.WRAP, Ui.WRAP, t = 4))
+        t.addView(text, LinearLayout.LayoutParams(Ui.MATCH, 0, 3f))
         t.isClickable = true
         t.setOnClickListener { onClick() }
         return t to s
@@ -129,7 +148,6 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         }
         val favs = repo.index.entries.count { it.favorite }
         favSub.text = if (favs == 0) tr("Aucun favori") else if (favs == 1) tr("1 favori") else tr("%d favoris", favs)
-        settingsSub.text = a.prefs.mode.label
         val guided = a.prefs.guidedRecipe
         val title = if (guided.isEmpty()) null else repo.index.entries.firstOrNull { it.id == guided }?.title
         resumeCard.visibility = if (title != null) View.VISIBLE else View.GONE
@@ -149,7 +167,17 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         view.removeCallbacks(tick)
     }
 
-    override fun onSnapshot(s: Snapshot) {
-        if (a.prefs.mode == Prefs.Mode.DEMO) settingsSub.text = a.prefs.mode.label
+    /** Retire la recette en cours de l'accueil (sans toucher à un programme qui tourne). */
+    private fun abandonGuided() {
+        if (a.snapshot.busy) {
+            a.toast(tr("Arrêtez d'abord le programme en cours"), Ui.WARN)
+            return
+        }
+        a.confirm(tr("Abandonner la recette"), tr("Elle ne sera plus proposée sur l'accueil. Vous pourrez la recommencer depuis les recettes."),
+            tr("Abandonner"), icon = Icon.Kind.CLOSE) {
+            a.prefs.guidedRecipe = ""
+            a.prefs.guidedStep = 0
+            refresh()
+        }
     }
 }

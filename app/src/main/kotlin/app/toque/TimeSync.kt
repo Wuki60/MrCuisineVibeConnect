@@ -15,12 +15,16 @@ import java.util.TimeZone
  *    ou choisi à la main dans les réglages, puis appliqué au système (root) ;
  *  - l'heure vient du réseau (NTP d'Android, activé ici) ; si elle est encore fausse de plus de
  *    deux minutes, elle est corrigée d'après l'en-tête Date des serveurs interrogés.
- * Le robot n'a pas de pile d'horloge : au démarrage il se croit le 1er janvier 1970.
+ * Le robot n'a pas de pile d'horloge : au démarrage il se croit en 2010 (ou en 1970). Tant que
+ * l'horloge est aussi fausse, les certificats HTTPS sont refusés (« pas encore valides ») : l'heure
+ * est d'abord prise d'un serveur en HTTP simple, et un réglage ne compte comme réussi qu'une fois
+ * l'horloge plausible, même avec un fuseau choisi à la main.
  */
 class TimeSync(private val context: Context, private val prefs: Prefs, private val log: Logbook) {
     class Result(val ok: Boolean, val zone: String, val message: String)
 
     fun run(): Result {
+        if (!plausible() && RootShell.available()) fixClock(networkTime())
         val wanted = prefs.timeZone
         var zone: String? = null
         var source = tr("choix manuel")
@@ -62,6 +66,7 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
         val fixed = fixClock(serverMs)
         val ok = prop() == z || current() == z
         prefs.lastZone = z
+        if (!plausible()) return Result(false, z, tr("Heure pas encore réglée : en attente du réseau."))
         val now = clock()
         return if (ok) Result(true, z, if (fixed) tr("Heure corrigée : %s (%s)", now, z) else tr("Il est %s (%s)", now, z))
         else Result(false, current(), tr("Le système a refusé le fuseau %s", z))
@@ -81,6 +86,19 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
         return ok
     }
 
+    /** Heure d'un serveur en HTTP simple (pas de certificat à valider) ; 0 si aucun ne répond. */
+    private fun networkTime(): Long {
+        for (url in TIME_URLS) {
+            try {
+                val ms = Http.serverDate(url)
+                if (ms >= MIN_PLAUSIBLE_MS) return ms
+            } catch (e: Exception) {
+                log.write("heure", "$url : ${e.message ?: e.toString()}")
+            }
+        }
+        return 0
+    }
+
     private fun get(url: String): Pair<String, Long> {
         val r = Http.get(url, mapOf("Accept" to "application/json"), timeoutMs = 10_000, maxBytes = 64 * 1024)
         return r.body to r.serverMs
@@ -92,6 +110,14 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
         /** 1er janvier 2025 : en dessous, l'heure d'un serveur n'est pas crédible. */
         private const val MIN_PLAUSIBLE_MS = 1_735_689_600_000L
         private val available: Set<String> by lazy { TimeZone.getAvailableIDs().toHashSet() }
+
+        /** Serveurs HTTP (sans TLS) dont l'en-tête Date sert à remettre l'horloge à peu près juste. */
+        private val TIME_URLS = listOf(
+            "http://connectivitycheck.gstatic.com/generate_204",
+            "http://ip-api.com/json/?fields=status",
+        )
+
+        fun plausible(): Boolean = System.currentTimeMillis() >= MIN_PLAUSIBLE_MS
 
         fun current(): String = TimeZone.getDefault().id
 
@@ -107,7 +133,9 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
             if (started) return
             started = true
             val t = Thread {
-                val retries = longArrayOf(5_000, 30_000, 60_000, 120_000, 300_000, 600_000, 1_800_000)
+                // Au démarrage, le Wi-Fi arrive au bout de 30 à 60 s : on réessaie souvent d'abord.
+                val retries = longArrayOf(3_000, 5_000, 5_000, 5_000, 10_000, 10_000, 10_000, 15_000, 30_000,
+                    60_000, 120_000, 300_000, 600_000, 1_800_000)
                 var i = 0
                 while (true) {
                     val r = try {

@@ -20,14 +20,15 @@ import android.widget.TextView
 
 /** Thème sombre et utilitaires de mise en page, à l'échelle d'un écran de référence 1024×600. */
 object Ui {
-    const val BG = 0xFF0B0C0E.toInt()
-    const val SURFACE = 0xFF15171B.toInt()
-    const val SURFACE2 = 0xFF1E2127.toInt()
-    const val SURFACE3 = 0xFF272B32.toInt()
-    const val STROKE = 0xFF2C3038.toInt()
-    const val TEXT = 0xFFF3F4F6.toInt()
-    const val TEXT2 = 0xFF9BA1AA.toInt()
-    const val TEXT3 = 0xFF666C75.toInt()
+    // Fond bleu nuit (dégradé, voir background()) et surfaces bleutées assorties.
+    const val BG = 0xFF0A1322.toInt()
+    const val SURFACE = 0xFF131D2E.toInt()
+    const val SURFACE2 = 0xFF1A2639.toInt()
+    const val SURFACE3 = 0xFF223048.toInt()
+    const val STROKE = 0xFF2A3A55.toInt()
+    const val TEXT = 0xFFF3F5F9.toInt()
+    const val TEXT2 = 0xFF9CA8BC.toInt()
+    const val TEXT3 = 0xFF66738A.toInt()
     const val ACCENT = 0xFFFF8A3D.toInt()
     const val ACCENT_DIM = 0x33FF8A3D
     const val COOL = 0xFF5CC8FF.toInt()
@@ -222,6 +223,10 @@ object Ui {
         val words = title.split(' ', '-', '\'').filter { it.length > 2 }
         return words.take(2).joinToString("") { it.first().uppercaseChar().toString() }.ifEmpty { title.take(1).uppercase() }
     }
+
+    /** Fond de l'appli : dégradé bleu nuit en diagonale, plus clair en haut à gauche. */
+    fun background(): GradientDrawable =
+        GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF16294A.toInt(), 0xFF0D1A31.toInt(), 0xFF070E1B.toInt()))
 
     fun gradient(colors: IntArray, radius: Float): GradientDrawable =
         GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply { setCornerRadius(uf(radius)) }
