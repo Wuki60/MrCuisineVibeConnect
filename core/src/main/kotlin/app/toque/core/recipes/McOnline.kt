@@ -22,6 +22,8 @@ object McOnline {
     /** Monsieur Cuisine connect. */
     const val DEVICE = "MC2.0"
     const val PAGE_SIZE = 100
+    /** Version de la lecture des fiches : à augmenter quand elle change, pour que la synchro les relise toutes. */
+    const val PARSER = 2
     /** Préfixe des identifiants Toque des recettes du site (« mc- » : celles de l'appli d'origine). */
     const val ID_PREFIX = "web-"
 
@@ -258,7 +260,8 @@ object McOnline {
     private fun machine(mode: String, st: Map<String, Any?>, reverse: Boolean, text: String): StepMachine? {
         val seconds = (st.int("time") ?: 0).coerceAtLeast(0)
         return when {
-            mode == "customized" -> {
+            // « ramp » : montée en vitesse par paliers, un réglage manuel par palier (enchaînés en un programme).
+            mode == "customized" || mode == "ramp" -> {
                 val speedF = (st["speedFloat"] as? Number)?.toDouble() ?: st.int("speed")?.toDouble() ?: 0.0
                 val speed = Math.ceil(speedF).toInt().coerceIn(0, 10)
                 StepMachine(

@@ -87,6 +87,25 @@ class McOnlineTest {
         for (step in s) step.machine?.let { assertTrue("${it.summary} : ${it.violations()}", it.valid) }
     }
 
+    @Test fun rampBecomesOneManualStepPerStage() {
+        val json = """{"data":{"recipe":{"id":900002,"name":"Purée d'essai","servingSizes":[{"id":1,"amount":2,
+            "ingredients":[],"steps":[
+              {"order":0,"name":"Étape","description":"Mixer finement.","deviceSetting":null},
+              {"order":1,"name":"Rampe","description":null,"deviceSetting":{"mode":"ramp","reverse":false,"settings":[
+                {"order":1,"speed":6,"speedFloat":6,"temperature":0,"time":10},
+                {"order":0,"speed":5,"speedFloat":5,"temperature":0,"time":5},
+                {"order":2,"speed":10,"speedFloat":10,"temperature":0,"time":20}]}}]}]}}}"""
+        val s = McOnline.parseRecipe(json)!!.steps
+        assertEquals(3, s.size)
+        // Premier palier rattaché au texte, les suivants à part (enchaînés à la cuisson).
+        assertEquals("Mixer finement.", s[0].text)
+        assertEquals(listOf(5, 6, 10), s.map { it.machine!!.speed })
+        assertEquals(listOf(5, 10, 20), s.map { it.machine!!.seconds })
+        assertTrue(s.all { it.machine!!.program == StepProgram.MANUAL && it.machine!!.tempC == 0 && it.needsReview })
+        assertEquals(s[1].machine!!.summary, s[1].text)
+        for (step in s) assertTrue(step.machine!!.valid)
+    }
+
     @Test fun reviews() {
         val p = McOnline.parseReviews(fixture("mc-online-reviews.json"))
         assertEquals(13, p.total)
