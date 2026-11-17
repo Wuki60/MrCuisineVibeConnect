@@ -60,6 +60,14 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         resumeCard.addView(Icon(c, Icon.Kind.PLAY, Ui.ACCENT), LinearLayout.LayoutParams(Ui.u(26), Ui.u(26)).apply { rightMargin = Ui.u(14) })
         resumeText = Ui.ellipsize(Ui.text(c, "", 19f, Ui.TEXT, Ui.MEDIUM), 2)
         resumeCard.addView(resumeText, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        // Zone de toucher plus grande que l'icône (au doigt, sur la carte).
+        val cancel = android.widget.FrameLayout(c)
+        cancel.addView(Icon(c, Icon.Kind.CLOSE, Ui.TEXT2), Ui.flp(Ui.u(24), Ui.u(24), Gravity.CENTER))
+        cancel.background = Ui.pressable(Ui.round(0, 28f), 28f)
+        cancel.isClickable = true
+        cancel.contentDescription = tr("Abandonner la recette")
+        cancel.setOnClickListener { abandonGuided() }
+        resumeCard.addView(cancel, LinearLayout.LayoutParams(Ui.u(56), Ui.u(56)).apply { leftMargin = Ui.u(8) })
         resumeCard.isClickable = true
         resumeCard.setOnClickListener {
             val r = a.app.recipes.get(a.prefs.guidedRecipe)
@@ -151,5 +159,19 @@ class HomeScreen(a: MainActivity) : Screen(a) {
 
     override fun onSnapshot(s: Snapshot) {
         if (a.prefs.mode == Prefs.Mode.DEMO) settingsSub.text = a.prefs.mode.label
+    }
+
+    /** Retire la recette en cours de l'accueil (sans toucher à un programme qui tourne). */
+    private fun abandonGuided() {
+        if (a.snapshot.busy) {
+            a.toast(tr("Arrêtez d'abord le programme en cours"), Ui.WARN)
+            return
+        }
+        a.confirm(tr("Abandonner la recette"), tr("Elle ne sera plus proposée sur l'accueil. Vous pourrez la recommencer depuis les recettes."),
+            tr("Abandonner"), icon = Icon.Kind.CLOSE) {
+            a.prefs.guidedRecipe = ""
+            a.prefs.guidedStep = 0
+            refresh()
+        }
     }
 }
