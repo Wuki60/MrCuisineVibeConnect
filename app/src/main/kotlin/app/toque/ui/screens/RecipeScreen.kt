@@ -190,7 +190,7 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         s.machine?.let { m ->
             val ok = m.valid
             chips.addView(Ui.chip(c, m.summary, if (ok) Icon.Kind.POT else Icon.Kind.WARNING,
-                if (ok) Ui.ACCENT else Ui.WARN, if (ok) Ui.ACCENT_DIM else 0x33FFC14D, 15f))
+                if (ok) Ui.ACCENT else Ui.WARN, if (ok) Ui.ACCENT_DIM else Ui.WARN_DIM, 15f))
         }
         if (chips.childCount > 0) col.addView(chips, Ui.lp(t = 8))
         row.addView(col, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))

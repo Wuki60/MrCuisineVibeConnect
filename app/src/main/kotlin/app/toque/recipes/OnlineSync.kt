@@ -125,7 +125,7 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
 
         val n = repo.count
         val note = if (failures > 0) " " + tr("(%d en échec, réessayées à la prochaine synchro)", failures) else ""
-        return LidlSync.Report(true, tr("%d recettes Lidl à jour", n) + note, n)
+        return LidlSync.Report(true, tr("%d recettes à jour", n) + note, n)
     }
 
     private fun save(batch: MutableList<Recipe>, index: Map<String, String>, language: String) {

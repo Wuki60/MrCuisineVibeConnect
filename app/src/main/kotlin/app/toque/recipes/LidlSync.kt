@@ -139,7 +139,7 @@ class LidlSync(private val context: Context, private val prefs: Prefs, private v
 
         repo.replaceAll(result.recipes)
         work.listFiles()?.forEach { it.delete() }
-        return finish(Report(true, tr("%d recettes Lidl à jour", result.recipes.size), result.recipes.size))
+        return finish(Report(true, tr("%d recettes à jour", result.recipes.size), result.recipes.size))
     }
 
     /**

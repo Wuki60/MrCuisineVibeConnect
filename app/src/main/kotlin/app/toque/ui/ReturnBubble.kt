@@ -124,7 +124,7 @@ class ReturnBubble : Service() {
 
     companion object {
         private const val POSITION = "bulle"
-        private const val DARK = 0xFF1A0E05.toInt()
+        private val DARK get() = Ui.ON_ACCENT
         /** WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY (API 26), valeur fixe pour compiler en API 23. */
         private const val TYPE_APPLICATION_OVERLAY = 2038
 

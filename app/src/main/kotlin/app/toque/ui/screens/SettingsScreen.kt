@@ -103,6 +103,16 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
             a.applyLanguage()
         }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
 
+        // ---- Couleur d'accent (mémorisée ; l'interface est reconstruite avec la nouvelle couleur)
+        val colors = section(right, tr("Couleur"), Icon.Kind.STAR)
+        colors.addView(Ui.text(c, tr("Couleur des boutons, des icônes et des repères. Le fond reste noir."), 15f, Ui.TEXT3)
+            .apply { setLineSpacing(0f, 1.1f) })
+        for (rowIndex in 0 until 2) {
+            val row = Ui.horizontal(c, Gravity.CENTER)
+            for (i in rowIndex * 5 until rowIndex * 5 + 5) row.addView(swatch(Ui.ACCENTS[i]), LinearLayout.LayoutParams(0, Ui.u(60), 1f))
+            colors.addView(row, Ui.lp(t = if (rowIndex == 0) 12 else 6))
+        }
+
         // ---- Date et heure
         val time = section(right, tr("Date et heure"), Icon.Kind.CLOCK)
         val zones = listOf(ZoneLookup.AUTO to tr("Automatique (d'après la connexion Internet)")) +
@@ -114,25 +124,24 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         }, Ui.lp(Ui.MATCH, Ui.u(58), t = 4))
         timeText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
         time.addView(timeText, Ui.lp(t = 10))
-        time.addView(Ui.button(c, tr("Mettre à l'heure"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 52) { setClock() },
+        time.addView(Ui.button(c, tr("Mettre à l'heure"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 56) { setClock() },
             Ui.lp(Ui.WRAP, Ui.WRAP, t = 10))
         refreshTime()
 
-        // ---- Recettes Lidl
-        val lidl = section(right, tr("Recettes Lidl"), Icon.Kind.SYNC)
+        // ---- Recettes (synchro monsieur-cuisine.com / appli d'origine)
+        val lidl = section(right, tr("Recettes"), Icon.Kind.SYNC)
         lidl.addView(Ui.text(c, tr("Toque télécharge lui-même les recettes officielles du Monsieur Cuisine connect sur monsieur-cuisine.com (sans compte)."),
             16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) })
         syncText = Ui.text(c, "", 16f, Ui.TEXT)
         lidl.addView(syncText, Ui.lp(t = 10))
-        val b1 = Ui.horizontal(c)
-        b1.addView(Ui.button(c, tr("Synchroniser"), Ui.Style.PRIMARY, Icon.Kind.SYNC, height = 58) { sync(online = true) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
-        lidl.addView(b1, Ui.lp(t = 12))
+        lidl.addView(Ui.button(c, tr("Synchroniser"), Ui.Style.PRIMARY, Icon.Kind.SYNC, height = 58) { sync(online = true) }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 12))
         lidl.addView(Ui.text(c, tr("Autre source : les recettes déjà présentes dans l'appli d'origine du robot (remplacent celles du site)."),
             14f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 12))
-        val b2 = Ui.horizontal(c)
-        b2.addView(Ui.button(c, tr("Importer de l'appli d'origine"), Ui.Style.SECONDARY, height = 52) { sync(online = false) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
-        b2.addView(Ui.button(c, tr("Ouvrir l'appli d'origine"), Ui.Style.GHOST, Icon.Kind.LINK, height = 52) { a.openVendorApp() })
-        lidl.addView(b2, Ui.lp(t = 6))
+        // Les deux boutons ne tiennent pas côte à côte dans une demi-colonne : empilés, pleine largeur.
+        lidl.addView(Ui.button(c, tr("Importer de l'appli d'origine"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 56, textSize = 18f) { sync(online = false) },
+            Ui.lp(t = 10))
+        lidl.addView(Ui.button(c, tr("Ouvrir l'appli d'origine"), Ui.Style.GHOST, Icon.Kind.LINK, height = 56, textSize = 18f) { a.openVendorApp() },
+            Ui.lp(t = 8))
         lidl.addView(toggle(tr("Synchro automatique chaque nuit"), a.prefs.autoSync) { a.prefs.autoSync = it }, Ui.lp(t = 10))
 
         // ---- Mises à jour
@@ -161,11 +170,30 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
     private fun section(parent: LinearLayout, title: String, icon: Icon.Kind): LinearLayout {
         val card = Ui.card(c, 24f)
         val head = Ui.horizontal(c)
-        head.addView(Icon(c, icon, Ui.ACCENT), LinearLayout.LayoutParams(Ui.u(24), Ui.u(24)).apply { rightMargin = Ui.u(10) })
+        // Icon ignore le padding : l'icône est centrée dans un petit cadre teinté.
+        val badge = android.widget.FrameLayout(c).apply {
+            background = Ui.round(Ui.ACCENT_DIM, 12f)
+            addView(Icon(c, icon, Ui.ACCENT), Ui.flp(Ui.u(22), Ui.u(22), Gravity.CENTER))
+        }
+        head.addView(badge, LinearLayout.LayoutParams(Ui.u(38), Ui.u(38)).apply { rightMargin = Ui.u(12) })
         head.addView(Ui.text(c, title, 21f, Ui.TEXT, Ui.MEDIUM))
-        card.addView(head, Ui.lp(b = 10))
+        card.addView(head, Ui.lp(b = 14))
         parent.addView(card, Ui.lp(b = 16))
         return card
+    }
+
+    /** Pastille de couleur : un disque, entouré et coché quand c'est la couleur en cours. */
+    private fun swatch(color: Int): View {
+        val box = android.widget.FrameLayout(c)
+        val selected = color == Ui.ACCENT
+        val dot = android.widget.FrameLayout(c).apply {
+            background = Ui.pressable(Ui.round(color, 26f, if (selected) Ui.TEXT else 0, if (selected) 3f else 0f), 26f)
+            if (selected) addView(Icon(c, Icon.Kind.CHECK, Ui.ON_ACCENT), Ui.flp(Ui.u(24), Ui.u(24), Gravity.CENTER))
+            isClickable = true
+            setOnClickListener { if (!selected) a.applyAccent(color) }
+        }
+        box.addView(dot, Ui.flp(Ui.u(52), Ui.u(52), Gravity.CENTER))
+        return box
     }
 
     private fun field(value: String, hint: String) = EditText(c).apply {
@@ -183,15 +211,25 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         val row = Ui.horizontal(c)
         row.addView(Ui.text(c, label, 18f, Ui.TEXT), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         var state = initial
-        val sw = Ui.text(c, "", 16f, Ui.TEXT, Ui.MEDIUM).apply { gravity = Gravity.CENTER }
+        // Interrupteur : piste arrondie, pastille à gauche (non) ou à droite (oui).
+        val sw = android.widget.FrameLayout(c)
+        val knob = View(c).apply { background = Ui.round(Ui.TEXT, 17f) }
+        sw.addView(knob, Ui.flp(Ui.u(34), Ui.u(34), Gravity.CENTER_VERTICAL))
+        sw.setPadding(Ui.u(5), 0, Ui.u(5), 0)
         fun paint() {
-            sw.text = if (state) tr("Oui") else tr("Non")
-            sw.setTextColor(if (state) 0xFF1A0E05.toInt() else Ui.TEXT2)
-            sw.background = if (state) Ui.round(Ui.ACCENT, 24f) else Ui.round(Ui.SURFACE3, 24f)
+            sw.background = Ui.round(if (state) Ui.ACCENT else Ui.SURFACE3, 22f, if (state) Ui.ACCENT else Ui.STROKE, 1f)
+            knob.background = Ui.round(if (state) Ui.ON_ACCENT else Ui.TEXT2, 17f)
+            (knob.layoutParams as android.widget.FrameLayout.LayoutParams).gravity =
+                Gravity.CENTER_VERTICAL or (if (state) Gravity.END else Gravity.START)
+            knob.requestLayout()
+            sw.contentDescription = if (state) tr("Oui") else tr("Non")
         }
         paint()
-        sw.setOnClickListener { state = !state; paint(); onChange(state) }
-        row.addView(sw, LinearLayout.LayoutParams(Ui.u(84), Ui.u(46)))
+        val flip = { _: View -> state = !state; paint(); onChange(state) }
+        sw.setOnClickListener(flip)
+        row.setOnClickListener(flip)   // toute la ligne est touchable, pas seulement l'interrupteur
+        row.minimumHeight = Ui.u(52)
+        row.addView(sw, LinearLayout.LayoutParams(Ui.u(76), Ui.u(44)).apply { leftMargin = Ui.u(14) })
         return row
     }
 
@@ -445,10 +483,12 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         }
         a.confirm(
             tr("Version %s disponible", r.version),
-            notes(r).trim().let { if (it.isEmpty()) "" else it + "\n\n" } +
+            tr("Attention : la version actuelle de Toque sera écrasée par la version officielle. " +
+                "Vos favoris seront perdus, ainsi que quelques ajustements (couleur, réglages personnels).") + "\n\n" +
+                notes(r).trim().let { if (it.isEmpty()) "" else it + "\n\n" } +
                 tr("Toque va la télécharger depuis GitHub, l'installer puis redémarrer (environ une minute). " +
                     "Le moteur reste arrêté pendant l'opération."),
-            tr("Installer"), tr("Plus tard"), icon = Icon.Kind.SYNC,
+            tr("Installer quand même"), tr("Plus tard"), danger = true, icon = Icon.Kind.WARNING,
         ) {
             a.machine.suspendPort { v ->
                 if (!v.ok) { a.refusal(v); return@suspendPort }

@@ -165,8 +165,8 @@ class RecipesScreen(a: MainActivity, private val focusSearch: Boolean = false, f
         empty.visibility = if (results.isEmpty() && repo.loaded) View.VISIBLE else View.GONE
         emptyText.text = when {
             none && a.prefs.mode == Prefs.Mode.HARDWARE ->
-                tr("Les recettes Lidl apparaîtront après la première synchronisation.\nRéglages › Recettes Lidl › Synchroniser.")
-            none -> tr("Les recettes Lidl apparaîtront après la première synchronisation, une fois Toque installé sur le robot.")
+                tr("Les recettes apparaîtront après la première synchronisation.\nRéglages › Recettes › Synchroniser.")
+            none -> tr("Les recettes apparaîtront après la première synchronisation, une fois Toque installé sur le robot.")
             filter.favoritesOnly && query.isBlank() -> tr("Aucun favori pour l'instant.\nTouchez l'étoile d'une recette pour l'ajouter.")
             else -> tr("Aucune recette ne correspond.\nAstuce : séparez plusieurs ingrédients par des virgules.")
         }

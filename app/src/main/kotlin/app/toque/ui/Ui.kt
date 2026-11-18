@@ -20,6 +20,7 @@ import android.widget.TextView
 
 /** Thème sombre et utilitaires de mise en page, à l'échelle d'un écran de référence 1024×600. */
 object Ui {
+    // Fond noir d'origine ; seule la couleur d'accent est au choix (Réglages › Couleur).
     const val BG = 0xFF0B0C0E.toInt()
     const val SURFACE = 0xFF15171B.toInt()
     const val SURFACE2 = 0xFF1E2127.toInt()
@@ -28,13 +29,45 @@ object Ui {
     const val TEXT = 0xFFF3F4F6.toInt()
     const val TEXT2 = 0xFF9BA1AA.toInt()
     const val TEXT3 = 0xFF666C75.toInt()
-    const val ACCENT = 0xFFFF8A3D.toInt()
-    const val ACCENT_DIM = 0x33FF8A3D
     const val COOL = 0xFF5CC8FF.toInt()
     const val OK = 0xFF3DDC97.toInt()
     const val WARN = 0xFFFFC14D.toInt()
+    const val WARN_DIM = 0x33FFC14D
     const val DANGER = 0xFFFF5A5F.toInt()
+    const val DANGER_BG = 0xFF3A1416.toInt()
     const val SCRIM = 0xCC000000.toInt()
+
+    /** Couleurs d'accent proposées, toutes lisibles sur le fond noir. La première est celle d'origine. */
+    val ACCENTS = intArrayOf(
+        0xFFFF8A3D.toInt(), // orange
+        0xFFFFB547.toInt(), // safran
+        0xFFE8D44D.toInt(), // citron
+        0xFF8BD85F.toInt(), // pistache
+        0xFF3DDCB0.toInt(), // menthe
+        0xFF4FC3F7.toInt(), // ciel
+        0xFF6E9BFF.toInt(), // bleuet
+        0xFFB48CFF.toInt(), // lavande
+        0xFFF2639A.toInt(), // framboise
+        0xFFFF6F61.toInt(), // corail
+    )
+
+    /** Couleur d'accent en cours ; fixée au démarrage depuis les réglages (setAccent). */
+    var ACCENT = ACCENTS[0]
+        private set
+    /** Accent transparent : fonds de pastilles et de badges. */
+    var ACCENT_DIM = 0x33FF8A3D
+        private set
+    /** Texte posé sur l'accent (ou sur WARN) : la teinte de l'accent, très assombrie. */
+    var ON_ACCENT = 0xFF1A0E05.toInt()
+        private set
+
+    fun setAccent(color: Int) {
+        val c = if (color in ACCENTS) color else ACCENTS[0]
+        ACCENT = c
+        ACCENT_DIM = (c and 0x00FFFFFF) or 0x33000000
+        fun dark(ch: Int) = (((c shr ch) and 0xFF) * 0.12f).toInt() shl ch
+        ON_ACCENT = (0xFF shl 24) or dark(16) or dark(8) or dark(0)
+    }
 
     val LIGHT: Typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
     val THIN: Typeface = Typeface.create("sans-serif-thin", Typeface.NORMAL)
@@ -131,7 +164,7 @@ object Ui {
     fun button(c: Context, label: String, style: Style = Style.SECONDARY, icon: Icon.Kind? = null,
                height: Int = 64, textSize: Float = 20f, onClick: (View) -> Unit): LinearLayout {
         val (bg, fg) = when (style) {
-            Style.PRIMARY -> ACCENT to 0xFF1A0E05.toInt()
+            Style.PRIMARY -> ACCENT to ON_ACCENT
             Style.SECONDARY -> SURFACE3 to TEXT
             Style.DANGER -> DANGER to Color.WHITE
             Style.GHOST -> Color.TRANSPARENT to TEXT2
@@ -147,7 +180,8 @@ object Ui {
                 if (label.isNotEmpty()) rightMargin = u(10)
             })
         }
-        if (label.isNotEmpty()) row.addView(text(c, label, textSize, fg, MEDIUM))
+        // Une seule ligne : un libellé trop long est coupé plutôt que de déformer la pilule.
+        if (label.isNotEmpty()) row.addView(ellipsize(text(c, label, textSize, fg, MEDIUM)))
         row.isClickable = true
         row.isFocusable = true
         row.setOnClickListener { onClick(it) }
@@ -173,7 +207,7 @@ object Ui {
 
     /** Puce sélectionnable (filtres, choix). */
     fun toggleChip(c: Context, label: String, selected: Boolean, onClick: () -> Unit): TextView {
-        val t = text(c, label, 17f, if (selected) 0xFF1A0E05.toInt() else TEXT, MEDIUM)
+        val t = text(c, label, 17f, if (selected) ON_ACCENT else TEXT, MEDIUM)
         t.setPadding(u(18), u(10), u(18), u(10))
         t.background = pressable(if (selected) round(ACCENT, 40f) else round(SURFACE2, 40f, STROKE, 1f), 40f)
         t.isClickable = true
@@ -182,7 +216,7 @@ object Ui {
     }
 
     fun card(c: Context, radius: Float = 24f, color: Int = SURFACE): LinearLayout = vertical(c).apply {
-        background = round(color, radius)
+        background = round(color, radius, STROKE, 1f)
         setPadding(u(20), u(18), u(20), u(18))
     }
 

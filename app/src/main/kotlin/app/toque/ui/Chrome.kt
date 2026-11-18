@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import app.toque.Prefs
+import app.toque.TimeSync
 import app.toque.core.i18n.tr
 import app.toque.core.machine.JobState
 import app.toque.core.machine.LinkState
@@ -36,18 +37,22 @@ abstract class Screen(val a: MainActivity) {
 
 /** Barre supérieure : retour, titre, état de la base, heure. */
 class TopBar(private val a: MainActivity) : LinearLayout(a) {
-    private val back = Icon(a, Icon.Kind.BACK, Ui.TEXT)
+    /** Flèche retour dans une large zone touchable (Icon dessine sur toute sa taille, sans padding). */
+    private val back = FrameLayout(a)
     private val titleView = Ui.ellipsize(Ui.text(a, "", 24f, Ui.TEXT, Ui.MEDIUM))
     private val temp = Ui.chip(a, "", Icon.Kind.THERMO, Ui.TEXT2)
-    private val lid = Ui.chip(a, tr("Couvercle ouvert"), Icon.Kind.LID, Ui.WARN, 0x33FFC14D)
+    private val lid = Ui.chip(a, tr("Couvercle ouvert"), Icon.Kind.LID, Ui.WARN, Ui.WARN_DIM)
     private val link = Ui.chip(a, "", Icon.Kind.LINK, Ui.TEXT2)
     private val clock = Ui.text(a, "", 22f, Ui.TEXT, Ui.LIGHT)
-    private val home = Icon(a, Icon.Kind.HOME, Ui.TEXT2)
+    private val home = FrameLayout(a)
     private val handler = Handler(Looper.getMainLooper())
     private val tick = object : Runnable {
         override fun run() {
-            clock.text = MainActivity.now()
-            handler.postDelayed(this, 10_000)
+            // Rien tant que l'heure n'est pas réglée ou que le Wi-Fi est coupé ; la zone de l'heure
+            // reste touchable (accès caché aux réglages Android).
+            val show = TimeSync.showClock(a)
+            clock.text = if (show) MainActivity.now() else ""
+            handler.postDelayed(this, if (show) 10_000 else 2_000)
         }
     }
     private var adminTaps = 0
@@ -58,19 +63,24 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
         setGravity(Gravity.CENTER_VERTICAL)
         setPadding(Ui.u(10), 0, Ui.u(18), 0)
         setBackgroundColor(Ui.BG)
-        back.setPadding(Ui.u(10), Ui.u(10), Ui.u(10), Ui.u(10))
-        back.background = Ui.pressable(Ui.round(0, 30f), 30f)
+        back.addView(Icon(a, Icon.Kind.BACK, Ui.TEXT), Ui.flp(Ui.u(40), Ui.u(40), Gravity.CENTER))
+        back.background = Ui.pressable(Ui.round(0, 28f), 28f)
+        back.isClickable = true
         back.setOnClickListener { a.back() }
-        addView(back, LayoutParams(Ui.u(52), Ui.u(52)))
-        addView(titleView, LayoutParams(0, Ui.WRAP, 1f).apply { leftMargin = Ui.u(6) })
+        addView(back, LayoutParams(Ui.u(84), Ui.u(56)))
+        addView(titleView, LayoutParams(0, Ui.WRAP, 1f).apply { leftMargin = Ui.u(18) })
         addView(lid, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
         addView(temp, Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
         addView(link, Ui.lp(Ui.WRAP, Ui.WRAP, r = 16))
+        clock.minWidth = Ui.u(64)
+        clock.gravity = Gravity.CENTER
+        clock.minHeight = Ui.u(44)
         addView(clock, Ui.lp(Ui.WRAP, Ui.WRAP, r = 6))
-        home.setPadding(Ui.u(10), Ui.u(10), Ui.u(10), Ui.u(10))
-        home.background = Ui.pressable(Ui.round(0, 30f), 30f)
+        home.addView(Icon(a, Icon.Kind.HOME, Ui.TEXT2), Ui.flp(Ui.u(32), Ui.u(32), Gravity.CENTER))
+        home.background = Ui.pressable(Ui.round(0, 28f), 28f)
+        home.isClickable = true
         home.setOnClickListener { a.home() }
-        addView(home, LayoutParams(Ui.u(52), Ui.u(52)))
+        addView(home, LayoutParams(Ui.u(64), Ui.u(56)))
         lid.visibility = View.GONE
         temp.visibility = View.GONE
         // Accès caché aux réglages Android : 5 appuis rapides sur l'heure.
@@ -190,7 +200,7 @@ class MachineBar(private val a: MainActivity) : FrameLayout(a) {
         addView(jobRow, Ui.flp(Ui.MATCH, Ui.WRAP))
         // Alerte
         faultRow.setPadding(Ui.u(22), Ui.u(14), Ui.u(18), Ui.u(14))
-        faultRow.setBackgroundColor(0xFF3A1416.toInt())
+        faultRow.setBackgroundColor(Ui.DANGER_BG)
         faultRow.addView(Icon(a, Icon.Kind.WARNING, Ui.DANGER), LinearLayout.LayoutParams(Ui.u(34), Ui.u(34)).apply { rightMargin = Ui.u(14) })
         faultRow.addView(faultText, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         faultRow.addView(Ui.button(a, tr("Acquitter"), Ui.Style.SECONDARY, Icon.Kind.CHECK, height = 60) {

@@ -39,6 +39,13 @@ class Prefs(context: Context) {
             p.edit().putString("language", v).commit()
         }
 
+    /** Couleur d'accent de l'interface (une de Ui.ACCENTS), 0 = celle d'origine. */
+    var accentColor: Int
+        get() = p.getInt("accentColor", 0)
+        set(v) {
+            p.edit().putInt("accentColor", v).commit()
+        }
+
     var twinHost: String
         get() = p.getString("twinHost", "127.0.0.1") ?: "127.0.0.1"
         set(v) {
