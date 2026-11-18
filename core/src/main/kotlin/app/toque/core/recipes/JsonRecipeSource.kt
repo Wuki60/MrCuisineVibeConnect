@@ -61,8 +61,28 @@ object JsonRecipeCatalog {
         return d.isFinite() && d == n.toInt().toDouble() && n.toInt() in range
     }
 
+    /** Bound recursion before handing untrusted text to the small recursive JSON decoder. */
+    private fun checkNesting(text: String) {
+        var depth = 0
+        var quoted = false
+        var escaped = false
+        for (c in text) {
+            if (quoted) {
+                if (escaped) escaped = false
+                else if (c == '\\') escaped = true
+                else if (c == '"') quoted = false
+            } else when (c) {
+                '"' -> quoted = true
+                '{', '[' -> { depth++; check(depth <= 64) }
+                '}', ']' -> { depth--; check(depth >= 0) }
+            }
+        }
+        check(depth == 0 && !quoted)
+    }
+
     fun parse(text: String, source: JsonRecipeSource): List<Recipe> {
         check(text.toByteArray(Charsets.UTF_8).size <= MAX_BYTES)
+        checkNesting(text)
         val root = Json.parse(text).obj()
         check(root["format"] == RecipeCodec.FORMAT)
         val entries = root["recipes"] as? List<*>

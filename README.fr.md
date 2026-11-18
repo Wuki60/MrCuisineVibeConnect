@@ -34,6 +34,8 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
 
 ## Ce que fait Toque
 
+- [Sources de recettes JSON configurables](docs/RECIPE_SOURCES.md) : ajouter des catalogues personnels en complément de Lidl, avec stockage hors connexion et synchronisation automatique facultative.
+
 - **Interface sombre**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
   tablette d'origine (1 Go de RAM, Android 6) : pas de bibliothèque lourde, images
   sous-échantillonnées, vues recyclées.

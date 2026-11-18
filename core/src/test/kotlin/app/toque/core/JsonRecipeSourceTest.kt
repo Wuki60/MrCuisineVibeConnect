@@ -54,5 +54,9 @@ class JsonRecipeSourceTest {
         val entries = (0..JsonRecipeCatalog.MAX_RECIPES).map { recipe.replace("web-123", "r-$it") }
         refused(catalog(*entries.toTypedArray()))
         refused(catalog(recipe.replace("\"id\":\"web-123\"", "\"id\":\"\"")))
+        refused("[".repeat(1000) + "0" + "]".repeat(1000))
+        // JSON-looking punctuation inside a quoted instruction is not structural nesting.
+        val punctuated = recipe.replace("Check before starting", "Read [brackets] and {notes}")
+        assertEquals(1, JsonRecipeCatalog.parse(catalog(punctuated), source).size)
     }
 }
