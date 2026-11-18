@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Mises à jour depuis GitHub et mode « Jumeau numérique » (connexion à un PC). -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Installation des mises à jour sur un appareil non rooté (Android 8 et plus). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Bouton « Retour à Toque » par-dessus l'appli d'origine (le robot n'a pas de bouton Accueil). -->

@@ -135,6 +135,9 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         lidl.addView(b2, Ui.lp(t = 6))
         lidl.addView(toggle(tr("Synchro automatique chaque nuit"), a.prefs.autoSync) { a.prefs.autoSync = it }, Ui.lp(t = 10))
 
+        val sources = section(right, tr("Sources de recettes JSON"), Icon.Kind.LINK)
+        sources.addView(link(tr("Gérer les catalogues personnels")) { a.push(RecipeSourcesScreen(a)) })
+
         // ---- Mises à jour
         val updates = section(left, tr("Mises à jour"), Icon.Kind.INFO)
         updText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.i18n.trKey
+import app.toque.core.recipes.JsonRecipeSource
 
 /**
  * Réglages persistants, lisibles par les deux processus (interface et machine).
@@ -126,6 +127,27 @@ class Prefs(context: Context) {
         set(v) {
             p.edit().putBoolean("vendorSession", v).commit()
         }
+
+    /** No default third-party catalogue. Sources are explicitly added by the user. */
+    var jsonRecipeSources: List<JsonRecipeSource>
+        get() = try { JsonRecipeSource.decode(p.getString("jsonRecipeSources", "[]") ?: "[]") } catch (_: Exception) { emptyList() }
+        set(v) {
+            require(v.size <= 20 && v.map { it.id }.distinct().size == v.size)
+            p.edit().putString("jsonRecipeSources", JsonRecipeSource.encode(v)).commit()
+        }
+
+    fun jsonSourceLastSync(id: String): Long = p.getLong("jsonSource.$id.lastSync", 0)
+    fun jsonSourceResult(id: String): String = p.getString("jsonSource.$id.result", "") ?: ""
+    fun jsonSourceEtag(id: String): String = p.getString("jsonSource.$id.etag", "") ?: ""
+    fun jsonSourceResult(id: String, message: String, successAt: Long? = null, etag: String? = null) {
+        val e = p.edit().putString("jsonSource.$id.result", message)
+        if (successAt != null) e.putLong("jsonSource.$id.lastSync", successAt)
+        if (etag != null) e.putString("jsonSource.$id.etag", etag)
+        e.commit()
+    }
+    fun clearJsonSourceStatus(id: String) {
+        p.edit().remove("jsonSource.$id.lastSync").remove("jsonSource.$id.result").remove("jsonSource.$id.etag").commit()
+    }
 
     /** Bouton « Retour à Toque » à afficher : Toque a ouvert une autre appli (robot sans bouton Accueil). */
     var returnBubble: Boolean

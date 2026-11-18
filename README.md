@@ -37,6 +37,8 @@ Allow 1 to 2 hours. Without an agent: [docs/INSTALLATION.md](docs/INSTALLATION.m
 
 ## Features
 
+- [Configurable public JSON recipe sources](docs/RECIPE_SOURCES.md): add personal catalogues alongside Lidl recipes, with offline storage and optional automatic synchronization.
+
 - **Dark interface** designed for the robot's 7" screen and rotary knob, and smooth on its
   original tablet (1 GB RAM, Android 6): no heavy libraries, downsampled images, recycled views.
 - **Lidl recipes, straight from monsieur-cuisine.com.** Toque downloads the official Monsieur

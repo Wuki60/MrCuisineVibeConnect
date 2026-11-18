@@ -124,8 +124,8 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         val n = repo.count
         recipesSub.text = when {
             !repo.loaded -> tr("Chargement…")
-            n == 0 -> tr("Aucune recette Lidl pour l'instant")
-            else -> tr("%d recettes Lidl", n)
+            n == 0 -> tr("Aucune recette pour l'instant")
+            else -> tr("%d recettes", n)
         }
         val favs = repo.index.entries.count { it.favorite }
         favSub.text = if (favs == 0) tr("Aucun favori") else if (favs == 1) tr("1 favori") else tr("%d favoris", favs)

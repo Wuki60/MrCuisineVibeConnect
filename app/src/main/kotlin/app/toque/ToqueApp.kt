@@ -10,6 +10,7 @@ import android.os.Process
 import app.toque.core.i18n.I18n
 import app.toque.machine.MachineClient
 import app.toque.recipes.RecipeRepo
+import app.toque.recipes.JsonSourceSync
 import app.toque.ui.MainActivity
 import java.util.Locale
 
@@ -48,6 +49,7 @@ class ToqueApp : Application() {
         }
         log.write("interface", "démarrage")
         TimeSync.start(this, prefs, log)
+        JsonSourceSync.start(this)
     }
 
     private fun isMainProcess(): Boolean {
