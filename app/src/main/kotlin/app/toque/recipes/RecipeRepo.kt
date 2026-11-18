@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.os.Handler
 import android.os.Looper
 import app.toque.core.recipes.Recipe
+import app.toque.core.recipes.JsonRecipeSource
+import app.toque.core.recipes.RecipeStorageSchema
 import app.toque.core.recipes.RecipeCodec
 import app.toque.core.recipes.RecipeSource
 import app.toque.core.recipes.SearchIndex
@@ -18,13 +20,19 @@ import java.util.concurrent.Executors
  * L'appli fonctionne entièrement hors ligne ; seule la synchro passe par le réseau.
  */
 class RecipeRepo(private val context: Context) {
-    private val helper = object : SQLiteOpenHelper(context, "recettes.db", null, 1) {
+    private val helper = object : SQLiteOpenHelper(context, "recettes.db", null, RecipeStorageSchema.VERSION) {
         override fun onCreate(db: SQLiteDatabase) {
-            db.execSQL("CREATE TABLE recipes (id TEXT PRIMARY KEY, title TEXT NOT NULL, json TEXT NOT NULL, updated INTEGER NOT NULL)")
-            db.execSQL("CREATE TABLE favorites (id TEXT PRIMARY KEY)")
+            db.execSQL(RecipeStorageSchema.CREATE_RECIPES)
+            db.execSQL(RecipeStorageSchema.SOURCE_INDEX)
+            db.execSQL(RecipeStorageSchema.CREATE_FAVORITES)
         }
 
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {}
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+            if (oldVersion < 2) {
+                db.execSQL(RecipeStorageSchema.UPGRADE_1_2)
+                db.execSQL(RecipeStorageSchema.SOURCE_INDEX)
+            }
+        }
     }
     private val exec = Executors.newSingleThreadExecutor { r -> Thread(r, "toque-recettes").apply { priority = Thread.NORM_PRIORITY - 1 } }
     private val main = Handler(Looper.getMainLooper())
@@ -72,6 +80,12 @@ class RecipeRepo(private val context: Context) {
     }
 
     val count: Int get() = index.entries.size
+    val lidlCount: Int get() = exec.submit<Int> {
+        helper.readableDatabase.rawQuery(RecipeStorageSchema.SOURCE_COUNT, arrayOf(RecipeStorageSchema.LIDL)).use { c ->
+            c.moveToFirst()
+            c.getInt(0)
+        }
+    }.get()
 
     /** Lecture d'une recette (rapide : une seule ligne). */
     fun get(id: String): Recipe? {
@@ -99,7 +113,7 @@ class RecipeRepo(private val context: Context) {
     }
 
     /**
-     * Remplace tout le catalogue par l'import du jour (miroir de l'appli d'origine).
+     * Remplace le catalogue Lidl par l'import du jour (miroir de l'appli d'origine).
      * Les favoris sont conservés ; ceux marqués dans l'appli d'origine sont ajoutés.
      */
     fun replaceAll(recipes: List<Recipe>) {
@@ -110,7 +124,7 @@ class RecipeRepo(private val context: Context) {
         val db = helper.writableDatabase
         db.beginTransaction()
         try {
-            db.delete("recipes", null, null)
+            db.execSQL(RecipeStorageSchema.DELETE_SOURCE, arrayOf(RecipeStorageSchema.LIDL))
             val now = System.currentTimeMillis()
             for (r in recipes) {
                 val v = ContentValues()
@@ -118,6 +132,7 @@ class RecipeRepo(private val context: Context) {
                 v.put("title", r.title)
                 v.put("json", RecipeCodec.encode(r.copy(favorite = false)))
                 v.put("updated", now)
+                v.put("source_id", RecipeStorageSchema.LIDL)
                 db.insertWithOnConflict("recipes", null, v, SQLiteDatabase.CONFLICT_REPLACE)
                 if (r.favorite) db.execSQL("INSERT OR IGNORE INTO favorites (id) VALUES (?)", arrayOf(r.id))
             }
@@ -141,6 +156,7 @@ class RecipeRepo(private val context: Context) {
                     v.put("title", r.title)
                     v.put("json", RecipeCodec.encode(r.copy(favorite = false)))
                     v.put("updated", now)
+                    v.put("source_id", RecipeStorageSchema.LIDL)
                     db.insertWithOnConflict("recipes", null, v, SQLiteDatabase.CONFLICT_REPLACE)
                 }
                 db.setTransactionSuccessful()
@@ -158,20 +174,57 @@ class RecipeRepo(private val context: Context) {
         out
     }.get()
 
-    /** Supprime les recettes absentes de [keep] (catalogue miroir de la source). */
+    /** Supprime uniquement les recettes Lidl absentes de [keep]. */
     fun removeAllExcept(keep: Set<String>, rebuild: Boolean = true) {
         exec.submit {
             val db = helper.writableDatabase
             val gone = ArrayList<String>()
-            db.rawQuery("SELECT id FROM recipes", null).use { c -> while (c.moveToNext()) c.getString(0).let { if (it !in keep) gone += it } }
+            db.rawQuery(RecipeStorageSchema.SOURCE_IDS, arrayOf(RecipeStorageSchema.LIDL)).use { c -> while (c.moveToNext()) c.getString(0).let { if (it !in keep) gone += it } }
             db.beginTransaction()
             try {
-                for (id in gone) db.delete("recipes", "id = ?", arrayOf(id))
+                for (id in gone) db.execSQL(RecipeStorageSchema.DELETE_RECIPE, arrayOf(id, RecipeStorageSchema.LIDL))
                 db.setTransactionSuccessful()
             } finally {
                 db.endTransaction()
             }
             if (rebuild) rebuild()
+        }.get()
+    }
+
+    /** Replace one JSON source atomically. Recipes withdrawn by the source remain if favorited. */
+    fun replaceJsonSource(source: JsonRecipeSource, recipes: List<Recipe>) {
+        require(recipes.all { source.owns(it.id) })
+        exec.submit {
+            val db = helper.writableDatabase
+            db.beginTransaction()
+            try {
+                val keep = recipes.map { it.id }.toHashSet()
+                val gone = ArrayList<String>()
+                db.rawQuery(RecipeStorageSchema.SOURCE_IDS, arrayOf(source.origin)).use { c ->
+                    while (c.moveToNext()) c.getString(0).let { if (it !in keep) gone += it }
+                }
+                for (id in gone) db.execSQL(RecipeStorageSchema.DELETE_UNFAVORITED_RECIPE, arrayOf(id, source.origin))
+                val now = System.currentTimeMillis()
+                for (r in recipes) {
+                    val v = ContentValues()
+                    v.put("id", r.id)
+                    v.put("title", r.title)
+                    v.put("json", RecipeCodec.encode(r.copy(favorite = false)))
+                    v.put("updated", now)
+                    v.put("source_id", source.origin)
+                    check(db.insertWithOnConflict("recipes", null, v, SQLiteDatabase.CONFLICT_REPLACE) != -1L)
+                }
+                db.setTransactionSuccessful()
+            } finally { db.endTransaction() }
+            rebuild()
+        }.get()
+    }
+
+    /** Explicit source removal keeps the user's favorites available offline. */
+    fun removeJsonSource(source: JsonRecipeSource) {
+        exec.submit {
+            helper.writableDatabase.execSQL(RecipeStorageSchema.DELETE_UNFAVORITED_SOURCE, arrayOf(source.origin))
+            rebuild()
         }.get()
     }
 

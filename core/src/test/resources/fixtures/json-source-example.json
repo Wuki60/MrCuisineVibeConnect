@@ -1,0 +1,15 @@
+{
+  "format": "toque-recettes-1",
+  "recipes": [
+    {
+      "id": "example-unheated-step",
+      "title": "Example for parser tests, not a cooking recipe",
+      "steps": [
+        {
+          "text": "Test fixture only. Do not execute on a robot.",
+          "machine": {"program": "manuel", "seconds": 10, "speed": 2, "tempC": 0, "reverse": false, "accessory": "blade"}
+        }
+      ]
+    }
+  ]
+}

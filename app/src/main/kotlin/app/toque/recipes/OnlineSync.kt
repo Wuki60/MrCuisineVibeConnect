@@ -123,7 +123,7 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         // 4. Photos manquantes.
         photos(keep, progress)
 
-        val n = repo.count
+        val n = repo.lidlCount
         val note = if (failures > 0) " " + tr("(%d en échec, réessayées à la prochaine synchro)", failures) else ""
         return LidlSync.Report(true, tr("%d recettes Lidl à jour", n) + note, n)
     }
