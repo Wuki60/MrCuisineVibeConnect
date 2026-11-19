@@ -25,6 +25,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
     private lateinit var settingsSub: TextView
     private lateinit var resumeCard: LinearLayout
     private lateinit var resumeText: TextView
+    private lateinit var knobChip: LinearLayout
     private var unsub: (() -> Unit)? = null
     private val tick = object : Runnable {
         override fun run() {
@@ -44,6 +45,12 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         left.addView(clock, Ui.lp(t = 2))
         date = Ui.text(c, "", 22f, Ui.TEXT2, Ui.LIGHT)
         left.addView(date, Ui.lp(t = 2))
+
+        // Rappel tant que le bouton rotatif n'est ni réglé ni vu en marche.
+        knobChip = Ui.chip(c, tr("Bouton rotatif à régler"), Icon.Kind.WARNING, Ui.WARN, 0x33FFC14D, 18f)
+        knobChip.isClickable = true
+        knobChip.setOnClickListener { a.push(KnobSetupScreen(a)) }
+        left.addView(knobChip, Ui.lp(Ui.WRAP, Ui.WRAP, t = 12))
 
         val search = Ui.horizontal(c)
         search.setPadding(Ui.u(24), 0, Ui.u(24), 0)
@@ -130,6 +137,7 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         val favs = repo.index.entries.count { it.favorite }
         favSub.text = if (favs == 0) tr("Aucun favori") else if (favs == 1) tr("1 favori") else tr("%d favoris", favs)
         settingsSub.text = a.prefs.mode.label
+        knobChip.visibility = if (a.prefs.knobReady) View.GONE else View.VISIBLE
         val guided = a.prefs.guidedRecipe
         val title = if (guided.isEmpty()) null else repo.index.entries.firstOrNull { it.id == guided }?.title
         resumeCard.visibility = if (title != null) View.VISIBLE else View.GONE

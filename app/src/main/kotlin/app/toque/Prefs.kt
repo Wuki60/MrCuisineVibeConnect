@@ -159,6 +159,23 @@ class Prefs(context: Context) {
             p.edit().putInt("knobPress", v).commit()
         }
 
+    /** Vrai une fois le bouton rotatif réglé, vu en marche, ou déclaré absent de l'appareil. */
+    var knobSetupDone: Boolean
+        get() = p.getBoolean("knobSetupDone", false)
+        set(v) {
+            p.edit().putBoolean("knobSetupDone", v).commit()
+        }
+
+    /** Le réglage guidé n'est proposé d'office qu'une fois ; ensuite, l'accueil le rappelle. */
+    var knobSetupShown: Boolean
+        get() = p.getBoolean("knobSetupShown", false)
+        set(v) {
+            p.edit().putBoolean("knobSetupShown", v).commit()
+        }
+
+    /** Faux tant que rien ne dit que le bouton rotatif fonctionne : l'accueil affiche alors un rappel. */
+    val knobReady: Boolean get() = knobSetupDone || knobLeft >= 0 || knobRight >= 0 || knobPress >= 0
+
     var lastCrashMs: Long
         get() = p.getLong("lastCrashMs", 0)
         set(v) {

@@ -30,6 +30,7 @@ import app.toque.core.machine.Verdict
 import app.toque.recipes.LidlSync
 import app.toque.recipes.SyncService
 import app.toque.ui.screens.HomeScreen
+import app.toque.ui.screens.KnobSetupScreen
 import app.toque.ui.screens.SettingsScreen
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -92,6 +93,10 @@ class MainActivity : Activity() {
         if (reopenSettings) {
             reopenSettings = false
             push(SettingsScreen(this))
+        } else if (!prefs.knobReady && !prefs.knobSetupShown) {
+            // Premier lancement : le bouton du robot n'envoie pas les mêmes touches partout.
+            prefs.knobSetupShown = true
+            push(KnobSetupScreen(this))
         }
     }
 
@@ -212,12 +217,19 @@ class MainActivity : Activity() {
         }
         if (event.action == KeyEvent.ACTION_DOWN && overlay.visibility != View.VISIBLE) {
             val k = event.keyCode
-            val left = prefs.knobLeft.let { if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_LEFT }
-            val right = prefs.knobRight.let { if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_RIGHT }
+            // Par défaut : les flèches, et les touches du bouton du robot (clavier mtk-kpd :
+            // F6 à droite, F7 à gauche, F5 à l'appui).
+            val left = prefs.knobLeft.let {
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_F7
+            }
+            val right = prefs.knobRight.let {
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_F6
+            }
             val press = prefs.knobPress.let {
-                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_F5
             }
             val s = current
+            if ((left || right || press) && !prefs.knobSetupDone) prefs.knobSetupDone = true
             if (s != null && currentFocus !is android.widget.EditText) {
                 if (left && s.onKnob(-1)) return true
                 if (right && s.onKnob(1)) return true
@@ -234,6 +246,7 @@ class MainActivity : Activity() {
             val now = System.currentTimeMillis()
             if (v != 0f && now - lastKnobMs > 40) {
                 lastKnobMs = now
+                if (!prefs.knobSetupDone) prefs.knobSetupDone = true
                 if (current?.onKnob(if (v > 0) 1 else -1) == true) return true
             }
         }
