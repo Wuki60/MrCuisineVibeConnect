@@ -10,7 +10,7 @@ import java.net.URL
 object Http {
     class Response(val body: String, val serverMs: Long)
 
-    var userAgent = "Toque (Android; +https://github.com/Wuki60/MrCuisineVibeConnect)"
+    var userAgent = "Toque (Android; +https://github.com/barjola/MrCuisineVibeConnectES)"
 
     fun get(url: String, headers: Map<String, String> = emptyMap(), timeoutMs: Int = 15_000, maxBytes: Int = 1024 * 1024): Response {
         val c = URL(url).openConnection() as HttpURLConnection

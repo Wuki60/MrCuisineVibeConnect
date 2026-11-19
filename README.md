@@ -20,7 +20,7 @@ The easiest way: let an AI agent that can operate your Windows PC (Claude, ChatG
 the install. Give it this message:
 
 > Install Toque on my Monsieur Cuisine Connect by following AGENTS.md in
-> https://github.com/Wuki60/MrCuisineVibeConnect
+> https://github.com/barjola/MrCuisineVibeConnectES
 
 [AGENTS.md](AGENTS.md) describes the whole procedure to the agent, and
 [`tools/setup/toque-setup.ps1`](tools/setup/toque-setup.ps1) does the work step by step (verified
@@ -59,7 +59,7 @@ Allow 1 to 2 hours. Without an agent: [docs/INSTALLATION.md](docs/INSTALLATION.m
 - **Made for a robot without Android buttons**: Toque opens at startup, and a **Back to Toque**
   button stays on top of the stock app when you open it.
 - **Updates from GitHub**: *Settings › Updates* checks this repository's
-  [Releases](https://github.com/Wuki60/MrCuisineVibeConnect/releases) and installs the new version
+  [Releases](https://github.com/barjola/MrCuisineVibeConnectES/releases) and installs the new version
   (silently on a rooted robot, then Toque restarts). Refused while a program is running.
 
 ## Safety: what changes compared to the stock app

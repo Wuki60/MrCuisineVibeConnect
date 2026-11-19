@@ -188,7 +188,7 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
             try {
                 c.connectTimeout = 20_000
                 c.readTimeout = 30_000
-                c.setRequestProperty("User-Agent", "Toque/$version (Android; +https://github.com/Wuki60/MrCuisineVibeConnect)")
+                c.setRequestProperty("User-Agent", "Toque/$version (Android; +https://github.com/barjola/MrCuisineVibeConnectES)")
                 for ((k, v) in headers) c.setRequestProperty(k, v)
                 val code = c.responseCode
                 if ((code == 429 || code >= 500) && attempt < 4) {

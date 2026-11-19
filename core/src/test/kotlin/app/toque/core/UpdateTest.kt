@@ -25,7 +25,7 @@ class UpdateTest {
              "assets":[
                {"name":"notes.txt","size":12,"browser_download_url":"https://example.invalid/notes.txt"},
                {"name":"Toque-0.2.0.apk","size":2345678,
-                "browser_download_url":"https://github.com/Wuki60/MrCuisineVibeConnect/releases/download/v0.2.0/Toque-0.2.0.apk"}
+                "browser_download_url":"https://github.com/barjola/MrCuisineVibeConnectES/releases/download/v0.2.0/Toque-0.2.0.apk"}
              ]}
         """.trimIndent()
         val r = Releases.parse(json)
