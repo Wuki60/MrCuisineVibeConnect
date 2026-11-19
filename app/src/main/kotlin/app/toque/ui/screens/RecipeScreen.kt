@@ -10,7 +10,9 @@ import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.recipes.McOnline
 import app.toque.core.recipes.Recipe
+import app.toque.core.recipes.Scaling
 import app.toque.core.recipes.Step
+import app.toque.core.recipes.scaled
 import app.toque.recipes.Reviews
 import app.toque.ui.Icon
 import app.toque.ui.ImageLoader
@@ -23,6 +25,15 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
     override val title = recipe.title
     private lateinit var favIcon: Icon
     private lateinit var favLabel: TextView
+    private lateinit var ingList: LinearLayout
+    private lateinit var servingsLabel: TextView
+    private lateinit var servingsWarning: TextView
+    private lateinit var minus: View
+    private lateinit var plus: View
+
+    /** Nombre de personnes choisi sur cette fiche (non mémorisé) : seuls les ingrédients suivent. */
+    private var servings = recipe.servings
+    private val maxServings = recipe.servings * 3
 
     override fun build(): View {
         val root = Ui.horizontal(c, Gravity.TOP)
@@ -69,17 +80,22 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         left.addView(actions, Ui.lp(t = 14))
 
         val ing = Ui.vertical(c)
-        ing.addView(section(tr("Ingrédients")))
-        for (g in recipe.ingredients) {
-            if (g.title.isNotBlank()) ing.addView(Ui.text(c, g.title, 17f, Ui.ACCENT, Ui.MEDIUM), Ui.lp(t = 12, b = 2))
-            for (i in g.items) {
-                val row = Ui.horizontal(c, Gravity.TOP)
-                row.addView(Ui.text(c, "•", 18f, Ui.TEXT3), Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
-                row.addView(Ui.text(c, i.display, 18f, Ui.TEXT).apply { setLineSpacing(0f, 1.1f) }, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
-                ing.addView(row, Ui.lp(t = 8))
-            }
+        val ingHead = Ui.horizontal(c)
+        ingHead.addView(section(tr("Ingrédients")), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+        servingsLabel = Ui.text(c, "", 18f, Ui.TEXT, Ui.MEDIUM).apply { gravity = Gravity.CENTER }
+        minus = Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.MINUS, height = 44, textSize = 16f) { bumpServings(-1) }
+        plus = Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.PLUS, height = 44, textSize = 16f) { bumpServings(1) }
+        if (recipe.servings > 0 && recipe.ingredients.isNotEmpty()) {
+            ingHead.addView(minus, Ui.lp(Ui.WRAP, Ui.WRAP))
+            ingHead.addView(servingsLabel, Ui.lp(Ui.u(96), Ui.WRAP))
+            ingHead.addView(plus, Ui.lp(Ui.WRAP, Ui.WRAP))
         }
-        if (recipe.ingredients.isEmpty()) ing.addView(Ui.text(c, tr("Pas de liste d'ingrédients."), 17f, Ui.TEXT3), Ui.lp(t = 8))
+        ing.addView(ingHead)
+        servingsWarning = Ui.text(c, "", 14f, Ui.WARN)
+        ing.addView(servingsWarning, Ui.lp(t = 4))
+        ingList = Ui.vertical(c)
+        ing.addView(ingList)
+        refreshIngredients()
         left.addView(Ui.scroll(c, ing), LinearLayout.LayoutParams(Ui.MATCH, 0, 1f).apply { topMargin = Ui.u(10) })
         root.addView(left, LinearLayout.LayoutParams(0, Ui.MATCH, 0.42f).apply { rightMargin = Ui.u(24) })
 
@@ -204,11 +220,47 @@ class RecipeScreen(a: MainActivity, private val recipe: Recipe) : Screen(a) {
         a.toast(if (now) tr("Ajoutée aux favoris") else tr("Retirée des favoris"))
     }
 
+    private fun bumpServings(dir: Int) {
+        if (recipe.servings <= 0) return
+        servings = (servings + dir).coerceIn(1, maxServings)
+        refreshIngredients()
+    }
+
+    private fun refreshIngredients() {
+        val factor = if (recipe.servings > 0) servings.toDouble() / recipe.servings else 1.0
+        ingList.removeAllViews()
+        for (g in recipe.ingredients) {
+            if (g.title.isNotBlank()) ingList.addView(Ui.text(c, g.title, 17f, Ui.ACCENT, Ui.MEDIUM), Ui.lp(t = 12, b = 2))
+            for (i in g.items) {
+                val row = Ui.horizontal(c, Gravity.TOP)
+                row.addView(Ui.text(c, "•", 18f, Ui.TEXT3), Ui.lp(Ui.WRAP, Ui.WRAP, r = 10))
+                row.addView(Ui.text(c, i.scaled(factor).display, 18f, Ui.TEXT).apply { setLineSpacing(0f, 1.1f) }, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+                ingList.addView(row, Ui.lp(t = 8))
+            }
+        }
+        if (recipe.ingredients.isEmpty()) ingList.addView(Ui.text(c, tr("Pas de liste d'ingrédients."), 17f, Ui.TEXT3), Ui.lp(t = 8))
+        servingsLabel.text = tr("%d pers.", servings)
+        Ui.setButtonEnabled(minus, servings > 1)
+        Ui.setButtonEnabled(plus, servings < maxServings)
+        // Un seul avertissement, quand la recette agrandie risque de ne plus tenir dans le bol.
+        val grams = Scaling.totalGrams(recipe.allIngredients) * factor
+        val tooMuch = servings > recipe.servings && grams > Scaling.BOWL_MAX_GRAMS
+        servingsWarning.visibility = if (tooMuch) View.VISIBLE else View.GONE
+        if (tooMuch) servingsWarning.text = tr("Environ %s kg d'ingrédients : vérifiez le niveau maximum du bol.",
+            String.format(I18n.locale, "%.1f", grams / 1000))
+    }
+
     private fun refreshFavorite() {
         val f = a.app.recipes.isFavorite(recipe.id)
         favIcon.set(if (f) Icon.Kind.STAR_FILLED else Icon.Kind.STAR)
         favIcon.color = if (f) Ui.ACCENT else Ui.TEXT
         favLabel.text = tr("Favori")
+    }
+
+    override fun onKnob(delta: Int): Boolean {
+        if (recipe.servings <= 0 || recipe.ingredients.isEmpty()) return false
+        bumpServings(delta)
+        return true
     }
 
     override fun onKnobPress(): Boolean {
