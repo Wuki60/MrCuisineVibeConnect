@@ -108,6 +108,19 @@ function Wait-AdbState([string[]]$wanted, [int]$seconds) {
     return Get-AdbState
 }
 
+# Effective machine mode, read from Prefs: shared prefs "toque", key "mode" = demo, twin or
+# hardware. A missing file or key means demo (Prefs.Mode.of). Returns "" when it cannot be read.
+function Get-MachineMode {
+    $xml = Adb shell "su -c 'cat /data/data/app.toque/shared_prefs/toque.xml'"
+    if ($xml -match '<string name="mode">([^<]+)</string>') {
+        $m = $Matches[1].Trim()
+        if ($m -in "demo", "twin", "hardware") { return $m }
+        return "demo"
+    }
+    if ($xml -match '<map' -or $xml -match 'No such file or directory') { return "demo" }
+    return ""
+}
+
 function Test-BootImage([string]$path, [string]$what) {
     if (-not (Test-Path $path)) { Fail "$what missing: $path" }
     $len = (Get-Item $path).Length
@@ -433,9 +446,14 @@ function Step-Install {
     } finally { Pop-Location }
     $ver = Adb shell "dumpsys package app.toque | grep versionName"
     if ($ver -notmatch "versionName") { Fail "Toque is not installed." }
+    $mode = Get-MachineMode
+    if ($mode -ne "" -and $mode -ne "hardware") {
+        NeedHuman ("Toque is in '" + $mode + "' mode, so the motor is not driven. On the robot, EMPTY bowl, lid closed, hand near the main switch: Toque > Settings > Machine > Real machine > Apply, then run the install step again so the mode can be verified. Success: the badge reads Ready/« Prête » with no Demo or Twin marker AND the journal must show the real link, e.g. 'liaison ouverte : Base moteur (/dev/ttyMT...)'; the simulated-base line means the mode was not applied.")
+    }
+    if ($mode -eq "hardware") { Ok "Toque machine mode: hardware (real machine)." }
+    elseif ($mode -eq "") { Say "WARNING: Toque machine mode could not be verified (su or prefs unreadable). On the robot, Settings > Machine > Real machine must be applied before the motor can run." }
     Set-State "done-install" (Get-Date).ToString("s")
     Ok ("Toque installed: " + $ver.Trim())
-    Human "On the robot, EMPTY bowl, lid closed, hand near the main switch: Toque > Settings > Machine > Real machine > Apply. The badge at the top right must show 'Ready' ('Prete' in French). Then try Manual cooking: 10 s, speed 2."
     Ok "install done. Next: wifi (optional)"
 }
 

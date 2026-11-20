@@ -106,10 +106,18 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
             Ui.chipText(temp).setTextColor(col)
             (temp.getChildAt(0) as Icon).color = col
         } else temp.visibility = View.GONE
-        val demo = a.prefs.mode == Prefs.Mode.DEMO
+        val mode = a.prefs.mode
+        val simulated = mode != Prefs.Mode.HARDWARE
         val (label, color) = when {
             s.hasFault -> tr("Alerte") to Ui.DANGER
-            s.link == LinkState.READY -> (if (demo) tr("Démo") else tr("Prête")) to (if (demo) Ui.COOL else Ui.OK)
+            s.link == LinkState.READY -> {
+                val label = when (mode) {
+                    Prefs.Mode.DEMO -> tr("Démo · Prête")
+                    Prefs.Mode.TWIN -> tr("Jumeau · Prête")
+                    Prefs.Mode.HARDWARE -> tr("Prête")
+                }
+                label to (if (simulated) Ui.COOL else Ui.OK)
+            }
             s.link == LinkState.ARMING -> tr("Connexion…") to Ui.WARN
             s.link == LinkState.LOST -> tr("Liaison perdue") to Ui.DANGER
             else -> tr("Base absente") to Ui.TEXT3
