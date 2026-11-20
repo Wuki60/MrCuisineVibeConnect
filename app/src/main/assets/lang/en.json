@@ -226,6 +226,7 @@
   "Moyen": "Medium",
   "Mélanger": "Stir",
   "Non": "No",
+  "Nouvelle tentative automatique.": "Automatic retry.",
   "Nouvelle version disponible : %s": "New version available: %s",
   "Opération incohérente avec le programme": "Operation does not match the program",
   "Oui": "Yes",

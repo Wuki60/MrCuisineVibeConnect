@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Date et heure du robot, réglées toutes seules :
@@ -18,15 +19,20 @@ import java.util.TimeZone
  * Le robot n'a pas de pile d'horloge : au démarrage il se croit le 1er janvier 1970.
  */
 class TimeSync(private val context: Context, private val prefs: Prefs, private val log: Logbook) {
-    class Result(val ok: Boolean, val zone: String, val message: String)
+    class Result(val ok: Boolean, val zone: String, val message: String, val deferred: Boolean = false)
 
     fun run(): Result {
+        // Heure réseau d'Android (NTP), au cas où elle aurait été désactivée.
+        RootShell.run("settings put global auto_time 1")
         val wanted = prefs.timeZone
         var zone: String? = null
         var source = tr("choix manuel")
         var serverMs = 0L
         if (wanted == ZoneLookup.AUTO) {
+            val nowMs = System.currentTimeMillis()
             for (p in ZoneLookup.PROVIDERS) {
+                // Horloge pas encore réglée : les services HTTPS échouent (TLS) ; on garde le HTTP.
+                if (!ZoneLookup.usable(p.url, nowMs)) continue
                 try {
                     val (body, date) = get(p.url)
                     if (date > 0) serverMs = date
@@ -41,15 +47,21 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
                     log.write("heure", "${p.name} : ${e.message ?: e.toString()}")
                 }
             }
-            if (zone == null) return Result(false, current(), tr("Fuseau horaire introuvable : vérifiez le Wi-Fi."))
+            if (zone == null) {
+                if (!ZoneLookup.clockPlausible(nowMs)) {
+                    if (deferredLogged.compareAndSet(false, true)) {
+                        log.write("heure", "horloge pas encore synchronisée, fuseau reporté")
+                    }
+                    return Result(false, current(), tr("Nouvelle tentative automatique."), deferred = true)
+                }
+                return Result(false, current(), tr("Fuseau horaire introuvable : vérifiez le Wi-Fi."))
+            }
         } else {
             zone = wanted.takeIf { it in available } ?: return Result(false, current(), tr("Fuseau horaire inconnu : %s", wanted))
         }
         val z = zone!!
         if (!RootShell.available()) return Result(false, current(), tr("Accès root nécessaire pour régler l'heure du robot."))
 
-        // Heure réseau d'Android (NTP), au cas où elle aurait été désactivée.
-        RootShell.run("settings put global auto_time 1")
         if (z != current()) {
             val r = RootShell.run("service call alarm 3 s16 $z")
             if (!r.ok || prop() != z) {
@@ -99,6 +111,12 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
 
         @Volatile private var started = false
 
+        /** Une seule ligne de journal neutre par processus pendant l'attente de NTP. */
+        private val deferredLogged = AtomicBoolean(false)
+
+        /** Report de l'attente NTP avant de passer aux délais longs (≈ 3,5–4 min au total). */
+        private const val FAST_DEFERRALS = 5
+
         /**
          * Au lancement de l'interface : réglage dès que le réseau répond (le Wi-Fi met un moment à
          * se connecter au démarrage du robot), puis toutes les 12 heures.
@@ -108,7 +126,8 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
             started = true
             val t = Thread {
                 val retries = longArrayOf(5_000, 30_000, 60_000, 120_000, 300_000, 600_000, 1_800_000)
-                var i = 0
+                var fast = 0      // reports de l'attente NTP
+                var failures = 0  // échecs réels (réseau, root…)
                 while (true) {
                     val r = try {
                         TimeSync(context, prefs, log).run()
@@ -116,8 +135,18 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
                         log.write("heure", "erreur : ${e.message}")
                         Result(false, current(), "")
                     }
-                    val wait = if (r.ok) 12 * 3600_000L else retries[minOf(i++, retries.size - 1)]
-                    if (r.ok) i = 0
+                    if (r.ok) {
+                        fast = 0
+                        failures = 0
+                    }
+                    val wait = when {
+                        r.ok -> 12 * 3600_000L
+                        r.deferred && fast < FAST_DEFERRALS -> ZoneLookup.retryDelayMs(fast++)
+                        // Attente NTP trop longue : on ralentit (5 min puis plus) au lieu de sonder chaque minute.
+                        // `failures` est réutilisé exprès : le report fait avancer l'échelle des échecs réels.
+                        r.deferred -> retries[minOf(FAST_DEFERRALS - 1 + failures++, retries.size - 1)]
+                        else -> retries[minOf(failures++, retries.size - 1)]
+                    }
                     try {
                         Thread.sleep(wait)
                     } catch (_: InterruptedException) {
