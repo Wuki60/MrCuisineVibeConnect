@@ -106,9 +106,15 @@ Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the fir
    `ce72e97c07582ad41debfaeee6f6284ecd28285df5f9caa05193653fb236561f`). Save it in
    `C:\Toque\downloads\`.
 2. **SP Flash Tool v5.1924 for Windows** — `https://spflashtool.com/download`, file
-   `SP_Flash_Tool_v5.1924_Win.zip`. Extract it into `C:\Toque\SP_Flash_Tool\`. The script checks
-   `flash_tool.exe` (SHA-256 `67e9eb48161087d43eca845b2dc0e9beacac3c0381bd1ce7989d48b17e2084a7`) and
-   `MTK_AllInOne_DA.bin` (`9cbf39f3925fe88d18bd4c4e45dd1c01741bf7a31a4f69252dfb318d229c0346`).
+   `SP_Flash_Tool_v5.1924_Win.rar`. Upstream ships only this password-protected RAR, not a ZIP: the
+   AES password is `spflashtool.com` (published on that page), and Windows 10 and Windows 11 before
+   23H2 need 7-Zip or WinRAR to open it. A *scripted* direct download needs the header
+   `Referer: https://spflashtool.com/download`, otherwise the server returns HTML instead of the
+   file (a person can just use the download page). Extract it into `C:\Toque\SP_Flash_Tool\`, and
+   the script checks `flash_tool.exe` (SHA-256
+   `67e9eb48161087d43eca845b2dc0e9beacac3c0381bd1ce7989d48b17e2084a7`) and
+   `MTK_AllInOne_DA.bin` (`9cbf39f3925fe88d18bd4c4e45dd1c01741bf7a31a4f69252dfb318d229c0346`);
+   these hashes apply to the files inside the RAR.
 
 Ask the person before downloading (state the file names, sources and sizes: ~130 KB and ~40 MB).
 

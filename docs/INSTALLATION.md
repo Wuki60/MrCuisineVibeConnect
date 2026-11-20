@@ -14,8 +14,13 @@ Menu names below are those of the English interface (*Settings › Langue · Lan
 
 ## What you need
 
-- A Windows PC with Android Studio (for ADB) and [SP Flash Tool](https://spflashtool.com/)
-  (v5.1924 tested).
+- A Windows PC with Android Studio (for ADB) and [SP Flash Tool](https://spflashtool.com/download)
+  (v5.1924 tested). Upstream ships `SP_Flash_Tool_v5.1924_Win.rar`, a password-protected RAR (AES
+  password `spflashtool.com`, published on that page), not a ZIP; Windows 10 and Windows 11 before
+  23H2 cannot open RAR on their own, so extract it with 7-Zip or WinRAR. A *scripted* direct
+  download needs the header `Referer: https://spflashtool.com/download`, otherwise the server
+  returns HTML (a person can just use the download page). The script's pinned SHA-256 for
+  `flash_tool.exe` and `MTK_AllInOne_DA.bin` apply to the files inside the RAR.
 - A **USB-A male / USB-A male** data cable and a small Torx screwdriver. A USB-A ↔ USB-C cable
   does **not** work: the robot's port is a device port, so the PC's USB-C port never detects it.
 - The **MediaTek PreLoader USB VCOM** driver: search for it on the

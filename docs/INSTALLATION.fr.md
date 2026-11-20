@@ -12,8 +12,14 @@ erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commen
 
 ## Ce qu'il faut
 
-- Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/)
-  (v5.1924 testée).
+- Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/download)
+  (v5.1924 testée). L'amont ne fournit que `SP_Flash_Tool_v5.1924_Win.rar`, une archive RAR
+  protégée par le mot de passe AES `spflashtool.com` (indiqué sur cette page), pas un ZIP ; Windows
+  10 et Windows 11 (avant la 23H2) n'ouvrent pas les RAR nativement, il faut l'extraire avec 7-Zip
+  ou WinRAR. Un téléchargement direct *scripté* exige l'en-tête
+  `Referer: https://spflashtool.com/download`, sinon le serveur renvoie du HTML (une personne passe
+  simplement par la page de téléchargement). Les SHA-256 épinglés par le script pour
+  `flash_tool.exe` et `MTK_AllInOne_DA.bin` s'appliquent aux fichiers contenus dans l'archive.
 - Un câble de données **USB-A mâle / USB-A mâle** et un petit tournevis Torx. Un câble USB-A ↔ USB-C
   ne marche **pas** : le port du robot est un port « appareil », le port USB-C du PC ne le détecte
   jamais.

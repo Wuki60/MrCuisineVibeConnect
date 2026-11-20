@@ -89,13 +89,23 @@ function Adb {
     return $out.Trim()
 }
 
-# State of the robot as adb sees it: "recovery" (TWRP), "device" (Android), "unauthorized", or "".
-function Get-AdbState {
+# First "adb devices" entry as @{ Serial; State }: with -Usb the cable device (serial without
+# ":port"), with $Target only serials starting with it (default: -Ip), otherwise any device.
+function Get-AdbDevice([string]$Target = $Ip, [switch]$Usb) {
     $lines = (Adb devices) -split "`r?`n" | Where-Object { $_ -match "`t" }
-    if ($Ip -ne "") { $lines = $lines | Where-Object { $_ -like "$Ip*" } }
+    if ($Usb) { $lines = $lines | Where-Object { ($_ -split "`t")[0] -notmatch ":" } }
+    elseif ($Target -ne "") { $lines = $lines | Where-Object { $_ -like "$Target*" } }
     $first = $lines | Select-Object -First 1
-    if (-not $first) { return "" }
-    return ($first -split "`t")[1].Trim()
+    if (-not $first) { return $null }
+    $parts = $first -split "`t"
+    return [pscustomobject]@{ Serial = $parts[0].Trim(); State = $parts[1].Trim() }
+}
+
+# State of the robot as adb sees it: "recovery" (TWRP), "device" (Android), "unauthorized", or "".
+function Get-AdbState([string]$Target = $Ip) {
+    $dev = Get-AdbDevice $Target
+    if (-not $dev) { return "" }
+    return $dev.State
 }
 
 function Wait-AdbState([string[]]$wanted, [int]$seconds) {
@@ -270,7 +280,7 @@ function Step-Prepare {
     $tool = Get-FlashTool
     if (-not $tool) {
         $missing = $true
-        Say ("MISSING: SP Flash Tool v5.1924 for Windows. Download it from https://spflashtool.com/download (file SP_Flash_Tool_v5.1924_Win.zip) and extract it into " + (Join-Path $Work "SP_Flash_Tool"))
+        Say ("MISSING: SP Flash Tool v5.1924 for Windows. Download it from https://spflashtool.com/download (file SP_Flash_Tool_v5.1924_Win.rar, AES password spflashtool.com; Windows 10 and Windows 11 before 23H2 need 7-Zip or WinRAR; a scripted download needs the header Referer: https://spflashtool.com/download) and extract it into " + (Join-Path $Work "SP_Flash_Tool"))
     } else {
         $da = Join-Path (Split-Path $tool) "MTK_AllInOne_DA.bin"
         if ((Sha $tool) -ne $Known.FlashTool.Sha -or -not (Test-Path $da) -or (Sha $da) -ne $Known.FlashDA.Sha) {
@@ -440,16 +450,24 @@ function Step-Install {
 }
 
 function Step-Wifi {
-    $st = Get-AdbState
-    if ($st -ne "device") { NeedHuman "Connect the robot with the USB cable (Android started), then run 'wifi' again." }
-    $addr = Adb shell "ip -f inet addr show wlan0"
-    $m = [regex]::Match($addr, "inet (\d+\.\d+\.\d+\.\d+)")
-    if (-not $m.Success) {
-        NeedHuman "The robot is not on Wi-Fi. In Toque, tap the clock at the top right 5 times quickly to open the Android settings, join the home Wi-Fi, come back with the 'Back to Toque' button."
+    # -Ip is the Wi-Fi address ("10.0.0.5" or "10.0.0.5:5555"). Before the switch the robot is on
+    # the cable, with a serial; already on Wi-Fi it is the TCP device only, and the cable is not
+    # needed, so fall back to any device. setprop/tcpip are harmless over the TCP serial.
+    $usb = Get-AdbDevice -Usb
+    if (-not $usb -or $usb.State -ne "device") { $usb = Get-AdbDevice }
+    if (-not $usb) { NeedHuman "Connect the robot with the USB cable (Android started), then run 'wifi' again." }
+    if ($usb.State -ne "device") { NeedHuman ("adb sees the robot as '" + $usb.State + "': accept the ADB prompt on the robot (or unplug/replug) and run 'wifi' again.") }
+    $robotIp = $Ip -replace ':5555$', ''
+    if ($robotIp -eq "") {
+        $addr = Adb -s $usb.Serial shell "ip -f inet addr show wlan0"
+        $m = [regex]::Match($addr, "inet (\d+\.\d+\.\d+\.\d+)")
+        if (-not $m.Success) {
+            NeedHuman "The robot is not on Wi-Fi. In Toque, tap the clock at the top right 5 times quickly to open the Android settings, join the home Wi-Fi, come back with the 'Back to Toque' button."
+        }
+        $robotIp = $m.Groups[1].Value
     }
-    $robotIp = $m.Groups[1].Value
-    Say (Adb shell "su -c 'setprop persist.adb.tcp.port 5555'")
-    Say (Adb tcpip 5555)
+    Say (Adb -s $usb.Serial shell "su -c 'setprop persist.adb.tcp.port 5555'")
+    Say (Adb -s $usb.Serial tcpip 5555)
     Start-Sleep -Seconds 5
     Say (Adb connect "${robotIp}:5555")
     $check = Adb -s "${robotIp}:5555" shell "su -c 'id -u'"
