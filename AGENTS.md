@@ -86,7 +86,9 @@ A log is kept in `C:\Toque\setup-log.txt`, state in `C:\Toque\state.json`.
 | 10 | `wifi` | agent | ADB over Wi-Fi (port 5555), so the cable can go and the cover go back on. |
 | 11 | `cleanup` | agent + person | Removes the MediaTek driver; the person can turn memory integrity back on. |
 
-Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the first time).
+Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the first time). The recipe count
+stays at 0 and "never synced" stays shown until every recipe has been fetched: that is normal, do not
+restart the sync.
 
 ### Power-on rules (the source of most confusion)
 
@@ -126,8 +128,9 @@ Ask the person before downloading (state the file names, sources and sizes: ~130
 
 The script runs SP Flash Tool in console mode (`flash_tool.exe -i <config>.xml`, configs written to
 `C:\Toque\spft-*.xml`). The reference run in October 2026 used the **SP Flash Tool window** for
-these three operations; the console configuration is generated from the settings saved by that run
-but has not itself been used on a robot yet. If a console step fails (`STOP:`), do the same
+these three operations; the console configuration was then used successfully for all three on a
+second robot in November 2026 (readback 2 × 16 MiB, `flash-twrp` 10.92 MB, `flash-root` 26.92 MB
+sent). If a console step fails (`STOP:`), do the same
 operation in the window — with a computer-use tool, or by guiding the person:
 
 **GUI fallback: readback** (step `backup`)
@@ -162,6 +165,8 @@ operation in the window — with a computer-use tool, or by guiding the person:
 | Toque shows "Base absente" / no motor link | Magisk busybox missing | `install` again (it runs `tools/robot/setup-root.sh`) |
 | Stuck in the stock app (no Home/Back buttons on this robot) | Normal | Floating **Back to Toque** button, or `adb shell am start -n app.toque/.ui.MainActivity` |
 | `Toque s'est vu refuser les droits` toasts | Magisk policy | `install` again (it allows Toque in Magisk's database) |
+| `root`: `can't create /proc/self/fd/` and `Failed to patch` after `Loading dtbs` | Magisk's installer messages outside its UI; no fstab in the device tree on Android 6 | Harmless if the step ends with `== Done` |
+| `android`: `WARNING` that the boot partition could not be checked (older script) | The check used Magisk's busybox, which only exists after `install` | Harmless; the step now reads the partition back and hashes it on the PC |
 
 ## Undo
 

@@ -356,6 +356,7 @@ function Step-Root {
     $boot = Join-Path $Backup "boot-original.img"
     Test-BootImage $boot "boot-original.img"
     $magisk = Join-Path $Downloads "Magisk-v31.0.apk"
+    if ((Sha $magisk) -ne $Known.Magisk.Sha) { Fail "Magisk-v31.0.apk checksum mismatch: run 'prepare'." }
     $key = Join-Path $env:USERPROFILE ".android\adbkey.pub"
     Say (Adb shell "rm -rf /tmp/magisk /tmp/orig /tmp/twrp-root.sh")
     Say (Adb push $magisk /tmp/magisk.apk)
@@ -408,10 +409,19 @@ function Step-Android {
     }
     $expected = (Get-State)["boot-magisk-sha256"]
     if ($expected) {
-        $bb = "/data/adb/magisk/busybox"
-        $flashed = Adb shell "su -c '$bb head -c $PartitionSize $ByName/boot | $bb sha256sum'"
-        if ($flashed -notmatch $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + $flashed + ")") }
+        # Read the partition back and hash it on the PC: /data/adb/magisk/busybox only exists after
+        # 'install' (setup-root.sh), and Android 6's toolbox has no sha256sum.
+        $tmp = "/data/local/tmp/toque-boot-check.img"
+        $local = Join-Path $Work "boot-check.img"
+        $mib = [int]($PartitionSize / 1048576)
+        Say (Adb shell "su -c 'dd if=$ByName/boot of=$tmp bs=1048576 count=$mib && chmod 644 $tmp'")
+        if (Test-Path $local) { Remove-Item -Force $local }
+        Say (Adb pull $tmp $local)
+        Say (Adb shell "su -c 'rm -f $tmp'")
+        if (-not (Test-Path $local)) { Say "WARNING: could not read the boot partition back to check it." }
+        elseif ((Sha $local) -ne $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + (Sha $local) + ")") }
         else { Ok "boot partition = boot-magisk.img" }
+        if (Test-Path $local) { Remove-Item -Force $local }
     }
     Set-State "done-android" (Get-Date).ToString("s")
     Ok "Root works (uid 0). Next: install"
