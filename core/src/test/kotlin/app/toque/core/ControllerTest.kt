@@ -109,6 +109,27 @@ class ControllerTest {
         assertTrue(v.has("lid"))
     }
 
+    @Test fun bowlSensorCanBeReadInverted() {
+        // Sens du SDK : bit 0x40 à 1 = bol détecté (la base simulée le met quand le bol est posé).
+        val normal = Bench(ControllerConfig(requireBowl = true)).ready()
+        assertTrue(normal.snap.bowlDetected)
+        assertTrue(normal.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000)).ok)
+
+        // Robot au capteur inversé : bit à 0 avec le bol en place.
+        val inverted = Bench(ControllerConfig(requireBowl = true, invertBowlSensor = true)).ready()
+        inverted.board.bowlPresent = false
+        inverted.step(200)
+        assertTrue(inverted.snap.bowlDetected)
+        assertTrue(inverted.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000)).ok)
+
+        val removed = Bench(ControllerConfig(requireBowl = true, invertBowlSensor = true)).ready()
+        removed.step(200)   // bit à 1 : bol absent pour ce robot
+        assertFalse(removed.snap.bowlDetected)
+        val v = removed.c.startJob(Programs.manual(3, 0, Direction.CLOCKWISE, 5_000))
+        assertFalse(v.ok)
+        assertTrue(v.has("bowl"))
+    }
+
     @Test fun lidOpeningPausesAndNothingRestartsAlone() {
         val b = Bench().ready()
         b.c.startJob(Programs.manual(3, 13, Direction.CLOCKWISE, 60_000))

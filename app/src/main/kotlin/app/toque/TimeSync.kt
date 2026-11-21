@@ -107,7 +107,10 @@ class TimeSync(private val context: Context, private val prefs: Prefs, private v
             if (started) return
             started = true
             val t = Thread {
-                val retries = longArrayOf(5_000, 30_000, 60_000, 120_000, 300_000, 600_000, 1_800_000)
+                // Pas de longue attente après un échec : sur un robot neuf, le Wi-Fi n'est souvent
+                // configuré qu'après le premier lancement, et le fuseau restait alors sur GMT jusqu'à
+                // 30 min. Hors ligne, chaque essai échoue tout de suite (DNS) : il ne coûte rien.
+                val retries = longArrayOf(5_000, 30_000, 60_000, 120_000)
                 var i = 0
                 while (true) {
                     val r = try {

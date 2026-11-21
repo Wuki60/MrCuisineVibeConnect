@@ -85,7 +85,9 @@ function Get-Adb {
 
 function Adb {
     $adb = Get-Adb
-    $out = & $adb @args 2>&1 | Out-String
+    # Windows PowerShell 5.1 turns adb's stderr (push summaries, daemon messages) into terminating errors under "Stop".
+    $ErrorActionPreference = "Continue"
+    $out = & $adb @args 2>&1 | ForEach-Object { "$_" } | Out-String
     return $out.Trim()
 }
 
@@ -356,9 +358,27 @@ function Step-Root {
     $boot = Join-Path $Backup "boot-original.img"
     Test-BootImage $boot "boot-original.img"
     $magisk = Join-Path $Downloads "Magisk-v31.0.apk"
+    if ((Sha $magisk) -ne $Known.Magisk.Sha) { Fail "Magisk-v31.0.apk checksum mismatch: run 'prepare'." }
+    # This TWRP's BusyBox 1.22 unzip cannot read the Magisk APK ("invalid zip magic"):
+    # repack, from the verified APK, only the files twrp-root.sh uses into a plain zip.
+    $mini = Join-Path $Downloads "Magisk-v31.0-twrp.zip"
+    if (Test-Path $mini) { Remove-Item -Force $mini }
+    Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+    $want = @("assets/boot_patch.sh", "assets/util_functions.sh", "assets/stub.apk") + (@("magiskboot", "magiskinit", "magisk", "init-ld", "busybox") | ForEach-Object { "lib/armeabi-v7a/lib$_.so" })
+    $zin = [IO.Compression.ZipFile]::OpenRead($magisk)
+    $zfs = [IO.File]::Open($mini, 'CreateNew')
+    $zout = New-Object IO.Compression.ZipArchive($zfs, [IO.Compression.ZipArchiveMode]::Create)
+    try {
+        foreach ($w in $want) {
+            $e = $zin.GetEntry($w)
+            if (-not $e) { Fail "$w missing from Magisk-v31.0.apk." }
+            $src = $e.Open(); $dst = $zout.CreateEntry($w, [IO.Compression.CompressionLevel]::Optimal).Open()
+            $src.CopyTo($dst); $dst.Close(); $src.Close()
+        }
+    } finally { $zout.Dispose(); $zfs.Close(); $zin.Dispose() }
     $key = Join-Path $env:USERPROFILE ".android\adbkey.pub"
     Say (Adb shell "rm -rf /tmp/magisk /tmp/orig /tmp/twrp-root.sh")
-    Say (Adb push $magisk /tmp/magisk.apk)
+    Say (Adb push $mini /tmp/magisk.apk)
     Say (Adb push $boot /tmp/boot.img)
     if (Test-Path $key) { Say (Adb push $key /tmp/adbkey.pub) }
     $script = Join-Path $Repo "tools\robot\twrp-root.sh"
@@ -408,10 +428,18 @@ function Step-Android {
     }
     $expected = (Get-State)["boot-magisk-sha256"]
     if ($expected) {
-        $bb = "/data/adb/magisk/busybox"
-        $flashed = Adb shell "su -c '$bb head -c $PartitionSize $ByName/boot | $bb sha256sum'"
-        if ($flashed -notmatch $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + $flashed + ")") }
+        # Read the partition back and hash it on the PC: /data/adb/magisk/busybox only exists after
+        # 'install' (setup-root.sh), and Android 6's toolbox has no sha256sum.
+        $tmp = "/data/local/tmp/toque-boot-check.img"
+        $local = Join-Path $Work "boot-check.img"
+        Say (Adb shell "su -c 'dd if=$ByName/boot of=$tmp bs=1048576 count=16 && chmod 644 $tmp'")
+        if (Test-Path $local) { Remove-Item -Force $local }
+        Say (Adb pull $tmp $local)
+        Say (Adb shell "su -c 'rm -f $tmp'")
+        if (-not (Test-Path $local)) { Say "WARNING: could not read the boot partition back to check it." }
+        elseif ((Sha $local) -ne $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + (Sha $local) + ")") }
         else { Ok "boot partition = boot-magisk.img" }
+        if (Test-Path $local) { Remove-Item -Force $local }
     }
     Set-State "done-android" (Get-Date).ToString("s")
     Ok "Root works (uid 0). Next: install"

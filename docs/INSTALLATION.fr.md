@@ -13,7 +13,9 @@ erreur peut rendre la tablette du robot inutilisable. Lisez tout avant de commen
 ## Ce qu'il faut
 
 - Un PC Windows avec Android Studio (pour ADB) et [SP Flash Tool](https://spflashtool.com/)
-  (v5.1924 testée).
+  (v5.1924 testée). Si ce site fournit une archive protégée par mot de passe, prenez une copie non
+  chiffrée de la v5.1924 sur un autre miroir et vérifiez-la avec les SHA-256 donnés dans
+  [AGENTS.md](../AGENTS.md).
 - Un câble de données **USB-A mâle / USB-A mâle** et un petit tournevis Torx. Un câble USB-A ↔ USB-C
   ne marche **pas** : le port du robot est un port « appareil », le port USB-C du PC ne le détecte
   jamais.
@@ -105,8 +107,9 @@ pourrait alors accéder au robot.
    - Ouvrir le couvercle pendant un essai → arrêt immédiat, « Pause : couvercle ouvert ».
    - 30 s à 37 °C, vitesse 1 → la température affichée monte.
    - Balance : poser un objet de poids connu, Tare.
-   - Diagnostic : retirer le bol et regarder « Bol détecté ». S'il change bien, vous pouvez
-     activer Réglages › Sécurité › « Exiger la détection du bol ».
+   - Diagnostic : retirer le bol et regarder « Bol détecté ». S'il indique l'inverse (non détecté
+     avec le bol en place), activer Réglages › Sécurité › « Inverser le capteur du bol ». Une fois
+     qu'il change bien, vous pouvez activer Réglages › Sécurité › « Exiger la détection du bol ».
 4. Au moindre comportement anormal : **interrupteur principal**, puis
    `tools\restore-robot.ps1`.
 

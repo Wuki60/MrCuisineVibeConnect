@@ -86,7 +86,9 @@ A log is kept in `C:\Toque\setup-log.txt`, state in `C:\Toque\state.json`.
 | 10 | `wifi` | agent | ADB over Wi-Fi (port 5555), so the cable can go and the cover go back on. |
 | 11 | `cleanup` | agent + person | Removes the MediaTek driver; the person can turn memory integrity back on. |
 
-Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the first time).
+Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the first time). The recipe count
+stays at 0 and "never synced" stays shown until every recipe has been fetched: that is normal, do not
+restart the sync.
 
 ### Power-on rules (the source of most confusion)
 
@@ -109,6 +111,11 @@ Then: Toque › Settings › Lidl recipes › **Sync** (about 15 minutes the fir
    `SP_Flash_Tool_v5.1924_Win.zip`. Extract it into `C:\Toque\SP_Flash_Tool\`. The script checks
    `flash_tool.exe` (SHA-256 `67e9eb48161087d43eca845b2dc0e9beacac3c0381bd1ce7989d48b17e2084a7`) and
    `MTK_AllInOne_DA.bin` (`9cbf39f3925fe88d18bd4c4e45dd1c01741bf7a31a4f69252dfb318d229c0346`).
+   That site may serve a **password-protected RAR** named `.zip` (Windows says the archive is
+   encrypted). Do not hunt for the password: take an unencrypted copy of v5.1924 from another
+   mirror (for example the one linked from `https://www.thecustomdroid.com/sp-flash-tool`). Any
+   copy is fine as long as the two checksums above match; check them inside the zip before
+   extracting.
 
 Ask the person before downloading (state the file names, sources and sizes: ~130 KB and ~40 MB).
 
@@ -126,9 +133,10 @@ Ask the person before downloading (state the file names, sources and sizes: ~130
 
 The script runs SP Flash Tool in console mode (`flash_tool.exe -i <config>.xml`, configs written to
 `C:\Toque\spft-*.xml`). The reference run in October 2026 used the **SP Flash Tool window** for
-these three operations; the console configuration is generated from the settings saved by that run
-but has not itself been used on a robot yet. If a console step fails (`STOP:`), do the same
-operation in the window — with a computer-use tool, or by guiding the person:
+these three operations; the console configuration was then used successfully for all three on a
+second robot in November 2026 (readback 2 × 16 MiB, `flash-twrp` 10.92 MB, `flash-root` 26.92 MB
+sent). If a console step fails (`STOP:`), do the same operation in the window — with a computer-use
+tool, or by guiding the person:
 
 **GUI fallback: readback** (step `backup`)
 1. Start `C:\Toque\SP_Flash_Tool\flash_tool.exe`. Tab **Download** › *Scatter-loading File* ›
@@ -162,6 +170,11 @@ operation in the window — with a computer-use tool, or by guiding the person:
 | Toque shows "Base absente" / no motor link | Magisk busybox missing | `install` again (it runs `tools/robot/setup-root.sh`) |
 | Stuck in the stock app (no Home/Back buttons on this robot) | Normal | Floating **Back to Toque** button, or `adb shell am start -n app.toque/.ui.MainActivity` |
 | `Toque s'est vu refuser les droits` toasts | Magisk policy | `install` again (it allows Toque in Magisk's database) |
+| Any step stops on a `NativeCommandError` from `adb.exe` | Older copy of the script under Windows PowerShell 5.1 (adb's normal stderr treated as an error) | Update the repository; the `Adb` helper now tolerates it |
+| `root`: `unzip: invalid zip magic` | This TWRP's BusyBox 1.22 cannot read the Magisk APK | Update the repository; `root` now sends a plain zip of the files the patch needs |
+| `root`: `can't create /proc/self/fd/` and `Failed to patch` after `Loading dtbs` | Magisk's installer messages outside its UI; no fstab in the device tree on Android 6 | Harmless if the step ends with `== Done` |
+| Clock one hour off (shows GMT) | Toque looked up the time zone before Wi-Fi was set up | Toque now retries every 2 min while offline; with an older version, restart Toque or choose the zone by hand in Settings |
+| "Bowl not detected" with the bowl in place, and the other way round | Bowl sensor reads inverted on some robots | Toque › Settings › Safety › **Invert the bowl sensor** (before enabling *Require bowl detection*) |
 
 ## Undo
 

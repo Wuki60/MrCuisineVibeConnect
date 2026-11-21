@@ -15,7 +15,8 @@ Menu names below are those of the English interface (*Settings › Langue · Lan
 ## What you need
 
 - A Windows PC with Android Studio (for ADB) and [SP Flash Tool](https://spflashtool.com/)
-  (v5.1924 tested).
+  (v5.1924 tested). If that site gives you a password-protected archive, use an unencrypted
+  v5.1924 copy from another mirror and check it against the SHA-256 values in [AGENTS.md](../AGENTS.md).
 - A **USB-A male / USB-A male** data cable and a small Torx screwdriver. A USB-A ↔ USB-C cable
   does **not** work: the robot's port is a device port, so the PC's USB-C port never detects it.
 - The **MediaTek PreLoader USB VCOM** driver: search for it on the
@@ -103,8 +104,9 @@ Only do this on your home network: anyone on it could then connect to the robot.
    - Open the lid during a run → immediate stop, "Paused: lid open".
    - 30 s at 37 °C, speed 1 → the displayed temperature rises.
    - Scale: put an object of known weight on it, Tare.
-   - Diagnostics: remove the bowl and watch "Bowl detected". If it changes correctly, you can
-     enable Settings › Safety › Require bowl detection.
+   - Diagnostics: remove the bowl and watch "Bowl detected". If it shows the opposite (not detected
+     with the bowl in place), turn on Settings › Safety › Invert the bowl sensor. Once it changes
+     correctly, you can enable Settings › Safety › Require bowl detection.
 4. At the slightest abnormal behaviour: **main switch**, then `tools\restore-robot.ps1`.
 
 ## 5. Toque at startup

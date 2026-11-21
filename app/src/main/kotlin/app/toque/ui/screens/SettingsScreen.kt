@@ -84,6 +84,12 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         })
         bowlText = Ui.text(c, "", 15f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }
         safety.addView(bowlText, Ui.lp(t = 6))
+        safety.addView(toggle(tr("Inverser le capteur du bol"), a.prefs.invertBowl) { on ->
+            a.prefs.invertBowl = on
+            a.machine.reconfigure { a.refusal(it) }
+        }, Ui.lp(t = 10))
+        safety.addView(Ui.text(c, tr("Si le robot indique « bol non détecté » quand le bol est en place, et l'inverse."),
+            15f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 4))
         safety.addView(toggle(tr("Montée progressive de la vitesse si le contenu est chaud"), a.prefs.hotRamp) { on ->
             a.prefs.hotRamp = on
             a.machine.reconfigure { a.refusal(it) }

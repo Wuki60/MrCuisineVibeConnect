@@ -83,6 +83,11 @@ class ControllerConfig(
     val hotRamp: Boolean = true,
     /** Exiger le capteur du bol (bit NTC) avant tout démarrage. */
     val requireBowl: Boolean = false,
+    /**
+     * Lire le bit du bol à l'envers (bit à 1 = bol absent). Constaté sur au moins un SKMC 1200 ;
+     * réglable depuis la tablette, le sens par défaut reste celui du SDK.
+     */
+    val invertBowlSensor: Boolean = false,
 )
 
 /**
@@ -100,6 +105,9 @@ class MachineController(
     var config: ControllerConfig = ControllerConfig(),
 ) {
     var listener: ((MachineEvent) -> Unit)? = null
+
+    /** Bol en place, selon le sens de lecture choisi (ControllerConfig.invertBowlSensor). */
+    private fun bowlPresent(t: Telemetry): Boolean = t.bowlNtcDetected != config.invertBowlSensor
 
     private val parser = MccStreamParser()
     private val frameBuffer = ArrayList<ByteArray>(4)
@@ -337,7 +345,7 @@ class MachineController(
         }
         if (t.lidOpen) v += Violation("lid", tr("Fermez et verrouillez le couvercle"))
         if (t.errorDetected) v += Violation("board_error", Mcc.boardErrorMessage(t.errorCode))
-        if (config.requireBowl && !t.bowlNtcDetected) v += Violation("bowl", tr("Bol non détecté"))
+        if (config.requireBowl && !bowlPresent(t)) v += Violation("bowl", tr("Bol non détecté"))
         return v
     }
 
@@ -641,7 +649,7 @@ class MachineController(
             scaleStable = t?.scaleStable ?: false,
             scaleState = t?.androidScaleState ?: "",
             lidOpen = t?.lidOpen ?: false,
-            bowlDetected = t?.bowlNtcDetected ?: false,
+            bowlDetected = t?.let { bowlPresent(it) } ?: false,
             motorOn = t?.motorOn ?: false,
             heaterOn = t?.heaterOn ?: false,
             boardErrorCode = if (t?.errorDetected == true) t.errorCode else 0,
