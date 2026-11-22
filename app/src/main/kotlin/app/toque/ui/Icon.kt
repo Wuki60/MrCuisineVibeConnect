@@ -10,8 +10,8 @@ import android.view.View
 /** Icônes vectorielles dessinées au trait (grille 24×24), sans fichier de ressources. */
 class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
     enum class Kind {
-        BACK, SEARCH, PLAY, PAUSE, STOP, THERMO, SPEED, CLOCK, REVERSE, SCALE, BOOK, STAR, STAR_FILLED,
-        SETTINGS, PLUS, MINUS, CHECK, CLOSE, KNEAD, STEAM, FLAME, BOLT, SYNC, LID, WARNING, HOME, WHISK,
+        BACK, FORWARD, SEARCH, PLAY, PAUSE, STOP, THERMO, SPEED, CLOCK, REVERSE, SCALE, BOOK, STAR, STAR_FILLED,
+        SETTINGS, PLUS, MINUS, CHECK, CLOSE, KNEAD, STEAM, FLAME, BOLT, SYNC, LID, WARNING, HOME, WHISK, BLADE,
         CHEVRON, LINK, INFO, POT, TIMER, DROP, EDIT, TRASH, PEOPLE, DOWNLOAD, UPLOAD, GLOBE, BELL,
     }
 
@@ -36,6 +36,11 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
     private val path = Path()
     private val rect = RectF()
 
+    init {
+        // Évite le flou de 2 px de PathCache HWUI sous Android 6 en forçant le rendu vectoriel Skia 1:1.
+        setLayerType(LAYER_TYPE_SOFTWARE, null)
+    }
+
     fun set(k: Kind) {
         if (k != kind) {
             kind = k
@@ -44,19 +49,41 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
-        // Le dessin tient dans la zone intérieure : un padding agrandit la zone tactile sans grossir le trait.
-        val w = width - paddingLeft - paddingRight
-        val h = height - paddingTop - paddingBottom
-        val s = minOf(w, h) / 24f
+        val padH = paddingLeft + paddingRight
+        val padV = paddingTop + paddingBottom
+        val availW = (width - padH).toFloat()
+        val availH = (height - padV).toFloat()
+        val s = minOf(availW, availH) / 24f
         if (s <= 0f) return
         canvas.save()
-        canvas.translate(paddingLeft + (w - 24 * s) / 2f, paddingTop + (h - 24 * s) / 2f)
+        canvas.translate(paddingLeft + (availW - 24 * s) / 2f, paddingTop + (availH - 24 * s) / 2f)
         canvas.scale(s, s)
-        stroke.strokeWidth = 2f
+        stroke.strokeWidth = Math.max(1f, Math.round(2f * s) / s)
         val p = path
         p.reset()
         when (kind) {
-            Kind.BACK -> { p.moveTo(14.5f, 5.5f); p.lineTo(8f, 12f); p.lineTo(14.5f, 18.5f); canvas.drawPath(p, stroke) }
+            Kind.BACK -> {
+                p.moveTo(15.5f, 6.2f)
+                p.lineTo(8.5f, 11.2f)
+                p.quadTo(7.2f, 12f, 8.5f, 12.8f)
+                p.lineTo(15.5f, 17.8f)
+                p.quadTo(17f, 18.8f, 17f, 17.2f)
+                p.lineTo(17f, 6.8f)
+                p.quadTo(17f, 5.2f, 15.5f, 6.2f)
+                p.close()
+                canvas.drawPath(p, stroke)
+            }
+            Kind.FORWARD -> {
+                p.moveTo(8.5f, 6.2f)
+                p.lineTo(15.5f, 11.2f)
+                p.quadTo(16.8f, 12f, 15.5f, 12.8f)
+                p.lineTo(8.5f, 17.8f)
+                p.quadTo(7f, 18.8f, 7f, 17.2f)
+                p.lineTo(7f, 6.8f)
+                p.quadTo(7f, 5.2f, 8.5f, 6.2f)
+                p.close()
+                canvas.drawPath(p, stroke)
+            }
             Kind.CHEVRON -> { p.moveTo(9f, 5f); p.lineTo(16f, 12f); p.lineTo(9f, 19f); canvas.drawPath(p, stroke) }
             Kind.SEARCH -> { canvas.drawCircle(10.5f, 10.5f, 6.5f, stroke); canvas.drawLine(15.5f, 15.5f, 20.5f, 20.5f, stroke) }
             Kind.PLAY -> { p.moveTo(7f, 4.5f); p.lineTo(19.5f, 12f); p.lineTo(7f, 19.5f); p.close(); canvas.drawPath(p, fill) }
@@ -75,8 +102,10 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
                 if (kind == Kind.TIMER) canvas.drawLine(10f, 2.5f, 14f, 2.5f, stroke)
             }
             Kind.REVERSE -> {
-                rect.set(4f, 4f, 20f, 20f); canvas.drawArc(rect, -60f, -260f, false, stroke)
-                p.moveTo(17f, 3f); p.lineTo(16.5f, 6.8f); p.lineTo(20.5f, 7f); canvas.drawPath(p, stroke)
+                rect.set(4.5f, 4.5f, 19.5f, 19.5f)
+                canvas.drawArc(rect, -20f, -140f, false, stroke); canvas.drawArc(rect, 160f, -140f, false, stroke)
+                p.moveTo(5.5f, 3.5f); p.lineTo(5f, 8f); p.lineTo(9.5f, 8f); canvas.drawPath(p, stroke)
+                p.reset(); p.moveTo(18.5f, 20.5f); p.lineTo(19f, 16f); p.lineTo(14.5f, 16f); canvas.drawPath(p, stroke)
             }
             Kind.SCALE -> {
                 rect.set(3f, 7f, 21f, 20f); canvas.drawRoundRect(rect, 3f, 3f, stroke)
@@ -144,15 +173,34 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
                 canvas.drawLine(12f, 9.5f, 12f, 14f, stroke); canvas.drawCircle(12f, 17.3f, 1.2f, fill)
             }
             Kind.HOME -> {
-                // Maison d'un seul contour, avec sa porte.
-                p.moveTo(4.5f, 10.6f); p.lineTo(12f, 4.2f); p.lineTo(19.5f, 10.6f); p.lineTo(19.5f, 19.5f); p.lineTo(4.5f, 19.5f); p.close()
-                p.moveTo(10f, 19.5f); p.lineTo(10f, 14.2f); p.lineTo(14f, 14.2f); p.lineTo(14f, 19.5f)
+                p.moveTo(12f, 4.5f)
+                p.lineTo(19.5f, 10.5f)
+                p.lineTo(19.5f, 16.5f)
+                p.quadTo(19.5f, 19.5f, 16.5f, 19.5f)
+                p.lineTo(7.5f, 19.5f)
+                p.quadTo(4.5f, 19.5f, 4.5f, 16.5f)
+                p.lineTo(4.5f, 10.5f)
+                p.close()
                 canvas.drawPath(p, stroke)
             }
             Kind.WHISK -> {
                 canvas.drawLine(12f, 21.5f, 12f, 15f, stroke)
                 rect.set(7f, 2.5f, 17f, 16f); canvas.drawOval(rect, stroke)
                 rect.set(9.5f, 2.5f, 14.5f, 16f); canvas.drawOval(rect, stroke)
+            }
+            Kind.BLADE -> {
+                canvas.drawCircle(12f, 12f, 1.3f, fill)
+                p.moveTo(9.2f, 9.2f)
+                p.cubicTo(11.2f, 6.5f, 13.5f, 4f, 16.8f, 2.4f)
+                p.cubicTo(18.8f, 4.5f, 17.2f, 8f, 14.8f, 9.2f)
+                p.cubicTo(17.5f, 11.2f, 20f, 13.5f, 21.6f, 16.8f)
+                p.cubicTo(19.5f, 18.8f, 16f, 17.2f, 14.8f, 14.8f)
+                p.cubicTo(12.8f, 17.5f, 10.5f, 20f, 7.2f, 21.6f)
+                p.cubicTo(5.2f, 19.5f, 6.8f, 16f, 9.2f, 14.8f)
+                p.cubicTo(6.5f, 12.8f, 4f, 10.5f, 2.4f, 7.2f)
+                p.cubicTo(4.5f, 5.2f, 8f, 6.8f, 9.2f, 9.2f)
+                p.close()
+                canvas.drawPath(p, stroke)
             }
             Kind.LINK -> { canvas.drawCircle(12f, 12f, 4f, fill); canvas.drawCircle(12f, 12f, 8.5f, stroke) }
             Kind.INFO -> { canvas.drawCircle(12f, 12f, 9f, stroke); canvas.drawLine(12f, 11f, 12f, 16.5f, stroke); canvas.drawCircle(12f, 7.8f, 1.2f, fill) }
