@@ -549,7 +549,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
 
         // MQTT (publication seule) — sur cette page Avancé, sous les outils.
         group(p, tr("MQTT"))
-        p.addView(hint(tr("Publie l'état de la machine (température, programme, alertes…) vers un broker. Lecture seule : aucune commande n'est reçue. N'envoie un message que lorsque l'état change. Avec Home Assistant, les entités apparaissent toutes seules (MQTT Discovery).")), Ui.lp(t = 8))
+        p.addView(hint(tr("Publie le programme en cours, le temps restant, la température et les alertes vers un broker. Lecture seule : aucune commande n'est reçue. N'envoie un message que lorsque l'état change. Avec Home Assistant, les entités apparaissent toutes seules (MQTT Discovery).")), Ui.lp(t = 8))
         p.addView(toggle(tr("Activer MQTT"), a.prefs.mqttEnabled) { on ->
             saveMqttFields()
             a.prefs.mqttEnabled = on

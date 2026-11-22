@@ -63,7 +63,7 @@ object MqttDiscovery {
             return "homeassistant/binary_sensor/toque_$node/$objectId/config" to Json.write(body)
         }
 
-        val out = ArrayList<Pair<String, String>>(16)
+        val out = ArrayList<Pair<String, String>>(12)
         out += "homeassistant/binary_sensor/toque_$node/online/config" to Json.write(
             linkedMapOf(
                 "name" to tr("En ligne"),
@@ -75,21 +75,19 @@ object MqttDiscovery {
                 "device" to device,
             )
         )
+        // Programme / fin — le cœur utile pour les automations HA.
+        out += sensor("job_label", tr("Programme"), "{{ value_json.jobLabel }}")
+        out += sensor("job_state", tr("État du programme"), "{{ value_json.jobState }}")
+        out += sensor("job_kind", tr("Type de programme"), "{{ value_json.jobKind }}")
+        out += sensor("remaining", tr("Temps restant"), "{{ value_json.remainingSec }}", "s", stateClass = "measurement")
+        out += sensor("end_reason", tr("Fin du programme"), "{{ value_json.endReason }}")
+        out += binary("cooking", tr("En cours de cuisson"), "value_json.jobActive", "running")
+        // Contexte pendant le programme.
         out += sensor("temperature", tr("Température"), "{{ value_json.actualTempC }}", "°C", "temperature", "measurement")
         out += sensor("target_temperature", tr("Température cible"), "{{ value_json.targetTempC }}", "°C", "temperature")
         out += sensor("speed", tr("Vitesse"), "{{ value_json.speedLevel }}")
-        out += sensor("link", tr("Liaison"), "{{ value_json.link }}")
-        out += sensor("job_state", tr("État du programme"), "{{ value_json.jobState }}")
-        out += sensor("job_label", tr("Programme"), "{{ value_json.jobLabel }}")
-        out += sensor("job_kind", tr("Type de programme"), "{{ value_json.jobKind }}")
-        out += sensor("remaining", tr("Temps restant"), "{{ value_json.remainingSec }}", "s", stateClass = "measurement")
         out += sensor("fault_code", tr("Code d'alerte"), "{{ value_json.faultCode }}")
         out += sensor("fault_message", tr("Alerte"), "{{ value_json.faultMessage }}")
-        out += binary("lid_open", tr("Couvercle ouvert"), "value_json.lidOpen", "opening")
-        out += binary("bowl", tr("Bol détecté"), "value_json.bowlDetected")
-        out += binary("motor", tr("Moteur"), "value_json.motorOn", "running")
-        out += binary("heater", tr("Chauffe"), "value_json.heaterOn", "heat")
-        out += binary("cooking", tr("En cours de cuisson"), "value_json.jobActive", "running")
         return out
     }
 

@@ -30,6 +30,10 @@ class MqttPublisher(
     @Volatile private var statusDetail: String = ""
     @Volatile private var generation = 0
     private var statusListener: ((Status, String) -> Unit)? = null
+    /** Délai avant le prochain essai après un échec (15 s → … → 5 min). */
+    private var failDelayMs = 15_000L
+    /** Évite de remplir le journal : un seul « échec », puis un « connecté » à la reprise. */
+    private var loggedOutage = false
 
     fun status(): Status = status
     fun statusDetail(): String = statusDetail
@@ -42,6 +46,8 @@ class MqttPublisher(
     /** Applique les réglages : coupe ou (re)connecte. */
     fun reconfigure() {
         val gen = ++generation
+        failDelayMs = 15_000L
+        loggedOutage = false
         handler.post { runSession(gen) }
     }
 
@@ -106,16 +112,26 @@ class MqttPublisher(
             publishDiscovery(c, deviceId, statusTopic, stateTopic)
             setStatus(Status.CONNECTED, tr("Connecté à %s:%d", host, port))
             log.write("mqtt", "connecté $host:$port → $prefix")
+            loggedOutage = false
+            failDelayMs = 15_000L
             schedulePing(gen)
             lastJson.get()?.let { publishState(it) }
         } catch (e: Exception) {
             disconnectClient()
             setStatus(Status.ERROR, e.message ?: e.toString())
-            log.write("mqtt", "échec connexion : $e")
-            if (prefs.mqttEnabled && gen == generation) {
-                handler.postDelayed({ if (gen == generation) runSession(generation) }, 15_000)
+            if (!loggedOutage) {
+                log.write("mqtt", "échec connexion : $e")
+                loggedOutage = true
             }
+            scheduleRetry(gen)
         }
+    }
+
+    private fun scheduleRetry(gen: Int) {
+        if (!prefs.mqttEnabled || gen != generation) return
+        val delay = failDelayMs
+        failDelayMs = minOf(failDelayMs * 2, 300_000L)
+        handler.postDelayed({ if (gen == generation) runSession(generation) }, delay)
     }
 
     @Volatile private var statusTopic: String = ""
@@ -152,13 +168,13 @@ class MqttPublisher(
         try {
             c.publish(topic, json.toByteArray(utf8), retain = true)
         } catch (e: Exception) {
-            log.write("mqtt", "échec publish : $e")
             disconnectClient()
             setStatus(Status.ERROR, e.message ?: e.toString())
-            if (prefs.mqttEnabled) {
-                val gen = generation
-                handler.postDelayed({ if (gen == generation) runSession(generation) }, 5_000)
+            if (!loggedOutage) {
+                log.write("mqtt", "échec publish : $e")
+                loggedOutage = true
             }
+            scheduleRetry(generation)
         }
     }
 
@@ -167,13 +183,17 @@ class MqttPublisher(
             if (gen != generation) return@postDelayed
             val c = client
             if (c == null || !c.connected) {
-                if (prefs.mqttEnabled) runSession(generation)
+                if (prefs.mqttEnabled) scheduleRetry(gen)
                 return@postDelayed
             }
             c.ping()
             if (!c.connected) {
                 setStatus(Status.ERROR, tr("Connexion MQTT perdue"))
-                if (prefs.mqttEnabled) runSession(generation)
+                if (!loggedOutage) {
+                    log.write("mqtt", "connexion perdue")
+                    loggedOutage = true
+                }
+                if (prefs.mqttEnabled) scheduleRetry(gen)
                 return@postDelayed
             }
             schedulePing(gen)

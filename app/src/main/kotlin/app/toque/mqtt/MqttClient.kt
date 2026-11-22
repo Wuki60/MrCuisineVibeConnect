@@ -11,6 +11,8 @@ import java.net.InetSocketAddress
 import java.net.Socket
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.net.ssl.HttpsURLConnection
+import javax.net.ssl.SSLSocket
 import javax.net.ssl.SSLSocketFactory
 
 /**
@@ -39,13 +41,23 @@ class MqttClient(
     @Throws(IOException::class)
     fun connect() {
         if (open.get()) return
-        val s = if (tls) {
-            SSLSocketFactory.getDefault().createSocket() as Socket
+        // Socket clair d'abord (timeout de connexion), puis enveloppe TLS avec SNI + vérif du nom.
+        val plain = Socket()
+        plain.tcpNoDelay = true
+        plain.connect(InetSocketAddress(host, port), 8_000)
+        val s: Socket = if (tls) {
+            val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
+            val ssl = factory.createSocket(plain, host, port, true) as SSLSocket
+            ssl.startHandshake()
+            val verifier = HttpsURLConnection.getDefaultHostnameVerifier()
+            if (!verifier.verify(host, ssl.session)) {
+                try { ssl.close() } catch (_: Exception) {}
+                throw IOException("hostname not verified: $host")
+            }
+            ssl
         } else {
-            Socket()
+            plain
         }
-        s.tcpNoDelay = true
-        s.connect(InetSocketAddress(host, port), 8_000)
         s.soTimeout = (keepAliveSec + 10) * 1000
         val out = DataOutputStream(BufferedOutputStream(s.getOutputStream()))
         val inp = DataInputStream(BufferedInputStream(s.getInputStream()))

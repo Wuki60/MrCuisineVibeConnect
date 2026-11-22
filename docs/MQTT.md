@@ -15,16 +15,18 @@ Read-only telemetry for Home Assistant (or any MQTT broker). **No commands** are
 
 ## State JSON fields
 
+Focused on the running program and its end (no lid/bowl/motor/heater/link).
+
 | Field | Meaning |
 |---|---|
-| `link` | Link state (`READY`, …) |
+| `jobActive` / `jobKind` / `jobLabel` / `jobState` | Program |
+| `remainingSec` | Seconds left (`0` when done) |
+| `endReason` | Why it ended (empty while running) |
 | `actualTempC` / `targetTempC` | Temperatures |
 | `speedLevel` | Blade speed 0–10 |
-| `lidOpen` / `bowlDetected` | Sensors |
-| `motorOn` / `heaterOn` | Actuators |
-| `jobActive` / `jobKind` / `jobLabel` / `jobState` | Program |
-| `remainingSec` | Remaining time |
 | `faultCode` / `faultMessage` | Alerts |
+
+`jobState` values include `RUNNING`, `PAUSED`, `FINISHED`, `ABORTED`, … HA automations typically watch `jobState` → `FINISHED` or `cooking` → off.
 
 ## Files (MQTT / HA)
 
