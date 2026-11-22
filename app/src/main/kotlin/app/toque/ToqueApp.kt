@@ -10,6 +10,7 @@ import android.os.Process
 import app.toque.core.i18n.I18n
 import app.toque.core.robot.RobotProfiles
 import app.toque.machine.MachineClient
+import app.toque.mqtt.MqttPublisher
 import app.toque.recipes.RecipeRepo
 import app.toque.ui.MainActivity
 import java.util.Locale
@@ -24,6 +25,7 @@ class ToqueApp : Application() {
     val recipes: RecipeRepo by lazy { RecipeRepo(this) }
     /** toqueapp.org : compte relié, recettes de la communauté. */
     val site: app.toque.site.SiteAccount by lazy { app.toque.site.SiteAccount(this) }
+    val mqtt: MqttPublisher by lazy { MqttPublisher(this, prefs, log) }
 
     override fun onCreate() {
         super.onCreate()
@@ -62,6 +64,7 @@ class ToqueApp : Application() {
         }
         log.write("interface", "démarrage")
         TimeSync.start(this, prefs, log)
+        mqtt.reconfigure()
     }
 
     private fun isMainProcess(): Boolean {

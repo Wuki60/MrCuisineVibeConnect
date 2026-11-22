@@ -24,6 +24,7 @@ import app.toque.core.time.ZoneLookup
 import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
 import app.toque.core.recipes.McOnline
+import app.toque.mqtt.MqttPublisher
 import app.toque.recipes.OnlineSync
 import app.toque.recipes.SyncProgress
 import app.toque.recipes.RecipeFiles
@@ -80,6 +81,12 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     /** Point sur « Avancé » et phrase au-dessus de « Machine » : tant que Toque ne pilote pas le vrai moteur. */
     private lateinit var modeDot: View
     private lateinit var modeText: TextView
+    private lateinit var mqttHost: EditText
+    private lateinit var mqttPort: EditText
+    private lateinit var mqttUser: EditText
+    private lateinit var mqttPassword: EditText
+    private lateinit var mqttPrefix: EditText
+    private lateinit var mqttStatus: TextView
     private var settingTime = false
     private var mode = a.prefs.mode
 
@@ -538,6 +545,41 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
             p.addView(two, Ui.lp(t = 8))
         }
         p.addView(Ui.spacer(c, h = 8))
+        line(p)
+
+        // MQTT (publication seule) — sur cette page Avancé, sous les outils.
+        group(p, tr("MQTT"))
+        p.addView(hint(tr("Publie l'état de la machine (température, programme, alertes…) vers un broker. Lecture seule : aucune commande n'est reçue. N'envoie un message que lorsque l'état change. Avec Home Assistant, les entités apparaissent toutes seules (MQTT Discovery).")), Ui.lp(t = 8))
+        p.addView(toggle(tr("Activer MQTT"), a.prefs.mqttEnabled) { on ->
+            saveMqttFields()
+            a.prefs.mqttEnabled = on
+            a.app.mqtt.reconfigure()
+        }, Ui.lp(t = 10))
+        mqttHost = field(a.prefs.mqttHost, tr("Hôte"))
+        mqttPort = field(a.prefs.mqttPort.toString(), "Port").apply { inputType = InputType.TYPE_CLASS_NUMBER }
+        val mqttHostRow = Ui.horizontal(c)
+        mqttHostRow.addView(mqttHost, LinearLayout.LayoutParams(0, Ui.u(52), 1f).apply { rightMargin = Ui.u(10) })
+        mqttHostRow.addView(mqttPort, LinearLayout.LayoutParams(Ui.u(120), Ui.u(52)))
+        p.addView(mqttHostRow, Ui.lp(t = 10))
+        mqttUser = field(a.prefs.mqttUser, tr("Utilisateur"))
+        mqttPassword = field(a.prefs.mqttPassword, tr("Mot de passe")).apply {
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        p.addView(mqttUser, Ui.lp(Ui.MATCH, Ui.u(52), t = 8))
+        p.addView(mqttPassword, Ui.lp(Ui.MATCH, Ui.u(52), t = 8))
+        mqttPrefix = field(a.prefs.mqttTopicPrefix, tr("Préfixe des topics (vide = toque/<id>)"))
+        p.addView(mqttPrefix, Ui.lp(Ui.MATCH, Ui.u(52), t = 8))
+        p.addView(toggle(tr("TLS (MQTT sécurisé)"), a.prefs.mqttTls) { on ->
+            a.prefs.mqttTls = on
+        }, Ui.lp(t = 8))
+        mqttStatus = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
+        p.addView(mqttStatus, Ui.lp(t = 8))
+        p.addView(Ui.button(c, tr("Appliquer"), Ui.Style.PRIMARY, Icon.Kind.CHECK, height = 52, textSize = 18f) {
+            saveMqttFields()
+            a.app.mqtt.reconfigure()
+            a.toast(tr("Réglages MQTT enregistrés"), Ui.OK)
+        }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 10, b = 8))
+        paintMqttStatus(a.app.mqtt.status(), a.app.mqtt.statusDetail())
         line(p)
 
         val version = try { a.packageManager.getPackageInfo(a.packageName, 0).versionName } catch (_: Exception) { "?" }
@@ -1041,6 +1083,31 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         UpdateFlow.offer(a, r) { msg -> upd = Upd.ERROR; updMessage = msg; renderUpdate() }
     }
 
+
+    private fun saveMqttFields() {
+        a.prefs.mqttHost = mqttHost.text.toString().trim()
+        a.prefs.mqttPort = mqttPort.text.toString().trim().toIntOrNull() ?: 1883
+        a.prefs.mqttUser = mqttUser.text.toString().trim()
+        a.prefs.mqttPassword = mqttPassword.text.toString()
+        a.prefs.mqttTopicPrefix = mqttPrefix.text.toString().trim()
+    }
+
+    private fun paintMqttStatus(status: MqttPublisher.Status, detail: String) {
+        if (!::mqttStatus.isInitialized) return
+        val label = when (status) {
+            MqttPublisher.Status.OFF -> tr("MQTT désactivé")
+            MqttPublisher.Status.CONNECTING -> tr("Connexion…")
+            MqttPublisher.Status.CONNECTED -> tr("Connecté")
+            MqttPublisher.Status.ERROR -> tr("Erreur")
+        }
+        mqttStatus.setTextColor(when (status) {
+            MqttPublisher.Status.CONNECTED -> Ui.OK
+            MqttPublisher.Status.ERROR -> Ui.WARN
+            else -> Ui.TEXT2
+        })
+        mqttStatus.text = if (detail.isEmpty()) label else "$label\n$detail"
+    }
+
     /** Désabonnement du suivi des recettes (le nombre s'affiche une fois la base chargée). */
     private var unsubRecipes: (() -> Unit)? = null
     private var unsubSync: (() -> Unit)? = null
@@ -1058,6 +1125,9 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         unsubRecipes = a.app.recipes.onChange { renderRobot(); refreshSync(); refreshSite() }
         unsubSync = SyncProgress.onChange { refreshSync() }
         unsubSite = a.app.site.onChange { renderAccount(); refreshSite() }
+        a.app.mqtt.onStatus { status, detail ->
+            view.post { paintMqttStatus(status, detail) }
+        }
     }
 
     override fun onHide() {
@@ -1068,6 +1138,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         unsubSync = null
         unsubSite?.invoke()
         unsubSite = null
+        a.app.mqtt.onStatus(null)
     }
 
     override fun onSnapshot(s: Snapshot) {

@@ -485,4 +485,56 @@ class Prefs(context: Context) {
     fun forgetSite() {
         p.edit().remove("siteToken").remove("siteUser").remove("sitePendingFavorites").commit()
     }
+
+    // ---- MQTT (publication seule, vers Home Assistant / Mosquitto)
+
+    var mqttEnabled: Boolean
+        get() = p.getBoolean("mqttEnabled", false)
+        set(v) {
+            p.edit().putBoolean("mqttEnabled", v).commit()
+        }
+
+    var mqttHost: String
+        get() = p.getString("mqttHost", "") ?: ""
+        set(v) {
+            p.edit().putString("mqttHost", v).commit()
+        }
+
+    var mqttPort: Int
+        get() = p.getInt("mqttPort", 1883)
+        set(v) {
+            p.edit().putInt("mqttPort", v).commit()
+        }
+
+    var mqttUser: String
+        get() = p.getString("mqttUser", "") ?: ""
+        set(v) {
+            p.edit().putString("mqttUser", v).commit()
+        }
+
+    var mqttPassword: String
+        get() = p.getString("mqttPassword", "") ?: ""
+        set(v) {
+            p.edit().putString("mqttPassword", v).commit()
+        }
+
+    var mqttTls: Boolean
+        get() = p.getBoolean("mqttTls", false)
+        set(v) {
+            p.edit().putBoolean("mqttTls", v).commit()
+        }
+
+    /** Préfixe des topics, sans slash final (ex. toque/cuisine). Vide ⇒ toque/<deviceId>. */
+    var mqttTopicPrefix: String
+        get() = p.getString("mqttTopicPrefix", "") ?: ""
+        set(v) {
+            p.edit().putString("mqttTopicPrefix", v).commit()
+        }
+
+    /** Identifiant dans les topics ; vide ⇒ ANDROID_ID. */
+    var mqttDeviceId: String
+        get() = p.getString("mqttDeviceId", "") ?: ""
+        set(v) {
+            p.edit().putString("mqttDeviceId", v).commit()
+        }
 }
