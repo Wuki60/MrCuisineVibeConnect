@@ -21,7 +21,9 @@ die() { echo "ERROR: $*"; exit 1; }
 echo "== 1. Magisk: patching the original boot"
 rm -rf $T/magisk
 mkdir -p $T/magisk/apk && cd $T/magisk || die "cannot create $T/magisk"
-unzip -o -q $T/magisk.apk -d apk || die "cannot unzip magisk.apk"
+# Old TWRP busybox unzip extracts every entry, then errors on the APK signing block: accept
+# that as long as the files are there (each one is checked just below).
+unzip -o -q $T/magisk.apk -d apk || [ -f apk/assets/boot_patch.sh ] || die "cannot unzip magisk.apk"
 for f in boot_patch.sh util_functions.sh stub.apk; do
   cp apk/assets/$f . || die "$f missing: is this a Magisk APK?"
 done
@@ -42,6 +44,9 @@ B=$(ls -d /dev/block/platform/*/by-name /dev/block/platform/*/*/by-name 2>/dev/n
 grep -q " /system " /proc/mounts || mount /system 2>/dev/null || mount -t ext4 $B/system /system
 grep -q " /system " /proc/mounts || die "cannot mount /system"
 mount -o remount,rw /system
+# TWRP's first screen offers "Keep Read Only": then /system cannot be changed. Check it here
+# instead of failing silently later.
+touch /system/.toque-rw 2>/dev/null && rm -f /system/.toque-rw || die "/system is read-only: in TWRP, swipe 'Allow Modifications' (or Mount > untick 'Mount system partition read-only'), then run root again"
 [ -f /system/build.prop ] || die "/system/build.prop not found"
 rm -rf $T/orig; mkdir -p $T/orig
 cp -p /system/build.prop $T/orig/
@@ -57,12 +62,17 @@ if [ -f /data/property/persist.sys.usb.config ]; then
 fi
 rm -f /system/recovery-from-boot.p
 sync
+for l in persist.service.adb.enable=1 persist.service.debuggable=1 persist.sys.usb.config=mtp,adb; do
+  grep -qx "$l" /system/build.prop || die "could not write $l to /system/build.prop"
+done
+[ -f /system/recovery-from-boot.p ] && die "could not delete /system/recovery-from-boot.p"
 
 echo "== 3. ADB key of the PC"
 if [ -s $T/adbkey.pub ]; then
   mkdir -p /data/misc/adb
   [ -f /data/misc/adb/adb_keys ] && cp -p /data/misc/adb/adb_keys $T/orig/
-  { cat $T/adbkey.pub; echo; } | grep -v '^$' >> /data/misc/adb/adb_keys
+  # Some adb versions write a NUL byte before " @unknown": keep the key on one line.
+  { tr -d '\000' < $T/adbkey.pub 2>/dev/null || cat $T/adbkey.pub; echo; } | grep -v '^$' >> /data/misc/adb/adb_keys
   chown 1000:2000 /data/misc/adb /data/misc/adb/adb_keys
   chmod 2750 /data/misc/adb
   chmod 0640 /data/misc/adb/adb_keys

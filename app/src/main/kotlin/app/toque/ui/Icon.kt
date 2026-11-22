@@ -12,7 +12,7 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
     enum class Kind {
         BACK, SEARCH, PLAY, PAUSE, STOP, THERMO, SPEED, CLOCK, REVERSE, SCALE, BOOK, STAR, STAR_FILLED,
         SETTINGS, PLUS, MINUS, CHECK, CLOSE, KNEAD, STEAM, FLAME, BOLT, SYNC, LID, WARNING, HOME, WHISK,
-        CHEVRON, LINK, INFO, POT, TIMER,
+        CHEVRON, LINK, INFO, POT, TIMER, DROP, EDIT, TRASH, PEOPLE, DOWNLOAD, UPLOAD, GLOBE, BELL,
     }
 
     var color: Int = color
@@ -148,6 +148,39 @@ class Icon(context: Context, var kind: Kind, color: Int) : View(context) {
             }
             Kind.LINK -> { canvas.drawCircle(12f, 12f, 4f, fill); canvas.drawCircle(12f, 12f, 8.5f, stroke) }
             Kind.INFO -> { canvas.drawCircle(12f, 12f, 9f, stroke); canvas.drawLine(12f, 11f, 12f, 16.5f, stroke); canvas.drawCircle(12f, 7.8f, 1.2f, fill) }
+            Kind.DROP -> {
+                p.moveTo(12f, 3f); p.cubicTo(14f, 7f, 18.5f, 11f, 18.5f, 14.5f); p.cubicTo(18.5f, 18.5f, 15.5f, 21f, 12f, 21f)
+                p.cubicTo(8.5f, 21f, 5.5f, 18.5f, 5.5f, 14.5f); p.cubicTo(5.5f, 11f, 10f, 7f, 12f, 3f); p.close(); canvas.drawPath(p, stroke)
+                rect.set(8.5f, 12f, 15.5f, 18.5f); canvas.drawArc(rect, 100f, 70f, false, stroke)
+            }
+            Kind.EDIT -> {
+                p.moveTo(15.5f, 4.5f); p.lineTo(19.5f, 8.5f); p.lineTo(8.5f, 19.5f); p.lineTo(4f, 20f); p.lineTo(4.5f, 15.5f); p.close()
+                canvas.drawPath(p, stroke); canvas.drawLine(13f, 7f, 17f, 11f, stroke)
+            }
+            Kind.TRASH -> {
+                canvas.drawLine(4f, 6.5f, 20f, 6.5f, stroke); p.moveTo(9f, 6.5f); p.lineTo(9.5f, 3.5f); p.lineTo(14.5f, 3.5f); p.lineTo(15f, 6.5f)
+                canvas.drawPath(p, stroke); p.reset(); p.moveTo(6f, 6.5f); p.lineTo(7f, 20.5f); p.lineTo(17f, 20.5f); p.lineTo(18f, 6.5f)
+                canvas.drawPath(p, stroke); canvas.drawLine(10f, 10.5f, 10f, 17f, stroke); canvas.drawLine(14f, 10.5f, 14f, 17f, stroke)
+            }
+            Kind.PEOPLE -> {
+                canvas.drawCircle(9f, 8f, 3.5f, stroke); rect.set(2.5f, 14f, 15.5f, 26f); canvas.drawArc(rect, 180f, 180f, false, stroke)
+                canvas.drawCircle(16.5f, 7.5f, 2.8f, stroke); rect.set(13f, 13f, 22f, 23f); canvas.drawArc(rect, 230f, 130f, false, stroke)
+            }
+            Kind.DOWNLOAD, Kind.UPLOAD -> {
+                canvas.drawLine(12f, 3.5f, 12f, 15f, stroke)
+                if (kind == Kind.DOWNLOAD) { p.moveTo(7.5f, 10.5f); p.lineTo(12f, 15f); p.lineTo(16.5f, 10.5f) }
+                else { p.moveTo(7.5f, 8f); p.lineTo(12f, 3.5f); p.lineTo(16.5f, 8f) }
+                canvas.drawPath(p, stroke); p.reset(); p.moveTo(4f, 15.5f); p.lineTo(4f, 20f); p.lineTo(20f, 20f); p.lineTo(20f, 15.5f); canvas.drawPath(p, stroke)
+            }
+            Kind.GLOBE -> {
+                canvas.drawCircle(12f, 12f, 9f, stroke); rect.set(8f, 3f, 16f, 21f); canvas.drawOval(rect, stroke)
+                canvas.drawLine(3f, 12f, 21f, 12f, stroke)
+            }
+            Kind.BELL -> {
+                p.moveTo(6f, 17f); p.lineTo(6f, 11f); p.cubicTo(6f, 7f, 8.5f, 4.5f, 12f, 4.5f); p.cubicTo(15.5f, 4.5f, 18f, 7f, 18f, 11f)
+                p.lineTo(18f, 17f); canvas.drawPath(p, stroke); canvas.drawLine(4f, 17f, 20f, 17f, stroke)
+                rect.set(9.5f, 17.5f, 14.5f, 21.5f); canvas.drawArc(rect, 0f, 180f, false, stroke); canvas.drawLine(12f, 2.5f, 12f, 4.5f, stroke)
+            }
             Kind.POT -> {
                 rect.set(4f, 9f, 20f, 20f); canvas.drawRoundRect(rect, 3f, 3f, stroke)
                 canvas.drawLine(2f, 11f, 4f, 11f, stroke); canvas.drawLine(20f, 11f, 22f, 11f, stroke)

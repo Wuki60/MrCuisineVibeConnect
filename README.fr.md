@@ -6,9 +6,11 @@
 qui remplace l'appli d'origine sur la tablette du robot tout en gardant **les recettes Lidl**.
 
 > Projet indépendant, non affilié à Lidl, SilverCrest ni Hoyer. Le pilotage du moteur repose
-> sur une analyse publique du protocole ; il tourne au quotidien sur un robot (SKMC 1200, Android 6)
-> depuis octobre 2026, mais n'a été essayé que sur celui-là. À utiliser à vos risques, en suivant la
-> procédure de premier essai.
+> sur une analyse publique du protocole. Depuis octobre 2026, Toque tourne sur des SKMC 1200
+> (révisions A1, B2 et C3) en France et en Espagne, et sur un SKMC 1100 A1 (avec un recovery
+> adapté, voir #10). À utiliser à vos risques, en suivant la procédure de premier essai.
+>
+> L'interface existe en **français**, **anglais**, **allemand** et **espagnol** (*Réglages › Langue · Language*).
 
 ## Installer avec un agent IA
 
@@ -34,7 +36,7 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
 
 ## Ce que fait Toque
 
-- **Interface sombre**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
+- **Interface sombre, bleu nuit**, pensée pour l'écran 7" et le bouton rotatif du robot, fluide sur sa
   tablette d'origine (1 Go de RAM, Android 6) : pas de bibliothèque lourde, images
   sous-échantillonnées, vues recyclées.
 - **Recettes Lidl, directement depuis monsieur-cuisine.com**. Toque télécharge les recettes
@@ -47,19 +49,60 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
   fiche charge les commentaires des utilisateurs (avec les réponses de Monsieur Cuisine).
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe
   (« bechamle », « risoto »). Recherche par ingrédients (« poulet, curry »), filtres, favoris.
+  Listes **Récentes** (dernières recettes cuisinées) et **Fréquentes** (les plus cuisinées), aussi
+  accessibles d'un appui sous la barre de recherche de l'accueil.
 - **Cuisine pas à pas** : chaque étape se lance d'un appui, l'étape suivante s'affiche toute
   seule, pesée intégrée, reprise après coupure. Les réglages qui se suivent sans geste à faire
   entre eux (rinçage, mixages en plusieurs vitesses…) partent ensemble d'un seul appui : la lame
-  passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter.
-- **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler**, **Turbo**, **balance**.
+  passe directement d'une vitesse et d'une température à l'autre, sans s'arrêter. Les étapes du
+  site en **montée progressive de vitesse** (« ramp ») deviennent une étape machine par palier.
+  Une recette en cours s'affiche sur l'accueil et peut y être **abandonnée** (✕), sauf pendant un
+  programme.
+- **Notes et quantités personnelles** : une note libre sur chaque recette, et un appui sur la
+  quantité d'un ingrédient la change (1000 g d'eau → 800 g) ; les pesées et les mentions des étapes
+  qui l'utilisent suivent en proportion (pavé numérique, fractions comprises). Favoris, notes et quantités corrigées suivent la recette
+  quand une synchronisation la remplace par la même recette de l'autre source (site ou appli
+  d'origine).
+- **Pour plus ou moins de personnes** : − / + au-dessus des ingrédients, de la moitié au double de la
+  recette. Tout ce qui se pèse ou se mesure suit (liste, pesées, « 500 g d'eau » dans les étapes),
+  arrondi comme on l'écrirait à la main, avec le même arrondi partout ; œufs et cuillerées sont
+  arrondis au demi. Temps, vitesses et températures restent ceux de la recette testée, avec un rappel
+  de surveiller la cuisson, et une alerte quand le bol risque d'être trop plein (2,5 L de liquide au
+  maximum).
+- **Mes recettes** : écrivez les vôtres (titre, personnes, durée, une ligne par ingrédient, étapes
+  avec leur réglage du robot et leur pesée, choisis avec les mêmes limites de sécurité que la cuisson
+  manuelle), ou faites **votre version** d'une recette Lidl avec le crayon. Les synchronisations n'y
+  touchent jamais. Réglages › Mes recettes les exporte vers `Download/toque-mes-recettes.json`, ou
+  les importe (pour les sauvegarder ou les passer à un autre robot).
+- **Recettes des autres langues** (option dans Réglages › Recettes Lidl) : les recettes absentes
+  dans votre langue sont ajoutées en anglais, français, allemand, espagnol…, une seule fois
+  chacune, avec leur langue sur la vignette.
+- **Sons** : une cloche sonne quand la quantité à peser est atteinte (son au choix dans les
+  Réglages), et une mélodie forte retentit à la fin du dernier programme de la recette. Un réglage
+  vérifié (« J'ai vérifié ce réglage ») est mémorisé pour les prochaines fois.
+- **Cuisson manuelle**, programmes **Pétrir / Vapeur / Rissoler / Nettoyage**, **Turbo**, **balance**.
+  Nettoyage : 1 L d'eau chaude et une goutte de liquide vaisselle, vitesse de 4 à 10, sans chauffe.
 - **Hors ligne** : tout fonctionne sans réseau (plus de « serveur injoignable » au démarrage).
 - **Heure toujours juste** : le fuseau horaire est trouvé d'après la connexion Internet et l'heure
-  vient du réseau (le robot n'a pas de pile d'horloge) ; réglable à la main dans Réglages › Date et heure.
+  vient du réseau (le robot n'a pas de pile d'horloge). Juste après l'allumage, l'horloge est réglée
+  d'après le premier serveur qui répond : l'heure est juste en quelques secondes au lieu de rester
+  sur 01:00. Réglable à la main dans Réglages › Date et heure.
+- **Mise en veille**, comme l'appli d'origine : après quelques minutes sans toucher l'écran ni le
+  bouton rotatif (de 2 à 30 min, ou jamais, dans Réglages › Écran), un écran noir assombri affiche
+  l'heure, et la température du bol quand il est chaud. Jamais pendant un programme ni sur la
+  balance. Le geste qui réveille ne fait rien d'autre. Pendant la veille, l'anneau de la molette
+  reste normal, passe en veilleuse blanche très faible ou s'éteint (Réglages › Écran).
+- **Capteur du bol inversé** : sur certains robots (vu sur un SKMC 1200 C3), la base signale le bol
+  présent quand il est retiré ; Réglages › Sécurité › Inverser le capteur du bol corrige cela.
 - **Pensé pour un robot sans boutons Android** : Toque s'ouvre au démarrage, et un bouton
   **« Retour à Toque »** reste affiché par-dessus l'appli d'origine quand on l'ouvre.
 - **Mises à jour depuis GitHub** : Réglages › Mises à jour vérifie les
   [versions publiées](https://github.com/barjola/MrCuisineVibeConnectES/releases) de ce dépôt et installe
   la nouvelle (sans rien demander sur un robot rooté, puis Toque redémarre). Refusé pendant un programme.
+  Les certificats racines récents absents d'Android 6 (ISRG Root X1/X2 pour le serveur de
+  téléchargement de GitHub, Sectigo, Google) sont embarqués : les téléchargements HTTPS marchent sur le robot.
+  Quand une nouvelle version sort, Toque le signale au démarrage ou en sortant de veille (au plus
+  toutes les quelques heures, jamais pendant un programme) ; « Plus tard » attend le lendemain.
 
 ## Sécurité : ce qui change par rapport à l'appli d'origine
 
@@ -159,6 +202,10 @@ synchronisation des recettes, retour à l'appli d'origine.
 
 - Protocole : [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
 - Accès au robot : [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
+- Contributions : @pierok13 (veille, notes et quantités, paliers, sons, récentes, certificats Android 6,
+  capteur du bol), @lucasbraud, @OUTSIDE2k8 (traduction espagnole), @Locodice67 (traduction allemande,
+  script d'installation), @baptiste-gislot, @florentdestremau (bouton rotatif), et tous ceux qui ont
+  testé leur robot et signalé des bugs.
 
 Licence MIT. Ce dépôt ne contient aucune recette, image ni code de Lidl : chaque robot télécharge
 lui-même les recettes sur monsieur-cuisine.com, pour l'usage personnel de son propriétaire.

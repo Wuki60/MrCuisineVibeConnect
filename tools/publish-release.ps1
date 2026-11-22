@@ -9,7 +9,10 @@
 param(
     [Parameter(Mandatory = $true)][string]$Apk,
     [string]$Repo = "barjola/MrCuisineVibeConnectES",
-    [switch]$RepoInfo
+    [switch]$RepoInfo,
+    # Pre-release: on GitHub but not offered to robots (they read /releases/latest) until -Promote.
+    [switch]$Prerelease,
+    [switch]$Promote
 )
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
@@ -52,11 +55,16 @@ if (-not $release) {
     }
     $notes = (git log --no-merges --pretty="- %s" $range | Out-String).Trim()
     $sha = (git rev-parse HEAD).Trim()
-    $body = @{ tag_name = $tag; target_commitish = $sha; name = "Toque $version"; body = $notes } | ConvertTo-Json
+    $body = @{ tag_name = $tag; target_commitish = $sha; name = "Toque $version"; body = $notes; prerelease = [bool]$Prerelease } | ConvertTo-Json
     $release = Invoke-RestMethod -Method Post -Uri "$api/releases" -Headers $h -Body ([Text.Encoding]::UTF8.GetBytes($body)) -ContentType "application/json; charset=utf-8"
     Write-Host "Release $tag created."
 } else {
     Write-Host "Release $tag already exists."
+}
+if ($Promote -and $release.prerelease) {
+    $patch = @{ prerelease = $false; make_latest = "true" } | ConvertTo-Json
+    $release = Invoke-RestMethod -Method Patch -Uri "$api/releases/$($release.id)" -Headers $h -Body ([Text.Encoding]::UTF8.GetBytes($patch)) -ContentType "application/json; charset=utf-8"
+    Write-Host "Release $tag is now the latest version: robots will be offered it."
 }
 
 $name = "Toque-$version.apk"

@@ -22,6 +22,8 @@ object McOnline {
     /** Monsieur Cuisine connect. */
     const val DEVICE = "MC2.0"
     const val PAGE_SIZE = 100
+    /** Version de la lecture des fiches : à augmenter quand elle change, pour que la synchro les relise toutes. */
+    const val PARSER = 3
     /** Préfixe des identifiants Toque des recettes du site (« mc- » : celles de l'appli d'origine). */
     const val ID_PREFIX = "web-"
 
@@ -35,6 +37,43 @@ object McOnline {
     fun recipeUrl(apiId: Long): String = "$API/api/v2/recipes/$apiId"
 
     fun toqueId(apiId: Long): String = ID_PREFIX + apiId
+
+    /** Unité de portion qui compte des personnes, dans les langues du site. */
+    fun isPeople(unit: String): Boolean {
+        val u = TextNorm.normalize(unit)
+        return u.isEmpty() || PEOPLE.any { u.startsWith(it) }
+    }
+
+    private val PEOPLE = listOf("portion", "pers", "serving", "people", "porzion", "racion", "porcion", "comensal",
+        "pessoa", "porco", "porti", "dose", "osob", "porcj", "adag")
+
+    /**
+     * Langues dont les recettes peuvent compléter celles de la langue de l'interface, de la plus
+     * lisible à la moins lisible pour la plupart des gens. Chaque recette n'est prise qu'une fois
+     * (même [Entry.translationId]), dans la première de ces langues qui l'a.
+     */
+    val OTHER_LANGUAGES = listOf("en-US", "fr-FR", "de-DE", "es-ES", "it-IT", "nl-NL", "pt-PT", "pl-PL")
+
+    /**
+     * Entrées des autres langues à ajouter : celles dont aucune traduction n'est déjà dans
+     * [own] ni dans une langue précédente de [others] (dans l'ordre de [OTHER_LANGUAGES]).
+     */
+    fun missingTranslations(own: List<Entry>, others: List<List<Entry>>): List<Entry> {
+        val seen = HashSet<Long>()
+        for (e in own) if (e.translationId > 0) seen += e.translationId
+        val out = ArrayList<Entry>()
+        for (list in others) {
+            val added = HashSet<Long>()
+            for (e in list) {
+                // Sans identifiant de traduction, on ne peut pas savoir si elle existe déjà : on s'abstient.
+                if (e.translationId <= 0 || e.translationId in seen || e.translationId in added) continue
+                added += e.translationId
+                out += e
+            }
+            seen += added
+        }
+        return out
+    }
 
     /** Langue des recettes d'après celle de l'interface (le français par défaut). */
     fun languageFor(uiCode: String): String = when (uiCode.substringBefore('-').lowercase()) {
@@ -57,6 +96,10 @@ object McOnline {
         val author: String = "",
         val rating: Double = 0.0,
         val ratingCount: Int = 0,
+        /** Même valeur pour toutes les traductions d'une recette (0 : inconnue). */
+        val translationId: Long = 0,
+        /** Langue de la fiche (« de-DE »). */
+        val language: String = "",
     ) {
         /** Empreinte enregistrée dans l'index de synchro : fiche modifiée, ou seulement sa note. */
         val stamp: String get() = "$updated|${ratingText(rating)}|$ratingCount|$author"
@@ -86,6 +129,8 @@ object McOnline {
                 author = r["author"].obj().str("name")?.trim().orEmpty(),
                 rating = (r.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
                 ratingCount = (r.int("totalRating") ?: 0).coerceAtLeast(0),
+                translationId = r["translationId"].long() ?: 0,
+                language = r.str("language")?.trim().orEmpty(),
             )
         }
         return Page(d.int("total") ?: entries.size, d.int("totalPage") ?: 1, entries)
@@ -108,10 +153,10 @@ object McOnline {
         }
 
         val notes = ArrayList<String>()
-        val servingUnit = size.str("servingUnit")?.trim().orEmpty()
         val amount = size.int("amount") ?: 0
-        if (amount > 0 && servingUnit.isNotEmpty() && !servingUnit.lowercase().startsWith("portion") &&
-            !servingUnit.lowercase().startsWith("pers")) notes += tr("Pour %d %s", amount, servingUnit)
+        // « 4 portions » : des personnes ; « 6 pots », « 6 Gläser » : l'unité est gardée.
+        val servingUnit = size.str("servingUnit")?.trim().orEmpty().takeUnless { isPeople(it) }.orEmpty()
+        if (amount > 0 && servingUnit.isNotEmpty()) notes += tr("Pour %d %s", amount, servingUnit)
         plain(r.str("description"))?.let { notes += it }
         plain(r.str("hintsAndTips"))?.let { notes += it }
 
@@ -136,6 +181,7 @@ object McOnline {
             author = r["author"].obj().str("name")?.trim().orEmpty(),
             rating = (r.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
             ratingCount = (r.int("totalRating") ?: 0).coerceAtLeast(0),
+            servingUnit = servingUnit,
         )
     }
 
@@ -258,7 +304,8 @@ object McOnline {
     private fun machine(mode: String, st: Map<String, Any?>, reverse: Boolean, text: String): StepMachine? {
         val seconds = (st.int("time") ?: 0).coerceAtLeast(0)
         return when {
-            mode == "customized" -> {
+            // « ramp » : montée en vitesse par paliers, un réglage manuel par palier (enchaînés en un programme).
+            mode == "customized" || mode == "ramp" -> {
                 val speedF = (st["speedFloat"] as? Number)?.toDouble() ?: st.int("speed")?.toDouble() ?: 0.0
                 val speed = Math.ceil(speedF).toInt().coerceIn(0, 10)
                 StepMachine(

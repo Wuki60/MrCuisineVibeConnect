@@ -27,8 +27,16 @@ import app.toque.ui.ValueCard
  * Cuisson manuelle. Les réglages incompatibles sont corrigés à la saisie (vitesse limitée en
  * chauffe, en sens inverse ou avec le fouet) plutôt que refusés au démarrage.
  */
-class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? = null) : Screen(a) {
-    override val title = JobKind.MANUAL.label
+/**
+ * Cuisson manuelle. Avec [onPick], sert à choisir le réglage d'une étape de recette perso : mêmes
+ * cartes et mêmes limites de sécurité, mais rien ne démarre ; « Utiliser ce réglage » le renvoie.
+ */
+class ManualScreen(
+    a: MainActivity,
+    preset: app.toque.core.recipes.StepMachine? = null,
+    private val onPick: ((app.toque.core.recipes.StepMachine) -> Unit)? = null,
+) : Screen(a) {
+    override val title = if (onPick != null) tr("Réglage de l'étape") else JobKind.MANUAL.label
 
     private var seconds = preset?.seconds?.takeIf { it > 0 } ?: 60
     private var tempLevel = preset?.temperatureLevel ?: 0
@@ -82,6 +90,7 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
             a.machine.turboDown(accessory) { v -> if (!v.ok) a.refusal(v) }
         }, onUp = { a.machine.turboUp() })
         options.addView(turbo, Ui.lp(Ui.WRAP, Ui.u(64)))
+        if (onPick != null) turbo.visibility = View.GONE
         left.addView(options, Ui.lp(Ui.MATCH, Ui.WRAP, t = 16))
         root.addView(left, LinearLayout.LayoutParams(0, Ui.MATCH, 1f).apply { rightMargin = Ui.u(20) })
 
@@ -94,7 +103,8 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         right.addView(weight, Ui.lp(Ui.WRAP, Ui.WRAP, t = 2))
         hint = Ui.text(c, "", 16f, Ui.WARN).apply { gravity = Gravity.CENTER }
         right.addView(hint, Ui.lp(Ui.MATCH, Ui.WRAP, t = 8))
-        startBtn = Ui.button(c, tr("Démarrer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 80, textSize = 24f) { start() }
+        startBtn = if (onPick != null) Ui.button(c, tr("Utiliser ce réglage"), Ui.Style.PRIMARY, Icon.Kind.CHECK, height = 80, textSize = 22f) { start() }
+        else Ui.button(c, tr("Démarrer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 80, textSize = 24f) { start() }
         right.addView(startBtn, Ui.lp(Ui.MATCH, Ui.WRAP, t = 12))
         root.addView(right, LinearLayout.LayoutParams(Ui.u(300), Ui.MATCH))
         refresh()
@@ -172,6 +182,12 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
     )
 
     private fun start() {
+        onPick?.let { pick ->
+            pick(app.toque.core.recipes.StepMachine(seconds = seconds, speed = speed, tempC = Mcc.celsiusForLevel(tempLevel),
+                reverse = reverse, accessory = accessory))
+            a.back()
+            return
+        }
         val s = a.snapshot
         if (s.state == JobState.PAUSED && s.kind?.name == "MANUAL") {
             a.machine.resume(s.hotBlendConfirmed) { a.refusal(it) }
@@ -222,9 +238,10 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         accRow.addView(Ui.toggleChip(c, Accessory.BLADE.label, accessory == Accessory.BLADE) { setAccessory(Accessory.BLADE) }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 8))
         accRow.addView(Ui.toggleChip(c, Accessory.WHISK.label, accessory == Accessory.WHISK) { setAccessory(Accessory.WHISK) })
 
-        val v = SafetyPolicy.checkJob(spec(), if (a.snapshot.hasSample) a.snapshot.actualTempC else null)
-            .filter { it.code != SafetyPolicy.HOT_BLEND }
-        hint.text = v.firstOrNull()?.message ?: if (a.snapshot.hot && speed >= 4) tr("Contenu chaud : confirmation demandée") else ""
+        // Pour une étape de recette, le bol d'aujourd'hui ne compte pas.
+        val bowl = if (onPick == null && a.snapshot.hasSample) a.snapshot.actualTempC else null
+        val v = SafetyPolicy.checkJob(spec(), bowl).filter { it.code != SafetyPolicy.HOT_BLEND }
+        hint.text = v.firstOrNull()?.message ?: if (onPick == null && a.snapshot.hot && speed >= 4) tr("Contenu chaud : confirmation demandée") else ""
         Ui.setButtonEnabled(startBtn, v.isEmpty())
     }
 
@@ -232,6 +249,7 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
         ring.set(if (s.hasSample) s.actualTempC else 0, if (s.jobActive && s.jobTempLevel > 0) Mcc.celsiusForLevel(s.jobTempLevel) else
             if (tempLevel > 0) Mcc.celsiusForLevel(tempLevel) else 0, s.speedLevel)
         weight.text = if (s.hasSample) tr("Balance : %d g", s.weightG) else tr("Base non connectée")
+        if (onPick != null) return
         val manualJob = s.kind?.name == "MANUAL" && (s.state == JobState.RUNNING || s.state == JobState.STARTING || s.state == JobState.PAUSED)
         live = manualJob && s.state != JobState.PAUSED
         tempCard.repeatEnabled = !live
@@ -270,6 +288,7 @@ class ManualScreen(a: MainActivity, preset: app.toque.core.recipes.StepMachine? 
     }
 
     override fun onKnobPress(): Boolean {
+        if (onPick != null) { start(); return true }
         val s = a.snapshot
         when {
             s.state == JobState.RUNNING -> a.machine.pause { a.refusal(it) }

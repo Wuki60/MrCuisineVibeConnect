@@ -33,7 +33,21 @@ import app.toque.ui.Ui
 class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : Screen(a) {
     override val title = recipe.title
     private var index = startStep.coerceIn(0, maxOf(0, recipe.steps.size - 1))
-    private val reviewed = HashSet<Int>()
+    private val reviewed = HashSet<Int>().apply {
+        // Réglages importés déjà vérifiés lors d'une cuisson précédente de cette recette.
+        val known = a.prefs.reviewedSteps
+        recipe.steps.forEachIndexed { i, st -> if (st.needsReview && reviewKey(i) in known) add(i) }
+    }
+    /** Bip de pesée : armé tant que le poids est sous la quantité, joué une fois en l'atteignant. */
+    private var weighArmed = false
+    /** Cuisson déjà comptée (« Récentes », « Les plus cuisinées ») pendant cet écran. */
+    private var counted = false
+
+    private fun countCooked() {
+        if (counted) return
+        counted = true
+        a.app.recipes.markCooked(recipe.id)
+    }
     private val done = HashSet<Int>()
     private var launchedStep = -1
     /** Étapes couvertes par le programme lancé (plusieurs quand elles sont enchaînées). */
@@ -88,7 +102,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
 
         panel = Ui.vertical(c)
         panel.background = Ui.round(Ui.SURFACE, 26f)
-        panel.setPadding(Ui.u(22), Ui.u(20), Ui.u(22), Ui.u(20))
+        panel.setPadding(Ui.u(22), Ui.u(18), Ui.u(22), Ui.u(16))
         body.addView(panel, LinearLayout.LayoutParams(Ui.u(340), Ui.MATCH))
         root.addView(body, LinearLayout.LayoutParams(Ui.MATCH, 0, 1f))
 
@@ -106,6 +120,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
 
     private fun next() {
         if (index >= recipe.steps.size - 1) {
+            countCooked()
             a.prefs.guidedRecipe = ""
             a.chime(1)
             a.toast(tr("Bon appétit !"), Ui.OK)
@@ -116,6 +131,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
     private fun go(i: Int) {
         if (i < 0 || i >= recipe.steps.size) return
         index = i
+        weighArmed = false
         a.prefs.guidedRecipe = recipe.id
         a.prefs.guidedStep = index
         render()
@@ -141,7 +157,10 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
         text.text = step.text.ifBlank { step.machine?.summary ?: "" }
         val w = step.weigh
         weighBox.visibility = if (w != null) View.VISIBLE else View.GONE
-        if (w != null) weighLabel.text = tr("Pesez %d g", w.grams) + if (w.label.isNotBlank()) " · ${w.label}" else ""
+        if (w != null) {
+            weighLabel.text = (if (w.originalGrams > 0) tr("Pesez %d g (recette : %d g)", w.grams, w.originalGrams) else tr("Pesez %d g", w.grams)) +
+                if (w.label.isNotBlank()) " · ${w.label}" else ""
+        }
         Ui.setButtonEnabled(prevBtn, index > 0)
         nextLabel.text = if (index == n - 1) tr("Terminer") else tr("Suivant")
         buildPanel()
@@ -167,6 +186,9 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             panel.addView(startBtn)
             return
         }
+        // Haut du panneau (titre, réglages, enchaînement, avertissement) : défile s'il manque de la
+        // place (barre de programme en cours affichée), les boutons restent toujours visibles en bas.
+        val info = Ui.vertical(c)
         val head = Ui.horizontal(c)
         val badge = FrameLayout(c)
         badge.background = Ui.round(Ui.ACCENT_DIM, 24f)
@@ -186,7 +208,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             StepProgram.TOAST -> JobKind.TOAST.label
             StepProgram.TURBO -> JobKind.TURBO.label
         }, 22f, Ui.TEXT, Ui.MEDIUM))
-        panel.addView(head)
+        info.addView(head)
 
         val grid = Ui.vertical(c)
         fun line(icon: Icon.Kind, label: String, value: String, color: Int = Ui.TEXT) {
@@ -208,18 +230,18 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
                 if (m.accessory == Accessory.WHISK) line(Icon.Kind.WHISK, tr("Accessoire"), Accessory.WHISK.label, Ui.WARN)
             }
         }
-        panel.addView(grid, Ui.lp(t = 6))
+        info.addView(grid, Ui.lp(t = 6))
         val chained = if (a.prefs.chainSteps) chainLength(index) else 0
         if (chained > 0) {
             val next = (index + 1..index + chained).map { recipe.steps[it].machine!!.summary }
             val list = next.take(4).joinToString("\n") { "• $it" } +
                 if (next.size > 4) "\n" + tr("… et %d autres", next.size - 4) else ""
-            panel.addView(Ui.text(c, tr("Puis, enchaînés automatiquement :") + "\n" + list, 15f, Ui.TEXT2)
+            info.addView(Ui.text(c, tr("Puis, enchaînés automatiquement :") + "\n" + list, 15f, Ui.TEXT2)
                 .apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 10))
         }
         panelState = Ui.text(c, "", 16f, Ui.WARN).apply { setLineSpacing(0f, 1.1f) }
-        panel.addView(panelState, Ui.lp(t = 12))
-        panel.addView(Ui.spacer(c, weight = 1f), LinearLayout.LayoutParams(1, 0, 1f))
+        info.addView(panelState, Ui.lp(t = 12))
+        panel.addView(Ui.scroll(c, info), LinearLayout.LayoutParams(Ui.MATCH, 0, 1f))
 
         val violations = m.violations()
         val step = recipe.steps[index]
@@ -230,11 +252,12 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
         if (step.needsReview && index !in reviewed && violations.isEmpty()) {
             val rb = Ui.button(c, tr("J'ai vérifié ce réglage"), Ui.Style.GHOST, Icon.Kind.CHECK, height = 56, textSize = 17f) {
                 reviewed += index
+                a.prefs.reviewedSteps = a.prefs.reviewedSteps + reviewKey(index)
                 buildPanel()
                 onSnapshot(a.snapshot)
             }
             reviewBtn = rb
-            panel.addView(rb, Ui.lp(b = 10))
+            panel.addView(rb, Ui.lp(t = 8, b = 8))
             panelInfo = tr("Réglage importé : vérifiez-le avant de lancer.")
         }
         panelState?.text = panelInfo
@@ -246,13 +269,13 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             startBtn = t
             panel.addView(t, Ui.lp(Ui.MATCH, Ui.u(70)))
         } else {
-            startBtn = Ui.button(c, tr("Lancer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 74, textSize = 23f) { launch() }
+            startBtn = Ui.button(c, tr("Lancer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 66, textSize = 23f) { launch() }
             panel.addView(startBtn)
         }
         if (m.program == StepProgram.MANUAL) {
-            panel.addView(Ui.button(c, tr("Ajuster à la main"), Ui.Style.GHOST, height = 50, textSize = 16f) {
+            panel.addView(Ui.button(c, tr("Ajuster à la main"), Ui.Style.GHOST, height = 46, textSize = 16f) {
                 a.push(ManualScreen(a, m))
-            }, Ui.lp(t = 8))
+            }, Ui.lp(t = 6))
         }
         val blocked = violations.isNotEmpty() || (step.needsReview && index !in reviewed)
         Ui.setButtonEnabled(startBtn, !blocked)
@@ -268,6 +291,7 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
         a.prefs.guidedStep = first
         a.startJob(job, onHotConfirmed = { hotBlendOk = true }) { v ->
             if (v.ok) {
+                countCooked()
                 launchedStep = first
                 launchedCount = count
                 seenPhase = 0
@@ -324,6 +348,15 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
             weighValue.text = if (s.hasSample) "${s.weightG} g" else "—"
             weighBar.progress = if (w.grams > 0) s.weightG.toFloat() / w.grams else 0f
             weighBar.color = if (s.weightG > w.grams * 1.05f) Ui.WARN else Ui.COOL
+            if (s.hasSample && w.grams > 0) {
+                // Armé seulement après avoir vu un poids sous la quantité (pas de bip en arrivant
+                // sur l'étape avec un bol déjà chargé), réarmé après une tare.
+                if (s.weightG < w.grams * 0.9f) weighArmed = true
+                else if (weighArmed && s.weightG >= w.grams) {
+                    weighArmed = false
+                    a.weighBeep()
+                }
+            }
         }
         val running = launchedStep >= 0 && s.jobActive
         if (running && launchedCount > 1 && s.phaseIndex != seenPhase &&
@@ -372,7 +405,20 @@ class CookScreen(a: MainActivity, private val recipe: Recipe, startStep: Int) : 
         }
     }
 
+    private fun reviewKey(i: Int): String = "${recipe.id}|$i|${recipe.steps[i].machine?.summary ?: ""}"
+
+    /** Le programme qui se termine est le dernier réglage machine de la recette. */
+    private fun endsRecipe(e: MachineEvent): Boolean {
+        if (e.type != EventType.JOB_FINISHED || launchedStep < 0) return false
+        if (index < launchedStep || index >= launchedStep + launchedCount) return false
+        val finished = launchedStep + launchedCount - 1
+        return (finished + 1 until recipe.steps.size).none { recipe.steps[it].machine != null }
+    }
+
+    override fun ownsFinishSound(e: MachineEvent): Boolean = endsRecipe(e)
+
     override fun onEvent(e: MachineEvent) {
+        if (endsRecipe(e)) a.recipeDoneSound()
         if (e.type == EventType.JOB_FINISHED && launchedStep >= 0 && index >= launchedStep && index < launchedStep + launchedCount) {
             val finished = launchedStep + launchedCount - 1
             for (k in launchedStep..finished) done += k

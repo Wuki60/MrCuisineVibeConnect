@@ -16,7 +16,7 @@ import app.toque.ui.MainActivity
 import app.toque.ui.Screen
 import app.toque.ui.Ui
 
-/** Programmes automatiques de l'appli d'origine : pétrir, vapeur, rissoler (+ Turbo). */
+/** Programmes automatiques : pétrir, vapeur, rissoler (ceux de l'appli d'origine), nettoyage (+ Turbo). */
 class ProgramsScreen(a: MainActivity) : Screen(a) {
     override val title = tr("Programmes")
 
@@ -26,6 +26,7 @@ class ProgramsScreen(a: MainActivity) : Screen(a) {
         val make: (Long) -> JobSpec,
     ) {
         lateinit var value: TextView
+        lateinit var unit: TextView
         lateinit var card: LinearLayout
         lateinit var start: View
     }
@@ -37,7 +38,10 @@ class ProgramsScreen(a: MainActivity) : Screen(a) {
             1200, 300, 3600, 60) { Programs.steam(it) },
         Prog(Icon.Kind.FLAME, JobKind.TOAST.label, tr("Dorer oignons, lardons, viandes à 130 °C, avec un brassage doux en sens inverse."),
             420, 180, 840, 30) { Programs.toast(it) },
+        Prog(Icon.Kind.DROP, tr("Nettoyage"), tr("1 L d'eau chaude et une goutte de liquide vaisselle. La vitesse monte de 4 à 10."),
+            90, 60, 180, 15) { Programs.clean(it) },
     )
+    private val cleaning = progs.size - 1
     private var selected = 0
     private lateinit var turbo: HoldButton
 
@@ -53,14 +57,25 @@ class ProgramsScreen(a: MainActivity) : Screen(a) {
             badge.background = Ui.round(Ui.ACCENT_DIM, 28f)
             badge.addView(Icon(c, p.icon, Ui.ACCENT), Ui.flp(Ui.u(32), Ui.u(32), Gravity.CENTER))
             card.addView(badge, LinearLayout.LayoutParams(Ui.u(56), Ui.u(56)))
-            card.addView(Ui.text(c, p.name, 28f, Ui.TEXT, Ui.MEDIUM), Ui.lp(t = 14))
+            card.addView(Ui.ellipsize(Ui.text(c, p.name, 26f, Ui.TEXT, Ui.MEDIUM)), Ui.lp(t = 14))
             card.addView(Ui.text(c, p.text, 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }, Ui.lp(t = 6))
+            if (i == cleaning) rinseRecipe()?.let { r ->
+                // La recette de rinçage du catalogue Lidl, quand elle est synchronisée.
+                card.addView(Ui.button(c, tr("Recette Lidl"), Ui.Style.GHOST, Icon.Kind.BOOK, height = 46, textSize = 16f) {
+                    a.app.recipes.get(r)?.let { a.push(RecipeScreen(a, it)) }
+                }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 8))
+            }
             card.addView(Ui.spacer(c, weight = 1f), LinearLayout.LayoutParams(1, 0, 1f))
             val dur = Ui.horizontal(c)
-            dur.addView(Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.MINUS, height = 56) { selected = i; bump(p, -1) }, Ui.lp(Ui.u(64), Ui.WRAP))
-            p.value = Ui.text(c, "", 40f, Ui.TEXT, Ui.LIGHT).apply { gravity = Gravity.CENTER }
-            dur.addView(p.value, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
-            dur.addView(Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.PLUS, height = 56) { selected = i; bump(p, 1) }, Ui.lp(Ui.u(64), Ui.WRAP))
+            dur.addView(Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.MINUS, height = 56) { selected = i; bump(p, -1) }, Ui.lp(Ui.u(56), Ui.WRAP))
+            // Le nombre en grand sur une ligne, l'unité en dessous : les cartes sont étroites à 4 par ligne.
+            val gauge = Ui.vertical(c, Gravity.CENTER_HORIZONTAL)
+            p.value = Ui.fitText(c, 38f, 24f, Ui.TEXT, Ui.LIGHT).apply { gravity = Gravity.CENTER }
+            gauge.addView(p.value, Ui.lp(Ui.MATCH, Ui.u(45)))
+            p.unit = Ui.text(c, "", 14f, Ui.TEXT2).apply { gravity = Gravity.CENTER }
+            gauge.addView(p.unit, Ui.lp(Ui.MATCH, Ui.WRAP, t = 1))
+            dur.addView(gauge, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+            dur.addView(Ui.button(c, "", Ui.Style.SECONDARY, Icon.Kind.PLUS, height = 56) { selected = i; bump(p, 1) }, Ui.lp(Ui.u(56), Ui.WRAP))
             card.addView(dur, Ui.lp(t = 10))
             p.start = Ui.button(c, tr("Démarrer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 66) {
                 selected = i
@@ -85,6 +100,9 @@ class ProgramsScreen(a: MainActivity) : Screen(a) {
         return root
     }
 
+    private fun rinseRecipe(): String? =
+        a.app.recipes.index.entries.firstOrNull { Programs.isRinseRecipe(it.title) }?.id
+
     private fun bump(p: Prog, dir: Int) {
         p.seconds = (p.seconds + dir * p.step).coerceIn(p.min, p.max)
         refresh()
@@ -92,7 +110,13 @@ class ProgramsScreen(a: MainActivity) : Screen(a) {
 
     private fun refresh() {
         for ((i, p) in progs.withIndex()) {
-            p.value.text = Ui.duration(p.seconds)
+            val s = p.seconds
+            p.value.text = when {
+                s < 60 -> s.toString()
+                s % 60 == 0 -> (s / 60).toString()
+                else -> String.format("%d:%02d", s / 60, s % 60)
+            }
+            p.unit.text = if (s < 60) "s" else "min"
             p.card.background = Ui.round(Ui.SURFACE, 26f, if (i == selected) Ui.ACCENT else Ui.STROKE, if (i == selected) 2.5f else 1f)
         }
     }

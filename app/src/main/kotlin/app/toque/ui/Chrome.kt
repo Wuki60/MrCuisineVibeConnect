@@ -29,9 +29,14 @@ abstract class Screen(val a: MainActivity) {
     open fun onHide() {}
     open fun onSnapshot(s: Snapshot) {}
     open fun onEvent(e: MachineEvent) {}
+    /** L'écran joue lui-même le son de fin de ce programme (fin de recette) : pas de bip habituel. */
+    open fun ownsFinishSound(e: MachineEvent): Boolean = false
     open fun onKnob(delta: Int): Boolean = false
     open fun onKnobPress(): Boolean = false
-    open fun canLeave(): Boolean = true
+    /** false : l'écran demande d'abord confirmation (modifications non enregistrées) et appelle [proceed] si on confirme. */
+    open fun canLeave(proceed: () -> Unit): Boolean = true
+    /** Empêche la mise en veille tant que cet écran est affiché (balance). */
+    open val keepAwake: Boolean get() = false
 }
 
 /** Barre supérieure : retour, titre, état de la base, heure. */
@@ -57,7 +62,7 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
         orientation = HORIZONTAL
         setGravity(Gravity.CENTER_VERTICAL)
         setPadding(Ui.u(10), 0, Ui.u(18), 0)
-        setBackgroundColor(Ui.BG)
+        // Transparente : le dégradé du fond passe aussi derrière la barre du haut.
         back.setPadding(Ui.u(10), Ui.u(10), Ui.u(10), Ui.u(10))
         back.background = Ui.pressable(Ui.round(0, 30f), 30f)
         back.setOnClickListener { a.back() }
@@ -106,10 +111,18 @@ class TopBar(private val a: MainActivity) : LinearLayout(a) {
             Ui.chipText(temp).setTextColor(col)
             (temp.getChildAt(0) as Icon).color = col
         } else temp.visibility = View.GONE
-        val demo = a.prefs.mode == Prefs.Mode.DEMO
+        val mode = a.prefs.mode
+        val simulated = mode != Prefs.Mode.HARDWARE
         val (label, color) = when {
             s.hasFault -> tr("Alerte") to Ui.DANGER
-            s.link == LinkState.READY -> (if (demo) tr("Démo") else tr("Prête")) to (if (demo) Ui.COOL else Ui.OK)
+            s.link == LinkState.READY -> {
+                val label = when (mode) {
+                    Prefs.Mode.DEMO -> tr("Démo · Prête")
+                    Prefs.Mode.TWIN -> tr("Jumeau · Prête")
+                    Prefs.Mode.HARDWARE -> tr("Prête")
+                }
+                label to (if (simulated) Ui.COOL else Ui.OK)
+            }
             s.link == LinkState.ARMING -> tr("Connexion…") to Ui.WARN
             s.link == LinkState.LOST -> tr("Liaison perdue") to Ui.DANGER
             else -> tr("Base absente") to Ui.TEXT3

@@ -15,6 +15,7 @@ import app.toque.ui.Ui
 /** Balance intégrée : grand affichage, tare au doigt ou par appui sur le bouton rotatif. */
 class ScaleScreen(a: MainActivity) : Screen(a) {
     override val title = tr("Balance")
+    override val keepAwake: Boolean get() = true
     private lateinit var value: TextView
     private lateinit var state: LinearLayout
     private var simulated = 0

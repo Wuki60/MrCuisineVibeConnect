@@ -85,17 +85,31 @@ function Get-Adb {
 
 function Adb {
     $adb = Get-Adb
-    $out = & $adb @args 2>&1 | Out-String
+    # Windows PowerShell 5.1: with ErrorActionPreference=Stop, a native command's stderr redirected
+    # with 2>&1 becomes a terminating error, and adb prints its push/pull progress on stderr. Keep
+    # going and turn the error records back into plain text lines.
+    $ErrorActionPreference = "Continue"
+    $out = & $adb @args 2>&1 | ForEach-Object { "$_" } | Out-String
     return $out.Trim()
 }
 
-# State of the robot as adb sees it: "recovery" (TWRP), "device" (Android), "unauthorized", or "".
-function Get-AdbState {
+# First "adb devices" entry as @{ Serial; State }: with -Usb the cable device (serial without
+# ":port"), with $Target only serials starting with it (default: -Ip), otherwise any device.
+function Get-AdbDevice([string]$Target = $Ip, [switch]$Usb) {
     $lines = (Adb devices) -split "`r?`n" | Where-Object { $_ -match "`t" }
-    if ($Ip -ne "") { $lines = $lines | Where-Object { $_ -like "$Ip*" } }
+    if ($Usb) { $lines = $lines | Where-Object { ($_ -split "`t")[0] -notmatch ":" } }
+    elseif ($Target -ne "") { $lines = $lines | Where-Object { $_ -like "$Target*" } }
     $first = $lines | Select-Object -First 1
-    if (-not $first) { return "" }
-    return ($first -split "`t")[1].Trim()
+    if (-not $first) { return $null }
+    $parts = $first -split "`t"
+    return [pscustomobject]@{ Serial = $parts[0].Trim(); State = $parts[1].Trim() }
+}
+
+# State of the robot as adb sees it: "recovery" (TWRP), "device" (Android), "unauthorized", or "".
+function Get-AdbState([string]$Target = $Ip) {
+    $dev = Get-AdbDevice $Target
+    if (-not $dev) { return "" }
+    return $dev.State
 }
 
 function Wait-AdbState([string[]]$wanted, [int]$seconds) {
@@ -106,6 +120,19 @@ function Wait-AdbState([string[]]$wanted, [int]$seconds) {
         Start-Sleep -Seconds 3
     }
     return Get-AdbState
+}
+
+# Effective machine mode, read from Prefs: shared prefs "toque", key "mode" = demo, twin or
+# hardware. A missing file or key means demo (Prefs.Mode.of). Returns "" when it cannot be read.
+function Get-MachineMode {
+    $xml = Adb shell "su -c 'cat /data/data/app.toque/shared_prefs/toque.xml'"
+    if ($xml -match '<string name="mode">([^<]+)</string>') {
+        $m = $Matches[1].Trim()
+        if ($m -in "demo", "twin", "hardware") { return $m }
+        return "demo"
+    }
+    if ($xml -match '<map' -or $xml -match 'No such file or directory') { return "demo" }
+    return ""
 }
 
 function Test-BootImage([string]$path, [string]$what) {
@@ -270,7 +297,7 @@ function Step-Prepare {
     $tool = Get-FlashTool
     if (-not $tool) {
         $missing = $true
-        Say ("MISSING: SP Flash Tool v5.1924 for Windows. Download it from https://spflashtool.com/download (file SP_Flash_Tool_v5.1924_Win.zip) and extract it into " + (Join-Path $Work "SP_Flash_Tool"))
+        Say ("MISSING: SP Flash Tool v5.1924 for Windows. Download it from https://spflashtool.com/download (file SP_Flash_Tool_v5.1924_Win.rar, AES password spflashtool.com; Windows 10 and Windows 11 before 23H2 need 7-Zip or WinRAR; a scripted download needs the header Referer: https://spflashtool.com/download) and extract it into " + (Join-Path $Work "SP_Flash_Tool"))
     } else {
         $da = Join-Path (Split-Path $tool) "MTK_AllInOne_DA.bin"
         if ((Sha $tool) -ne $Known.FlashTool.Sha -or -not (Test-Path $da) -or (Sha $da) -ne $Known.FlashDA.Sha) {
@@ -353,9 +380,17 @@ function Step-FlashTwrp {
 function Step-Root {
     $st = Wait-AdbState @("recovery") $WaitSeconds
     if ($st -ne "recovery") { NeedHuman "adb does not see TWRP (state: '$st'). The robot must show TWRP and the cable must be plugged in AFTER it started." }
+    # This TWRP restarts by itself about 6 min 40 s after it started (watchdog): the step takes
+    # about 20 s, so start it on a fresh TWRP.
+    $uptime = 0
+    [void][double]::TryParse(((Adb shell "cat /proc/uptime") -split " ")[0], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$uptime)
+    if ($uptime -gt 300) {
+        NeedHuman ("TWRP has been running for {0:N0} s and restarts by itself at about 400 s. Restart it now (off, unplug, on, plug in once TWRP shows; swipe 'Allow Modifications' if asked), then run 'root' again right away." -f $uptime)
+    }
     $boot = Join-Path $Backup "boot-original.img"
     Test-BootImage $boot "boot-original.img"
     $magisk = Join-Path $Downloads "Magisk-v31.0.apk"
+    if ((Sha $magisk) -ne $Known.Magisk.Sha) { Fail "Magisk-v31.0.apk checksum mismatch: run 'prepare'." }
     $key = Join-Path $env:USERPROFILE ".android\adbkey.pub"
     Say (Adb shell "rm -rf /tmp/magisk /tmp/orig /tmp/twrp-root.sh")
     Say (Adb push $magisk /tmp/magisk.apk)
@@ -402,16 +437,27 @@ function Step-Android {
     if ($pkgs -notmatch "com.topjohnwu.magisk") {
         Say (Adb install -r (Join-Path $Downloads "Magisk-v31.0.apk"))
     }
+    Human "Watch the robot's screen: Magisk asks for superuser access for 'Shell' in a few seconds. Tap GRANT (Autoriser) within 10 seconds."
+    Start-Sleep -Seconds 8
     $id = Adb shell "su -c 'id -u'"
     if ($id -ne "0") {
-        NeedHuman "On the robot's screen, Magisk asks for superuser access for 'Shell': tap GRANT (Autoriser) within 10 seconds. Then run 'android' again."
+        NeedHuman "Root was not granted to 'Shell'. If the prompt was missed, Magisk now refuses for good: open the Magisk app > Superuser, switch 'Shell' on. Then run 'android' again."
     }
     $expected = (Get-State)["boot-magisk-sha256"]
     if ($expected) {
-        $bb = "/data/adb/magisk/busybox"
-        $flashed = Adb shell "su -c '$bb head -c $PartitionSize $ByName/boot | $bb sha256sum'"
-        if ($flashed -notmatch $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + $flashed + ")") }
+        # Read the partition back and hash it on the PC: /data/adb/magisk/busybox only exists after
+        # 'install' (setup-root.sh), and Android 6's toolbox has no sha256sum.
+        $tmp = "/data/local/tmp/toque-boot-check.img"
+        $local = Join-Path $Work "boot-check.img"
+        $mib = [int]($PartitionSize / 1048576)
+        Say (Adb shell "su -c 'dd if=$ByName/boot of=$tmp bs=1048576 count=$mib && chmod 644 $tmp'")
+        if (Test-Path $local) { Remove-Item -Force $local }
+        Say (Adb pull $tmp $local)
+        Say (Adb shell "su -c 'rm -f $tmp'")
+        if (-not (Test-Path $local)) { Say "WARNING: could not read the boot partition back to check it." }
+        elseif ((Sha $local) -ne $expected) { Say ("WARNING: the boot partition differs from boot-magisk.img (" + (Sha $local) + ")") }
         else { Ok "boot partition = boot-magisk.img" }
+        if (Test-Path $local) { Remove-Item -Force $local }
     }
     Set-State "done-android" (Get-Date).ToString("s")
     Ok "Root works (uid 0). Next: install"
@@ -433,23 +479,36 @@ function Step-Install {
     } finally { Pop-Location }
     $ver = Adb shell "dumpsys package app.toque | grep versionName"
     if ($ver -notmatch "versionName") { Fail "Toque is not installed." }
+    $mode = Get-MachineMode
+    if ($mode -ne "" -and $mode -ne "hardware") {
+        NeedHuman ("Toque is in '" + $mode + "' mode, so the motor is not driven. On the robot, EMPTY bowl, lid closed, hand near the main switch: Toque > Settings > Machine > Real machine > Apply, then run the install step again so the mode can be verified. Success: the badge reads Ready/« Prête » with no Demo or Twin marker AND the journal must show the real link, e.g. 'liaison ouverte : Base moteur (/dev/ttyMT...)'; the simulated-base line means the mode was not applied.")
+    }
+    if ($mode -eq "hardware") { Ok "Toque machine mode: hardware (real machine)." }
+    elseif ($mode -eq "") { Say "WARNING: Toque machine mode could not be verified (su or prefs unreadable). On the robot, Settings > Machine > Real machine must be applied before the motor can run." }
     Set-State "done-install" (Get-Date).ToString("s")
     Ok ("Toque installed: " + $ver.Trim())
-    Human "On the robot, EMPTY bowl, lid closed, hand near the main switch: Toque > Settings > Machine > Real machine > Apply. The badge at the top right must show 'Ready' ('Prete' in French). Then try Manual cooking: 10 s, speed 2."
     Ok "install done. Next: wifi (optional)"
 }
 
 function Step-Wifi {
-    $st = Get-AdbState
-    if ($st -ne "device") { NeedHuman "Connect the robot with the USB cable (Android started), then run 'wifi' again." }
-    $addr = Adb shell "ip -f inet addr show wlan0"
-    $m = [regex]::Match($addr, "inet (\d+\.\d+\.\d+\.\d+)")
-    if (-not $m.Success) {
-        NeedHuman "The robot is not on Wi-Fi. In Toque, tap the clock at the top right 5 times quickly to open the Android settings, join the home Wi-Fi, come back with the 'Back to Toque' button."
+    # -Ip is the Wi-Fi address ("10.0.0.5" or "10.0.0.5:5555"). Before the switch the robot is on
+    # the cable, with a serial; already on Wi-Fi it is the TCP device only, and the cable is not
+    # needed, so fall back to any device. setprop/tcpip are harmless over the TCP serial.
+    $usb = Get-AdbDevice -Usb
+    if (-not $usb -or $usb.State -ne "device") { $usb = Get-AdbDevice }
+    if (-not $usb) { NeedHuman "Connect the robot with the USB cable (Android started), then run 'wifi' again." }
+    if ($usb.State -ne "device") { NeedHuman ("adb sees the robot as '" + $usb.State + "': accept the ADB prompt on the robot (or unplug/replug) and run 'wifi' again.") }
+    $robotIp = $Ip -replace ':5555$', ''
+    if ($robotIp -eq "") {
+        $addr = Adb -s $usb.Serial shell "ip -f inet addr show wlan0"
+        $m = [regex]::Match($addr, "inet (\d+\.\d+\.\d+\.\d+)")
+        if (-not $m.Success) {
+            NeedHuman "The robot is not on Wi-Fi. In Toque, tap the clock at the top right 5 times quickly to open the Android settings, join the home Wi-Fi, come back with the 'Back to Toque' button."
+        }
+        $robotIp = $m.Groups[1].Value
     }
-    $robotIp = $m.Groups[1].Value
-    Say (Adb shell "su -c 'setprop persist.adb.tcp.port 5555'")
-    Say (Adb tcpip 5555)
+    Say (Adb -s $usb.Serial shell "su -c 'setprop persist.adb.tcp.port 5555'")
+    Say (Adb -s $usb.Serial tcpip 5555)
     Start-Sleep -Seconds 5
     Say (Adb connect "${robotIp}:5555")
     $check = Adb -s "${robotIp}:5555" shell "su -c 'id -u'"
@@ -465,7 +524,8 @@ function Step-Cleanup {
     $blocks = $out -split "(\r?\n){2,}"
     $published = @()
     foreach ($b in $blocks) {
-        if ($b -match "cdc-acm\.inf") {
+        # cdc-acm.inf is a generic name: only remove the MediaTek one.
+        if ($b -match "cdc-acm\.inf" -and $b -match "MediaTek") {
             $m = [regex]::Match($b, "(oem\d+\.inf)")
             if ($m.Success) { $published += $m.Groups[1].Value }
         }

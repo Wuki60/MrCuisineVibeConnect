@@ -20,14 +20,15 @@ import android.widget.TextView
 
 /** Thème sombre et utilitaires de mise en page, à l'échelle d'un écran de référence 1024×600. */
 object Ui {
-    const val BG = 0xFF0B0C0E.toInt()
-    const val SURFACE = 0xFF15171B.toInt()
-    const val SURFACE2 = 0xFF1E2127.toInt()
-    const val SURFACE3 = 0xFF272B32.toInt()
-    const val STROKE = 0xFF2C3038.toInt()
-    const val TEXT = 0xFFF3F4F6.toInt()
-    const val TEXT2 = 0xFF9BA1AA.toInt()
-    const val TEXT3 = 0xFF666C75.toInt()
+    // Fond bleu nuit (dégradé, voir background()) et surfaces bleutées assorties.
+    const val BG = 0xFF0A1322.toInt()
+    const val SURFACE = 0xFF131D2E.toInt()
+    const val SURFACE2 = 0xFF1A2639.toInt()
+    const val SURFACE3 = 0xFF223048.toInt()
+    const val STROKE = 0xFF2A3A55.toInt()
+    const val TEXT = 0xFFF3F5F9.toInt()
+    const val TEXT2 = 0xFF9CA8BC.toInt()
+    const val TEXT3 = 0xFF66738A.toInt()
     const val ACCENT = 0xFFFF8A3D.toInt()
     const val ACCENT_DIM = 0x33FF8A3D
     const val COOL = 0xFF5CC8FF.toInt()
@@ -72,6 +73,35 @@ object Ui {
             setTextColor(color)
             typeface = face
             includeFontPadding = false
+        }
+
+    /** Texte d'une seule ligne, rapetissé de [size] jusqu'à [min] pour tenir dans sa largeur (jamais de retour à la ligne). */
+    fun fitText(c: Context, size: Float, min: Float, color: Int = TEXT, face: Typeface = REGULAR): TextView =
+        object : TextView(c) {
+            override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+                val avail = View.MeasureSpec.getSize(widthMeasureSpec) - paddingLeft - paddingRight
+                if (View.MeasureSpec.getMode(widthMeasureSpec) != View.MeasureSpec.UNSPECIFIED && avail > 0) {
+                    val p = android.graphics.Paint(paint)
+                    var px = uf(size)
+                    p.textSize = px
+                    val s = text.toString()
+                    while (px > uf(min) && p.measureText(s) > avail) { px -= 1f; p.textSize = px }
+                    if (px != textSize) setTextSize(TypedValue.COMPLEX_UNIT_PX, px)
+                }
+                super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+            }
+
+            override fun onTextChanged(text: CharSequence?, start: Int, lengthBefore: Int, lengthAfter: Int) {
+                super.onTextChanged(text, start, lengthBefore, lengthAfter)
+                requestLayout()
+            }
+        }.apply {
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, uf(size))
+            setTextColor(color)
+            typeface = face
+            includeFontPadding = false
+            setSingleLine()
+            ellipsize = TextUtils.TruncateAt.END
         }
 
     fun ellipsize(t: TextView, lines: Int = 1): TextView {
@@ -222,6 +252,10 @@ object Ui {
         val words = title.split(' ', '-', '\'').filter { it.length > 2 }
         return words.take(2).joinToString("") { it.first().uppercaseChar().toString() }.ifEmpty { title.take(1).uppercase() }
     }
+
+    /** Fond de l'appli : dégradé bleu nuit en diagonale, plus clair en haut à gauche. */
+    fun background(): GradientDrawable =
+        GradientDrawable(GradientDrawable.Orientation.TL_BR, intArrayOf(0xFF16294A.toInt(), 0xFF0D1A31.toInt(), 0xFF070E1B.toInt()))
 
     fun gradient(colors: IntArray, radius: Float): GradientDrawable =
         GradientDrawable(GradientDrawable.Orientation.TL_BR, colors).apply { setCornerRadius(uf(radius)) }

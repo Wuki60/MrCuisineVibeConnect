@@ -8,6 +8,7 @@ import app.toque.Prefs
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.json.Json
+import app.toque.core.json.int
 import app.toque.core.json.obj
 import app.toque.core.json.str
 import app.toque.core.recipes.McOnline
@@ -51,26 +52,36 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
     private fun run(progress: (String) -> Unit): LidlSync.Report {
         val language = McOnline.languageFor(I18n.code)
         val stored = readIndex()
-        val index = if (stored.first == language) HashMap(stored.second) else HashMap()
+        // Autre langue ou lecture des fiches améliorée depuis : toutes les fiches sont relues.
+        val index = if (stored.language == language && stored.parser == McOnline.PARSER) HashMap(stored.recipes) else HashMap()
 
         // 1. Liste complète (résumés).
         progress(tr("Liste des recettes…"))
         val entries = ArrayList<McOnline.Entry>()
-        var page = 1
-        var pages = 1
-        while (page <= pages) {
-            val p = try {
-                McOnline.parsePage(get(McOnline.listUrl(page), language))
-            } catch (e: IOException) {
-                return LidlSync.Report(false, tr("Serveur de recettes injoignable : %s", e.message ?: e.toString()))
-            }
-            pages = p.totalPages.coerceIn(1, 1000)
-            entries += p.entries
-            progress(tr("Liste des recettes… %d / %d", page, pages))
-            page++
-            pause(300)
+        try {
+            entries += list(language) { page, pages -> progress(tr("Liste des recettes… %d / %d", page, pages)) }
+        } catch (e: IOException) {
+            return LidlSync.Report(false, tr("Serveur de recettes injoignable : %s", e.message ?: e.toString()))
         }
         if (entries.isEmpty()) return LidlSync.Report(false, tr("Aucune recette reçue du serveur"))
+
+        // 1 bis. Option : les recettes qui n'existent pas dans cette langue, prises dans une autre.
+        // Si une liste ne vient pas, les recettes étrangères déjà là sont gardées telles quelles.
+        var foreignFailed = false
+        if (prefs.foreignRecipes) {
+            val others = ArrayList<List<McOnline.Entry>>()
+            for (lang in McOnline.OTHER_LANGUAGES) {
+                if (lang == language) continue
+                try {
+                    others += list(lang) { page, pages -> progress(tr("Autres langues (%s)… %d / %d", lang.substringBefore('-'), page, pages)) }
+                } catch (e: IOException) {
+                    log.write("synchro", "liste $lang : ${e.message}")
+                    foreignFailed = true
+                    break
+                }
+            }
+            if (!foreignFailed) entries += McOnline.missingTranslations(entries, others)
+        }
 
         // 2. Fiches nouvelles ou modifiées ; pour les autres, seuls l'auteur et la note sont mis à jour.
         val present = repo.ids()
@@ -94,8 +105,9 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         for ((i, e) in todo.withIndex()) {
             progress(tr("Recettes : %d / %d", i + 1, todo.size))
             try {
-                val r = McOnline.parseRecipe(get(McOnline.recipeUrl(e.apiId), language))
-                if (r != null) batch += r
+                val lang = e.language.ifBlank { language }
+                val r = McOnline.parseRecipe(get(McOnline.recipeUrl(e.apiId), lang))
+                if (r != null) batch += if (lang != language) r.copy(language = lang) else r
                 index[e.apiId.toString()] = e.stamp
                 inARow = 0
             } catch (ex: IOException) {
@@ -112,10 +124,12 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         }
         save(batch, index, language)
 
-        // 3. Le catalogue suit la liste du site (recettes retirées supprimées).
-        val keep = entries.map { McOnline.toqueId(it.apiId) }.toHashSet()
-        repo.removeAllExcept(keep, rebuild = false)
+        // 3. Le catalogue suit la liste du site (recettes retirées supprimées). Les recettes perso
+        // ne sont jamais touchées (voir RecipeRepo.removeAllExcept).
         val kept = entries.map { it.apiId.toString() }.toHashSet()
+        if (foreignFailed) kept += stored.recipes.keys
+        val keep = kept.mapNotNull { it.toLongOrNull()?.let(McOnline::toqueId) }.toHashSet()
+        repo.removeAllExcept(keep, rebuild = false)
         index.keys.retainAll(kept)
         writeIndex(language, index)
         repo.refresh()
@@ -124,8 +138,26 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         photos(keep, progress)
 
         val n = repo.count
-        val note = if (failures > 0) " " + tr("(%d en échec, réessayées à la prochaine synchro)", failures) else ""
+        val foreign = entries.count { it.language.isNotBlank() && it.language != language }
+        val note = (if (foreign > 0) " " + tr("(dont %d dans d'autres langues)", foreign) else "") +
+            (if (failures > 0) " " + tr("(%d en échec, réessayées à la prochaine synchro)", failures) else "")
         return LidlSync.Report(true, tr("%d recettes Lidl à jour", n) + note, n)
+    }
+
+    /** Liste complète des recettes officielles dans [language] (lève IOException si le site ne répond pas). */
+    private fun list(language: String, progress: (Int, Int) -> Unit): List<McOnline.Entry> {
+        val out = ArrayList<McOnline.Entry>()
+        var page = 1
+        var pages = 1
+        while (page <= pages) {
+            val p = McOnline.parsePage(get(McOnline.listUrl(page), language))
+            pages = p.totalPages.coerceIn(1, 1000)
+            out += p.entries
+            progress(page, pages)
+            page++
+            pause(300)
+        }
+        return out
     }
 
     private fun save(batch: MutableList<Recipe>, index: Map<String, String>, language: String) {
@@ -213,18 +245,20 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         }
     }
 
-    private fun readIndex(): Pair<String, Map<String, String>> = try {
+    private class Index(val language: String, val parser: Int, val recipes: Map<String, String>)
+
+    private fun readIndex(): Index = try {
         val m = Json.parse(indexFile.readText()).obj()
         val ids = m["recipes"].obj().mapValues { (_, v) -> v?.toString().orEmpty() }
-        (m.str("language").orEmpty()) to ids
+        Index(m.str("language").orEmpty(), m.int("parser") ?: 1, ids)
     } catch (_: Exception) {
-        "" to emptyMap()
+        Index("", 0, emptyMap())
     }
 
     private fun writeIndex(language: String, index: Map<String, String>) {
         try {
             val tmp = File(indexFile.path + ".part")
-            tmp.writeText(Json.write(linkedMapOf("language" to language, "recipes" to index)))
+            tmp.writeText(Json.write(linkedMapOf("language" to language, "parser" to McOnline.PARSER, "recipes" to index)))
             tmp.renameTo(indexFile)
         } catch (e: Exception) {
             log.write("synchro", "index non enregistré : $e")

@@ -22,7 +22,14 @@ import app.toque.core.protocol.Operation
 /** Recettes Lidl importées (site monsieur-cuisine.com ou appli d'origine) ; USER : réservé aux recettes perso. */
 enum class RecipeSource { IMPORTED, USER }
 
-data class Ingredient(val qty: String = "", val unit: String = "", val name: String, val note: String = "") {
+data class Ingredient(
+    val qty: String = "",
+    val unit: String = "",
+    val name: String,
+    val note: String = "",
+    /** Quantité de la recette quand l'utilisateur l'a adaptée (voir [RecipeAdjustments]) ; vide sinon. Non enregistrée. */
+    val originalQty: String = "",
+) {
     val display: String
         get() = buildString {
             if (qty.isNotBlank()) append(qty.trim()).append(' ')
@@ -108,7 +115,8 @@ data class StepMachine(
     val valid: Boolean get() = violations().isEmpty()
 }
 
-data class Weigh(val label: String, val grams: Int)
+/** [originalGrams] : poids de la recette quand l'utilisateur l'a adapté (voir [RecipeAdjustments]) ; 0 sinon. Non enregistré. */
+data class Weigh(val label: String, val grams: Int, val originalGrams: Int = 0)
 
 data class Step(
     val text: String,
@@ -138,6 +146,10 @@ data class Recipe(
     /** Note moyenne sur 5 et nombre de notes sur monsieur-cuisine.com (0 : aucune). */
     val rating: Double = 0.0,
     val ratingCount: Int = 0,
+    /** Langue de la recette (« de-DE ») quand elle n'est pas dans celle de l'interface ; vide sinon. */
+    val language: String = "",
+    /** Ce que compte [servings] quand ce ne sont pas des personnes (« pots », « Gläser ») ; vide sinon. */
+    val servingUnit: String = "",
 ) {
     val machineSteps: Int get() = steps.count { it.machine != null }
     val allIngredients: List<Ingredient> get() = ingredients.flatMap { it.items }
@@ -163,6 +175,8 @@ object RecipeCodec {
         "author" to r.author,
         "rating" to r.rating,
         "ratingCount" to r.ratingCount,
+        "language" to r.language,
+        "servingUnit" to r.servingUnit,
         "ingredients" to r.ingredients.map { g ->
             linkedMapOf(
                 "group" to g.title,
@@ -232,6 +246,8 @@ object RecipeCodec {
             author = m.str("author")?.trim().orEmpty(),
             rating = (m.double("rating") ?: 0.0).coerceIn(0.0, 5.0),
             ratingCount = (m.int("ratingCount") ?: 0).coerceAtLeast(0),
+            language = m.str("language")?.trim().orEmpty(),
+            servingUnit = m.str("servingUnit")?.trim().orEmpty(),
         )
     }
 
@@ -281,6 +297,65 @@ object RecipeCodec {
     fun slug(text: String): String {
         val base = TextNorm.normalize(text).replace(' ', '-').trim('-')
         return if (base.isEmpty()) "recette-" + System.currentTimeMillis() else base.take(48)
+    }
+}
+
+/**
+ * « Mes recettes » : recettes écrites ou modifiées sur le robot. Leur identifiant commence par
+ * [ID_PREFIX] ; les synchronisations (site, appli d'origine) n'y touchent jamais.
+ */
+object UserRecipes {
+    const val ID_PREFIX = "perso-"
+    /** Nom du fichier d'échange, dans le dossier Download du robot. */
+    const val FILE_NAME = "toque-mes-recettes.json"
+
+    fun isUser(id: String): Boolean = id.startsWith(ID_PREFIX)
+
+    fun newId(title: String, now: Long = System.currentTimeMillis()): String =
+        ID_PREFIX + RecipeCodec.slug(title).take(32).trim('-') + "-" + java.lang.Long.toString(now, 36).takeLast(6)
+
+    /** Une recette vide, prête à remplir. */
+    fun blank(now: Long = System.currentTimeMillis()): Recipe =
+        Recipe(id = newId("recette", now), title = "", servings = 4, source = RecipeSource.USER)
+
+    /**
+     * Sa propre version d'une recette, telle qu'elle est affichée (quantités adaptées, nombre de
+     * personnes choisi). La recette d'origine reste telle quelle.
+     */
+    fun copyOf(r: Recipe, now: Long = System.currentTimeMillis()): Recipe = r.copy(
+        id = newId(r.title, now),
+        source = RecipeSource.USER,
+        favorite = false,
+        author = "",
+        rating = 0.0,
+        ratingCount = 0,
+        ingredients = r.ingredients.map { g -> g.copy(items = g.items.map { it.copy(originalQty = "") }) },
+        steps = r.steps.map { s -> s.copy(weigh = s.weigh?.copy(originalGrams = 0)) },
+    )
+
+    /** Recette lue dans un fichier : toujours une recette perso. */
+    fun imported(r: Recipe): Recipe = r.copy(
+        id = if (isUser(r.id)) r.id else ID_PREFIX + RecipeCodec.slug(r.id).take(40),
+        source = RecipeSource.USER,
+        favorite = false,
+    )
+
+    /** Ce qui empêche d'enregistrer la recette, ou null. */
+    fun problem(r: Recipe): String? {
+        if (r.title.isBlank()) return tr("Donnez un titre à la recette")
+        if (r.steps.isEmpty() && r.allIngredients.isEmpty()) return tr("Ajoutez au moins un ingrédient ou une étape")
+        for ((i, s) in r.steps.withIndex()) {
+            val v = s.machine?.violations()?.firstOrNull() ?: continue
+            return tr("Étape %d : %s", i + 1, v.message)
+        }
+        return null
+    }
+
+    /** Ingrédient écrit d'une traite (« 500 g de farine ») : quantité et unité à part. */
+    fun ingredient(text: String): Ingredient? {
+        val t = text.trim().replace(Regex("\\s+"), " ")
+        if (t.isEmpty()) return null
+        return QuantityLinks.split(Ingredient(name = t))
     }
 }
 

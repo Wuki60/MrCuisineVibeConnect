@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.os.Handler
 import android.os.Looper
+import app.toque.ExtraRoots
 import app.toque.ToqueApp
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
@@ -18,6 +19,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLException
 
 /**
@@ -165,6 +167,8 @@ class Updater(private val context: Context) {
 
     private fun open(url: String, accept: String): HttpURLConnection {
         val c = URL(url).openConnection() as HttpURLConnection
+        // Les redirections suivies (github.com → release-assets…) gardent cette fabrique.
+        if (c is HttpsURLConnection) c.sslSocketFactory = ExtraRoots.socketFactory(context)
         c.connectTimeout = 15_000
         c.readTimeout = 30_000
         c.instanceFollowRedirects = true

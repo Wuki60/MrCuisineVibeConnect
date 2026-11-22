@@ -30,6 +30,7 @@ import app.toque.core.machine.Verdict
 import app.toque.recipes.LidlSync
 import app.toque.recipes.SyncService
 import app.toque.ui.screens.HomeScreen
+import app.toque.ui.screens.KnobSetupScreen
 import app.toque.ui.screens.SettingsScreen
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -51,11 +52,17 @@ class MainActivity : Activity() {
     private var tone: ToneGenerator? = null
     private var toastView: TextView? = null
     private var lastKnobMs = 0L
+    private lateinit var standby: Standby
+    lateinit var updates: UpdateAlert
+        private set
+    private var swallowTouch = false
     var knobListener: ((KeyEvent) -> Unit)? = null
 
     val prefs: Prefs get() = app.prefs
     val machine get() = app.machine
     val snapshot: Snapshot get() = app.machine.snapshot
+    val asleep: Boolean get() = standby.asleep
+    val overlayShown: Boolean get() = overlay.visibility == View.VISIBLE
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,10 +70,10 @@ class MainActivity : Activity() {
         val dm = resources.displayMetrics
         Ui.init(dm.widthPixels, dm.heightPixels)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        window.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Ui.BG))
+        window.setBackgroundDrawable(Ui.background())
 
         root = FrameLayout(this)
-        root.setBackgroundColor(Ui.BG)
+        root.background = Ui.background()
         val column = Ui.vertical(this)
         topBar = TopBar(this)
         column.addView(topBar, Ui.lp(Ui.MATCH, Ui.u(60)))
@@ -79,6 +86,9 @@ class MainActivity : Activity() {
         overlay.visibility = View.GONE
         root.addView(overlay, Ui.flp())
         setContentView(root)
+        standby = Standby(this, root)
+        updates = UpdateAlert(this)
+        standby.onWake = { updates.onWake() }
 
         try {
             tone = ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
@@ -92,6 +102,10 @@ class MainActivity : Activity() {
         if (reopenSettings) {
             reopenSettings = false
             push(SettingsScreen(this))
+        } else if (!prefs.knobReady && !prefs.knobSetupShown) {
+            // Premier lancement : le bouton du robot n'envoie pas les mêmes touches partout.
+            prefs.knobSetupShown = true
+            push(KnobSetupScreen(this))
         }
     }
 
@@ -108,9 +122,12 @@ class MainActivity : Activity() {
             topBar.update(s)
             machineBar.update(s)
             stack.lastOrNull()?.onSnapshot(s)
+            standby.onSnapshot(s)
         }
         unsubscribeEvents = app.machine.onEvent { e -> onMachineEvent(e) }
         topBar.startClock()
+        standby.start()
+        updates.onStart()
     }
 
     override fun onResume() {
@@ -125,6 +142,8 @@ class MainActivity : Activity() {
         unsubscribe?.invoke()
         unsubscribeEvents?.invoke()
         topBar.stopClock()
+        standby.stop()
+        updates.onStop()
         super.onStop()
     }
 
@@ -168,14 +187,16 @@ class MainActivity : Activity() {
     fun back() {
         if (stack.size <= 1) return
         val top = stack.last()
-        if (!top.canLeave()) return
+        if (!top.canLeave { back() }) return
         hideKeyboard()
         top.onHide()
         stack.removeAt(stack.size - 1)
         show(stack.last())
     }
 
+    /** Retour à l'accueil (maison) ; un écran aux modifications non enregistrées demande d'abord confirmation. */
     fun home() {
+        for (i in stack.size - 1 downTo 1) if (!stack[i].canLeave { home() }) return
         hideKeyboard()
         while (stack.size > 1) stack.removeAt(stack.size - 1).onHide()
         show(stack.first())
@@ -205,19 +226,41 @@ class MainActivity : Activity() {
 
     // ------------------------------------------------------------------ bouton rotatif
 
+    // ------------------------------------------------------------------ veille
+
+    /** Le geste qui réveille l'écran ne fait rien d'autre (on ne lance rien en le touchant dans le noir). */
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (event.actionMasked == MotionEvent.ACTION_DOWN) swallowTouch = standby.onInput()
+        if (swallowTouch) {
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) swallowTouch = false
+            return true
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        knobListener?.let { l ->
+        if (event.action == KeyEvent.ACTION_DOWN && standby.onKnob()) return true
+        // Retour reste Retour (tablettes et émulateur) : jamais un cran du bouton, même appris par erreur.
+        val isBack = event.keyCode == KeyEvent.KEYCODE_BACK
+        if (!isBack) knobListener?.let { l ->
             if (event.action == KeyEvent.ACTION_DOWN) l(event)
             return true
         }
-        if (event.action == KeyEvent.ACTION_DOWN && overlay.visibility != View.VISIBLE) {
+        if (!isBack && event.action == KeyEvent.ACTION_DOWN && overlay.visibility != View.VISIBLE) {
             val k = event.keyCode
-            val left = prefs.knobLeft.let { if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_LEFT }
-            val right = prefs.knobRight.let { if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_RIGHT }
+            // Par défaut : les flèches, et les touches du bouton du robot (clavier mtk-kpd :
+            // F6 à droite, F7 à gauche, F5 à l'appui).
+            val left = prefs.knobLeft.let {
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_F7
+            }
+            val right = prefs.knobRight.let {
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_RIGHT || k == KeyEvent.KEYCODE_F6
+            }
             val press = prefs.knobPress.let {
-                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER
+                if (it >= 0) it == k else k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER || k == KeyEvent.KEYCODE_F5
             }
             val s = current
+            if ((left || right || press) && !prefs.knobSetupDone) prefs.knobSetupDone = true
             if (s != null && currentFocus !is android.widget.EditText) {
                 if (left && s.onKnob(-1)) return true
                 if (right && s.onKnob(1)) return true
@@ -228,12 +271,14 @@ class MainActivity : Activity() {
     }
 
     override fun dispatchGenericMotionEvent(event: MotionEvent): Boolean {
+        if (event.action == MotionEvent.ACTION_SCROLL && standby.onKnob()) return true
         if (event.action == MotionEvent.ACTION_SCROLL) {
             // Encodeur rotatif (AXIS_SCROLL) ou molette (AXIS_VSCROLL)
             val v = event.getAxisValue(AXIS_SCROLL).let { if (it == 0f) -event.getAxisValue(MotionEvent.AXIS_VSCROLL) else it }
             val now = System.currentTimeMillis()
             if (v != 0f && now - lastKnobMs > 40) {
                 lastKnobMs = now
+                if (!prefs.knobSetupDone) prefs.knobSetupDone = true
                 if (current?.onKnob(if (v > 0) 1 else -1) == true) return true
             }
         }
@@ -243,15 +288,27 @@ class MainActivity : Activity() {
     // ------------------------------------------------------------------ évènements machine
 
     private fun onMachineEvent(e: MachineEvent) {
+        val ownSound = current?.ownsFinishSound(e) == true
         current?.onEvent(e)
+        if (e.type != EventType.LINK_CHANGED && e.type != EventType.PHASE_CHANGED) standby.poke()
         when (e.type) {
-            EventType.JOB_FINISHED -> chime(2)
+            EventType.JOB_FINISHED -> if (!ownSound) chime(2)
             EventType.FAULT -> { chime(3); toast(e.message, Ui.DANGER) }
             EventType.LID_OPENED -> if (snapshot.busy || snapshot.state != null) toast(tr("Couvercle ouvert : pause"), Ui.WARN)
             EventType.JOB_PAUSED -> if (e.message != PauseReason.USER.label) toast(e.message, Ui.WARN)
             EventType.TURBO_END -> toast(e.message, Ui.TEXT2)
             else -> Unit
         }
+    }
+
+    /** Quantité à peser atteinte. */
+    fun weighBeep() {
+        if (prefs.sound) Sounds.weighReached(prefs.weighSound)
+    }
+
+    /** Fin de recette : mélodie forte, comme l'appli d'origine. */
+    fun recipeDoneSound() {
+        if (prefs.sound) Sounds.recipeDone()
     }
 
     fun chime(times: Int = 1) {
@@ -355,6 +412,25 @@ class MainActivity : Activity() {
         }
     }
 
+    private var onStorage: ((Boolean) -> Unit)? = null
+
+    /** Accès au dossier Download (import et export de recettes) ; Android le demande une fois. */
+    fun withStorage(then: (Boolean) -> Unit) {
+        val perms = arrayOf(android.Manifest.permission.READ_EXTERNAL_STORAGE, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        if (perms.all { checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED }) { then(true); return }
+        onStorage = then
+        requestPermissions(perms, STORAGE_REQUEST)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != STORAGE_REQUEST) return
+        val ok = grantResults.isNotEmpty() && grantResults.all { it == android.content.pm.PackageManager.PERMISSION_GRANTED }
+        onStorage?.invoke(ok)
+        onStorage = null
+        immersive()
+    }
+
     fun hideKeyboard() {
         val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         currentFocus?.let { imm.hideSoftInputFromWindow(it.windowToken, 0) }
@@ -440,6 +516,7 @@ class MainActivity : Activity() {
 
     companion object {
         private var reopenSettings = false
+        private const val STORAGE_REQUEST = 7
 
         /** MotionEvent.AXIS_SCROLL (API 26), valeur fixe pour Android 6. */
         private const val AXIS_SCROLL = 26

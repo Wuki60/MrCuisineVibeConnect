@@ -234,4 +234,30 @@ object Programs {
     )
 
     fun turboSetting() = Setting(Operation.TURBO, 10, 0, CW)
+
+    /**
+     * Nettoyage du bol : 1 L d'eau chaude et une goutte de liquide vaisselle, brassés à vitesse
+     * croissante (4, 6, 8 puis 10), sans chauffe, couvercle fermé. 1 min 30 par défaut.
+     * Si le bol est encore chaud (≥ 60 °C), la machine demande confirmation avant la vitesse 4.
+     */
+    fun clean(durationMs: Long = 90_000L): JobSpec {
+        val speeds = intArrayOf(4, 6, 8, 10)
+        val each = durationMs / speeds.size
+        return JobSpec(
+            kind = JobKind.MANUAL,
+            label = tr("Nettoyage"),
+            phases = speeds.map { Phase(Setting(Operation.STANDARD, it, 0, CW), each) },
+            totalMs = each * speeds.size,
+            cyclic = false,
+        )
+    }
+
+    /** Titre d'une recette de rinçage du catalogue Lidl, quelle que soit la langue. */
+    fun isRinseRecipe(title: String): Boolean {
+        val t = app.toque.core.recipes.TextNorm.normalize(title)
+        return t in RINSE
+    }
+
+    private val RINSE = listOf("rincage", "nettoyage", "limpieza", "aclarado", "reinigung", "spulen", "spuelen",
+        "rinse", "rinsing", "cleaning", "pulizia", "risciacquo", "reiniging", "spoelen", "czyszczenie", "plukanie", "limpeza")
 }

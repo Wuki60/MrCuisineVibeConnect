@@ -13,9 +13,9 @@ object Reviews {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, McOnline.ReviewPage>?) = size > 40
     }
 
-    /** Page [page] des avis ; lève une exception si le site est injoignable. */
-    fun load(apiId: Long, page: Int): McOnline.ReviewPage {
-        val language = McOnline.languageFor(I18n.code)
+    /** Page [page] des avis, dans la langue de la recette ; lève une exception si le site est injoignable. */
+    fun load(apiId: Long, page: Int, recipeLanguage: String = ""): McOnline.ReviewPage {
+        val language = recipeLanguage.ifBlank { McOnline.languageFor(I18n.code) }
         val key = "$language/$apiId/$page"
         synchronized(cache) { cache[key] }?.let { return it }
         val r = McOnline.parseReviews(Http.get(McOnline.reviewsUrl(apiId, page), McOnline.reviewHeaders(language)).body)

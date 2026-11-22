@@ -7,11 +7,11 @@ kitchen robot (SKMC 1200). It runs on the robot's own tablet instead of the stoc
 uses **the official Lidl recipes**.
 
 > Independent project, not affiliated with Lidl, SilverCrest or Hoyer. Motor control is based on
-> a public analysis of the serial protocol; it has been running daily on one robot (SKMC 1200,
-> Android 6) since October 2026, but has only been tried on that one. Use at your own risk and
-> follow the first-run procedure.
+> a public analysis of the serial protocol. Since October 2026 Toque has been running on SKMC 1200
+> robots (revisions A1, B2 and C3) in France and Spain, and on an SKMC 1100 A1 (with an adapted
+> recovery, see #10). Use at your own risk and follow the first-run procedure.
 >
-> The interface is available in **English** and **French** (*Settings › Langue · Language*), and
+> The interface is available in **English**, **French**, **German** and **Spanish** (*Settings › Langue · Language*), and
 > other languages can be added with a single file (see below).
 
 ## Install with an AI agent
@@ -37,7 +37,7 @@ Allow 1 to 2 hours. Without an agent: [docs/INSTALLATION.md](docs/INSTALLATION.m
 
 ## Features
 
-- **Dark interface** designed for the robot's 7" screen and rotary knob, and smooth on its
+- **Dark night-blue interface** designed for the robot's 7" screen and rotary knob, and smooth on its
   original tablet (1 GB RAM, Android 6): no heavy libraries, downsampled images, recycled views.
 - **Lidl recipes, straight from monsieur-cuisine.com.** Toque downloads the official Monsieur
   Cuisine connect recipes (about 1,700 in French, with each step's machine settings) from the
@@ -47,20 +47,59 @@ Allow 1 to 2 hours. Without an agent: [docs/INSTALLATION.md](docs/INSTALLATION.m
 - **Author, ratings and reviews**: each recipe shows who published it and its rating on the site,
   and the recipe page loads the users' comments (with Monsieur Cuisine's replies).
 - **Search that works**: ignores accents, plurals and typos ("bechamle", "risoto").
-  Search by ingredients (e.g. "chicken, curry"), filters, favorites.
+  Search by ingredients (e.g. "chicken, curry"), filters, favorites. **Recent** (last cooked first)
+  and **Frequent** (most cooked first) lists, also one tap away under the home search bar.
 - **Guided cooking**: each step starts with one tap, the next step shows up by itself, built-in
   weighing, resume after a power cut. Settings that follow each other with nothing to do in
   between (rinsing, blending at several speeds…) start together with a single tap: the blade goes
-  straight from one speed and temperature to the next without stopping.
-- **Manual cooking**, **Knead / Steam / Sauté** programs, **Turbo**, **scale**.
+  straight from one speed and temperature to the next without stopping. Recipe steps that use the
+  site's **progressive speed ramp** become one machine step per stage. A recipe in progress shows
+  on the home screen and can be **abandoned** there (✕), except while a program is running.
+- **Your own notes and quantities**: a free note on each recipe, and tapping an ingredient's
+  quantity changes it (1000 g of water → 800 g); the weighings and mentions in the steps that use
+  it follow in proportion (numeric keypad, fractions included). Favourites, notes and adjusted quantities follow the recipe when a sync
+  replaces it with the same recipe from the other source (site or stock app).
+- **For more or fewer people**: − / + above the ingredients, from half to double the recipe. Every
+  weighed or measured quantity follows (list, weighings, "500 g of water" in the steps), rounded the
+  way you would write it by hand, with the same rounding everywhere; eggs and spoons are rounded to
+  the half. Times, speeds and temperatures stay those of the tested recipe, with a reminder to keep
+  an eye on the cooking, and a warning when the bowl may be too full (2.5 L of liquid at most).
+- **My recipes**: write your own (title, people, time, one line per ingredient, steps with their
+  robot setting and weighing, chosen with the same safety limits as manual cooking), or make **your
+  version** of a Lidl recipe with the pencil. Syncs never touch them. *Settings › My recipes* exports
+  them to, or imports them from, `Download/toque-mes-recettes.json` (to back them up or pass them to
+  another robot).
+- **Recipes from other languages** (option in *Settings › Lidl recipes*): the recipes that don't
+  exist in your language are added from English, French, German, Spanish…, each one only once, with
+  its language on the thumbnail.
+- **Sounds**: a bell rings when the weight to add is reached (sound to choose in *Settings*), and a
+  loud tune plays when the recipe's last program ends. A setting you confirmed ("I checked this
+  setting") is remembered for the next time you cook the recipe.
+- **Manual cooking**, **Knead / Steam / Sauté / Cleaning** programs, **Turbo**, **scale**. Cleaning:
+  1 L of hot water and a drop of washing-up liquid, speed rising from 4 to 10, no heat.
 - **Offline**: everything works without a network (no more "server unreachable" at startup).
 - **Always the right time**: the time zone comes from the Internet connection and the time from
-  the network (the robot has no clock battery); can be set by hand in *Settings › Date and time*.
+  the network (the robot has no clock battery). Right after power-on, the clock is set from the
+  first server that answers, so the time is right within seconds instead of staying on 01:00. Can
+  be set by hand in *Settings › Date and time*.
+- **Standby**, like the stock app: after a few minutes without a touch or a turn of the knob
+  (2 to 30 min, or never, in *Settings › Screen*), a dimmed black screen shows the time, and the
+  bowl temperature when it is hot. Never during a program or on the scale. The gesture that wakes
+  the screen does nothing else. During standby, the knob ring stays normal, dims to a faint white
+  night-light, or turns off (*Settings › Screen*).
+- **Bowl sensor that reads the wrong way round**: on some robots (seen on an SKMC 1200 C3) the
+  base reports the bowl as present when it is removed; *Settings › Safety › Invert the bowl
+  sensor* fixes it.
 - **Made for a robot without Android buttons**: Toque opens at startup, and a **Back to Toque**
   button stays on top of the stock app when you open it.
 - **Updates from GitHub**: *Settings › Updates* checks this repository's
+- **Updates from GitHub**: *Settings › Updates* checks this repository's
   [Releases](https://github.com/barjola/MrCuisineVibeConnectES/releases) and installs the new version
-  (silently on a rooted robot, then Toque restarts). Refused while a program is running.
+  (silently on a rooted robot, then Toque restarts). Refused while a program is running. Recent
+  root certificates missing from Android 6 (ISRG Root X1/X2 for GitHub's download server, Sectigo,
+  Google) are bundled, so downloads over HTTPS work on the robot. When a new version is out, Toque
+  says so when it starts or wakes from standby (at most every few hours, never during a program);
+  "Later" waits until the next day.
 
 ## Safety: what changes compared to the stock app
 
@@ -159,6 +198,10 @@ bowl, recipe sync, going back to the stock app.
 
 - Protocol: [Monsieur Cuisine Developer SDK](https://github.com/antrea/monsieur-cuisine-developer-sdk) (MIT).
 - Robot access: [Monsieur-Cuisine-Connect-Hack](https://github.com/EliasKotlyar/Monsieur-Cuisine-Connect-Hack).
+- Contributions: @pierok13 (standby, notes and quantities, speed stages, sounds, recent recipes,
+  Android 6 roots, bowl sensor), @lucasbraud, @OUTSIDE2k8 (Spanish), @Locodice67 (German, install
+  script), @baptiste-gislot, @florentdestremau (rotary knob), and everyone who tested their robot
+  and reported bugs.
 
 MIT License. This repository contains no Lidl recipes, images or code: each robot downloads the
 recipes itself from monsieur-cuisine.com, for its owner's personal use.

@@ -116,7 +116,7 @@ class I18nTest {
         I18n.select("en")
         assertEquals("Settings", tr("Réglages"))
         assertEquals("When heating, speed 3 maximum", tr("En chauffe, vitesse %d maximum", 3))
-        assertEquals("Downloading version 0.3.0… 42 %", tr("Téléchargement de la version %s… %d %%", "0.3.0", 42))
+        assertEquals("Downloading… 42 %", tr("Téléchargement… %d %%", 42))
         val labels: () -> List<String> = {
             Accessory.values().map { it.label } + JobKind.values().map { it.label } +
                 LinkState.values().map { it.label } + PauseReason.values().map { it.label }
