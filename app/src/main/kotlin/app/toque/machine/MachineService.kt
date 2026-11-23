@@ -33,6 +33,7 @@ import app.toque.core.machine.Snapshot
 import app.toque.core.machine.TcpTransport
 import app.toque.core.machine.Transport
 import app.toque.core.machine.Verdict
+import app.toque.core.net.StatusServer
 import app.toque.core.protocol.Direction
 import app.toque.ui.MainActivity
 
@@ -48,6 +49,10 @@ class MachineService : Service() {
     private var lastSent: Snapshot? = null
     private var lastSentAt = 0L
     private var lastNotified = ""
+    /** Dernier état reçu de la boucle, lu par le serveur d'état (lecture seule, autre fil). */
+    @Volatile private var latest: Snapshot? = null
+    private var status: StatusServer? = null
+    private var statusKey = ""
     private lateinit var prefs: Prefs
     private lateinit var log: Logbook
 
@@ -82,6 +87,8 @@ class MachineService : Service() {
     override fun onBind(intent: Intent?): IBinder = messenger.binder
 
     override fun onDestroy() {
+        status?.stop()
+        status = null
         loop?.shutdown()
         loop = null
         super.onDestroy()
@@ -91,6 +98,7 @@ class MachineService : Service() {
         loop?.shutdown()
         prefs = Prefs(this) // relit le fichier écrit par l'interface
         RobotProfiles.active = prefs.robot
+        applyStatusServer()
         val mode = prefs.mode
         sim = null
         val factory: () -> Transport = when (mode) {
@@ -126,13 +134,50 @@ class MachineService : Service() {
             config = ControllerConfig(requireBowl = prefs.requireBowl, invertBowl = prefs.invertBowl, hotRamp = prefs.hotRamp),
             // Cadence du robot pour la vraie base ; la démo et le jumeau parlent comme le Connect.
             periodMs = if (mode == Prefs.Mode.HARDWARE) prefs.robot.framePeriodMs else RobotProfiles.MC_CONNECT.framePeriodMs,
-            onSnapshot = { s -> main.post { publish(s) } },
+            onSnapshot = { s -> latest = s; main.post { publish(s) } },
             onEvent = { e -> main.post { broadcastEvent(e) } },
             log = { line -> log.write("machine", line) },
         )
         loop = l
         l.start()
         log.write("machine", "boucle démarrée en mode ${mode.label}")
+    }
+
+    /**
+     * Ouvre, garde ou ferme le serveur d'état selon les réglages (relus à chaque reconfiguration).
+     * Un échec (port pris…) est noté au journal et n'empêche jamais le pilotage.
+     */
+    private fun applyStatusServer() {
+        val token = prefs.homeToken
+        val want = prefs.homeEnabled && token.length >= StatusServer.MIN_TOKEN
+        val key = if (want) "${prefs.homePort}:$token" else ""
+        if (key == statusKey) return
+        status?.stop()
+        status = null
+        statusKey = ""
+        if (!want) return
+        val version = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "?" } catch (_: Exception) { "?" }
+        val server = StatusServer(
+            port = prefs.homePort,
+            token = token,
+            snapshot = { latest },
+            info = {
+                linkedMapOf(
+                    "app" to "Toque",
+                    "app_version" to version,
+                    "robot" to RobotProfiles.active.displayName,
+                    "mode" to prefs.mode.key,
+                )
+            },
+            log = { line -> log.write("domotique", line) },
+        )
+        try {
+            server.start()
+            status = server
+            statusKey = key
+        } catch (e: Exception) {
+            log.write("domotique", "serveur d'état impossible à ouvrir : $e")
+        }
     }
 
     private fun publish(s: Snapshot) {
