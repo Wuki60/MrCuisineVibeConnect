@@ -14,8 +14,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
@@ -25,7 +25,7 @@ jobs:
         run: |
           cp app/build/outputs/apk/release/app-release.apk Toque-ha.apk
           sha256sum Toque-ha.apk | tee Toque-ha.apk.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: Toque-ha
           path: |
