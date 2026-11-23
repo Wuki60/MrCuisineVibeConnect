@@ -129,10 +129,8 @@ class MqttClient(
                 val first = inp.read()
                 if (first < 0) break
                 val remaining = readRemainingLength(inp)
-                if (remaining > 0) {
-                    val skip = ByteArray(remaining)
-                    inp.readFully(skip)
-                }
+                // Ne pas allouer ByteArray(remaining) : un broker malveillant pourrait demander des centaines de Mo.
+                skipFully(inp, remaining)
             }
         } catch (_: Exception) {
         } finally {
@@ -228,5 +226,16 @@ class MqttClient(
             if (enc and 0x80 == 0) break
         } while (true)
         return value
+    }
+
+    /** Saute [n] octets sans allouer un tampon de taille [n]. */
+    private fun skipFully(inp: DataInputStream, n: Int) {
+        var left = n
+        val buf = ByteArray(minOf(8192, maxOf(left, 0)))
+        while (left > 0) {
+            val chunk = minOf(buf.size, left)
+            inp.readFully(buf, 0, chunk)
+            left -= chunk
+        }
     }
 }

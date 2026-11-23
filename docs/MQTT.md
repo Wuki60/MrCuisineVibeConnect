@@ -20,13 +20,44 @@ Focused on the running program and its end (no lid/bowl/motor/heater/link).
 | Field | Meaning |
 |---|---|
 | `jobActive` / `jobKind` / `jobLabel` / `jobState` | Program |
-| `remainingSec` | Seconds left (`0` when done) |
+| `expectedEndAt` | Planned end time (ISO-8601 UTC), or `null` when idle / unknown. Stable while the countdown ticks → few publishes |
 | `endReason` | Why it ended (empty while running) |
-| `actualTempC` / `targetTempC` | Temperatures |
-| `speedLevel` | Blade speed 0–10 |
+| `actualTempC` | Measured temperature |
+| `targetTempC` | Job setpoint (°C from `jobTempLevel`), `0` when not heating |
 | `faultCode` / `faultMessage` | Alerts |
 
+No blade speed: `jobActive` / `jobState` are enough to know something is running.
+
 `jobState` values include `RUNNING`, `PAUSED`, `FINISHED`, `ABORTED`, … HA automations typically watch `jobState` → `FINISHED` or `cooking` → off.
+
+HA can show remaining time from `expectedEndAt` (e.g. template sensor with `as_timestamp(states('…')) - as_timestamp(now())`).
+
+## Counting publishes (test traffic)
+
+Subscribe to the state topic and count messages while you cook. Same idea as HA would see.
+
+**GUI (easiest):** [MQTT Explorer](https://mqtt-explorer.com/) (desktop) — connect to your broker, open `toque/<id>/state`, watch the message list / history. Or HA › Developer tools › MQTT › Listen to a topic.
+
+**CLI:** Mosquitto clients (`brew install mosquitto` / `apt install mosquitto-clients`):
+
+```bash
+# Live stream (retain + every change)
+mosquitto_sub -h <broker> -p 1883 -u <user> -P <pass> -t 'toque/+/state' -v
+
+# Count for 5 minutes (exclude the retained first message if you want only live traffic)
+timeout 300 mosquitto_sub -h <broker> -t 'toque/+/state' -C 9999 | tee /tmp/mqtt-state.txt | wc -l
+```
+
+With `expectedEndAt` stable, a 5‑minute manual cook at fixed temp/speed should produce **a handful** of `…/state` messages (start, temp steps if they change, end) — not one per second.
+
+**Programs to run on the robot (empty bowl, short durations):**
+
+1. Manual · heat only · ~2–3 min · e.g. 60 °C, speed 0 — checks `targetTempC` / `actualTempC` / `expectedEndAt`.
+2. Manual · speed only · ~1 min · speed 2, no heat — checks `speedLevel` without heating noise.
+3. Manual · heat + speed · ~3 min — combined; pause once mid-run to see `jobState` / `PAUSED`.
+4. Let it finish normally once — `jobState` → `FINISHED`, `expectedEndAt` → `null`, `endReason` set.
+
+Do **not** use long Lidl recipes for a traffic test; short manual jobs are enough.
 
 ## Files (MQTT / HA)
 
@@ -39,4 +70,4 @@ Focused on the running program and its end (no lid/bowl/motor/heater/link).
 | `app/src/main/kotlin/app/toque/Prefs.kt` | `mqttEnabled`, host, port, user, password, TLS, prefix, deviceId |
 | `app/src/main/kotlin/app/toque/ToqueApp.kt` | Starts publisher on main process |
 | `app/src/main/kotlin/app/toque/ui/screens/SettingsScreen.kt` | MQTT settings UI |
-| `app/src/main/assets/lang/{en,es,de}.json` | MQTT / Discovery strings |
+| `app/src/main/assets/lang/{en,es,de,ca}.json` | MQTT / Discovery strings |

@@ -34,6 +34,11 @@ class MqttPublisher(
     private var failDelayMs = 15_000L
     /** Évite de remplir le journal : un seul « échec », puis un « connecté » à la reprise. */
     private var loggedOutage = false
+    /**
+     * Instant de fin « collé » : évite le jitter ±1 s entre l'horloge et remainingMs
+     * (sinon 1 publish par snapshot pendant tout le décompte).
+     */
+    @Volatile private var stickyEndMs: Long? = null
 
     fun status(): Status = status
     fun statusDetail(): String = statusDetail
@@ -53,11 +58,26 @@ class MqttPublisher(
 
     fun onSnapshot(snapshot: Snapshot) {
         if (!prefs.mqttEnabled) return
-        val state = MqttState.from(snapshot)
+        val state = stabilizeEnd(MqttState.from(snapshot))
         val json = state.toJson()
         if (json == lastJson.get()) return
         lastJson.set(json)
         handler.post { publishState(json) }
+    }
+
+    private fun stabilizeEnd(state: MqttState): MqttState {
+        val raw = state.expectedEndAt
+        if (raw == null || !state.jobActive) {
+            stickyEndMs = null
+            return state
+        }
+        val parsed = MqttState.parseEnd(raw) ?: return state
+        val prev = stickyEndMs
+        if (prev != null && kotlin.math.abs(parsed - prev) < 3_000L) {
+            return state.copy(expectedEndAt = MqttState.formatEnd(prev))
+        }
+        stickyEndMs = parsed
+        return state.copy(expectedEndAt = MqttState.formatEnd(parsed))
     }
 
     fun shutdown() {
@@ -71,6 +91,7 @@ class MqttPublisher(
     private fun runSession(gen: Int) {
         disconnectClient()
         lastJson.set(null)
+        stickyEndMs = null
         if (!prefs.mqttEnabled) {
             setStatus(Status.OFF, "")
             return

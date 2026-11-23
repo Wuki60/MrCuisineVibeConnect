@@ -79,13 +79,18 @@ object MqttDiscovery {
         out += sensor("job_label", tr("Programme"), "{{ value_json.jobLabel }}")
         out += sensor("job_state", tr("État du programme"), "{{ value_json.jobState }}")
         out += sensor("job_kind", tr("Type de programme"), "{{ value_json.jobKind }}")
-        out += sensor("remaining", tr("Temps restant"), "{{ value_json.remainingSec }}", "s", stateClass = "measurement")
+        // Instant de fin (stable pendant le décompte) — HA peut en déduire le temps restant.
+        out += sensor(
+            "expected_end",
+            tr("Fin prévue"),
+            "{{ value_json.expectedEndAt if value_json.expectedEndAt else none }}",
+            deviceClass = "timestamp",
+        )
         out += sensor("end_reason", tr("Fin du programme"), "{{ value_json.endReason }}")
         out += binary("cooking", tr("En cours de cuisson"), "value_json.jobActive", "running")
-        // Contexte pendant le programme.
+        // Contexte pendant le programme (consignes du job, pas l'écho / rpm mesuré de la base).
         out += sensor("temperature", tr("Température"), "{{ value_json.actualTempC }}", "°C", "temperature", "measurement")
         out += sensor("target_temperature", tr("Température cible"), "{{ value_json.targetTempC }}", "°C", "temperature")
-        out += sensor("speed", tr("Vitesse"), "{{ value_json.speedLevel }}")
         out += sensor("fault_code", tr("Code d'alerte"), "{{ value_json.faultCode }}")
         out += sensor("fault_message", tr("Alerte"), "{{ value_json.faultMessage }}")
         return out
