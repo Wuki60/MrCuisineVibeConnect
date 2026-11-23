@@ -178,7 +178,7 @@ The internal `Snapshot` is produced at ~10 Hz; the API does not expose that deta
 - Weight at rest (no job and no recipe in progress): the scale drifts by a few grams, so the change must be ≥ 5 g and
   there is at most one `state` every 10 s for weight alone. During a job or a recipe the threshold stays at 2 g.
 - Heartbeat: a `state` at least every 5 s during a job (the remaining time moves), every 30 s otherwise.
-- Changes of `status`, lid, bowl, motor, heater, fault, job, phase, session and screen go out immediately.
+- Changes of `status`, lid, bowl, motor, heater, fault, job, phase, `targetSpeed`, `targetTempC`, session and screen go out immediately (the base confirms a new speed about 3 s after a step change, so the speed of a chained step arrives in its own `state`).
 
 ## 5. Internal model in `core`
 

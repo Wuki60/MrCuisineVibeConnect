@@ -136,6 +136,27 @@ class ApiPublisherTest {
         assertEquals(true, Json.parse(states().last().data).obj()["machine"].obj()["heaterOn"])
     }
 
+    @Test
+    fun aSpeedOrTemperatureChangeBetweenStepsGoesOutAtOnce() {
+        // Série enchaînée : la phase change tout de suite, la base confirme la nouvelle vitesse environ 3 s plus tard.
+        backend.snap = backend.snap.copy(jobActive = true, jobState = "RUNNING", jobTempLevel = 2, targetSpeedLevel = 2)
+        pub.onSnapshot()
+        now += 10
+        backend.snap = backend.snap.copy(targetSpeedLevel = 3)
+        pub.onSnapshot()
+        assertEquals(2, states().size)
+        assertEquals(3, (Json.parse(states().last().data).obj()["machine"].obj()["targetSpeed"] as Number).toInt())
+        now += 10
+        backend.snap = backend.snap.copy(jobTempLevel = 6)
+        pub.onSnapshot()
+        assertEquals(3, states().size)
+        // L'écho de la base (consigne différente de la demande) n'est pas un changement.
+        now += 10
+        backend.snap = backend.snap.copy(targetTempC = 72)
+        pub.onSnapshot()
+        assertEquals(3, states().size)
+    }
+
     private fun job(state: String) = backend.snap.copy(
         jobActive = true, jobState = state, jobKind = "MANUAL", jobLabel = "Cuisson manuelle", totalMs = 30_000,
         endReason = if (state == "FINISHED") "Terminé" else if (state == "ABORTED") "Arrêté" else "",

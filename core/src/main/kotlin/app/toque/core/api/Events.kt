@@ -60,12 +60,15 @@ class ApiPublisher(
         val lidOpen: Boolean, val bowl: Boolean, val motor: Boolean, val heater: Boolean,
         val jobActive: Boolean, val jobKind: String, val jobState: String, val jobLabel: String,
         val phase: Int, val phaseCount: Int,
+        /** Vitesse annoncée par la base et température demandée : ils changent au passage d'une étape à l'autre. */
+        val targetSpeed: Int, val commandedTempC: Int,
         val tempC: Int, val rpm: Int, val weightG: Int,
     ) {
         fun sameDiscrete(o: Key) = status == o.status && link == o.link && faultCode == o.faultCode &&
             screenOn == o.screenOn && sessionId == o.sessionId && lidOpen == o.lidOpen && bowl == o.bowl &&
             motor == o.motor && heater == o.heater && jobActive == o.jobActive && jobKind == o.jobKind &&
-            jobState == o.jobState && jobLabel == o.jobLabel && phase == o.phase && phaseCount == o.phaseCount
+            jobState == o.jobState && jobLabel == o.jobLabel && phase == o.phase && phaseCount == o.phaseCount &&
+            targetSpeed == o.targetSpeed && commandedTempC == o.commandedTempC
 
         /** Au repos (ni travail ni recette), la balance dérive de quelques grammes : seuil plus large, plus lent. */
         private val quiet get() = !jobActive && sessionId == null
@@ -97,6 +100,7 @@ class ApiPublisher(
             s.lidOpen, s.bowlDetected, s.motorOn, s.heating,
             on, if (on) s.jobKind else "", if (on) s.jobState else "", if (on) s.jobLabel else "",
             if (on) s.phaseIndex else 0, if (on) s.phaseCount else 0,
+            s.targetSpeedLevel, s.commandedTempC,
             s.actualTempC, s.rpm, s.weightG,
         )
     }
