@@ -38,6 +38,7 @@ import app.toque.recipes.SyncService
 import app.toque.ui.screens.HomeScreen
 import app.toque.ui.screens.KnobSetupScreen
 import app.toque.ui.screens.SettingsScreen
+import app.toque.ui.screens.SiteLinkScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -114,7 +115,43 @@ class MainActivity : Activity() {
             push(KnobSetupScreen(this))
         }
         // Robot pas encore confirmé : on le reconnaît sans rien lui envoyer, la personne confirme.
+        // Ensuite (une seule fois) : proposer de relier un compte Toque.
         if (!prefs.robotConfirmed) root.post { askRobot() }
+        else if (!prefs.siteOffered) root.post { offerSite() }
+        // Recettes de la communauté (sans compte) : une première fois sans attendre la nuit, puis une
+        // fois par jour au plus. Un peu après le démarrage, pour ne pas le ralentir.
+        if (prefs.siteCommunity && System.currentTimeMillis() - prefs.siteLastMs > 24 * 3600_000L)
+            main.postDelayed({ app.site.sync() }, 20_000)
+    }
+
+    /**
+     * Une seule fois : relier un compte toqueapp.org (facultatif). « Non merci » : plus jamais
+     * demandé (Réglages › Compte Toque reste là). Sans compte, la communauté arrive quand même.
+     */
+    fun offerSite() {
+        if (prefs.siteOffered || prefs.siteLinked || overlayShown) return
+        val card = Ui.card(this, 28f, Ui.SURFACE2)
+        card.setPadding(Ui.u(32), Ui.u(28), Ui.u(32), Ui.u(26))
+        val head = Ui.horizontal(this)
+        head.addView(Icon(this, Icon.Kind.PEOPLE, Ui.ACCENT), LinearLayout.LayoutParams(Ui.u(34), Ui.u(34)).apply { rightMargin = Ui.u(14) })
+        head.addView(Ui.text(this, tr("Compte Toque"), 26f, Ui.TEXT, Ui.MEDIUM))
+        card.addView(head)
+        card.addView(Ui.text(this, tr("Vous avez un compte sur toqueapp.org ? Reliez-le pour retrouver ici vos favoris du site et publier vos recettes depuis le robot.") +
+            "\n\n" + tr("Sans compte, les recettes de la communauté arrivent quand même. Vous pourrez relier un compte plus tard dans Réglages › Compte Toque."),
+            19f, Ui.TEXT2).apply { setLineSpacing(0f, 1.2f) }, Ui.lp(t = 16, b = 26))
+        val row = Ui.horizontal(this, Gravity.END or Gravity.CENTER_VERTICAL)
+        row.addView(Ui.button(this, tr("Non merci"), Ui.Style.GHOST, height = 60) {
+            prefs.siteOffered = true
+            closeOverlay()
+        })
+        row.addView(Ui.spacer(this, w = 14))
+        row.addView(Ui.button(this, tr("Me connecter"), Ui.Style.PRIMARY, height = 60) {
+            prefs.siteOffered = true
+            closeOverlay()
+            push(SiteLinkScreen(this))
+        })
+        card.addView(row)
+        showOverlay(card, 680, dismissOnScrim = false)
     }
 
     /** Ce que la tablette laisse voir (applis d'origine installées, Android, ports), sans parler à la base. */
@@ -176,6 +213,7 @@ class MainActivity : Activity() {
         toast(msg, if (p.tested) Ui.OK else Ui.WARN)
         if (before != null && before.lidlDevice != p.lidlDevice && app.recipes.count > 0)
             toast(tr("Synchronisez les recettes Lidl pour avoir celles de ce robot."), Ui.WARN)
+        if (!prefs.siteOffered) root.post { offerSite() }
     }
 
     /**

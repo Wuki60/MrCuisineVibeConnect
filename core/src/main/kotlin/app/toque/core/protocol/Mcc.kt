@@ -71,6 +71,19 @@ class Telemetry(
 
     /** Moteur réellement à l'arrêt selon cet échantillon (bit moteur ET régime mesuré nul). */
     val motorStopped: Boolean get() = !motorOn && actualRpm == 0
+
+    /**
+     * Vrai quand la base ne mesure pas le régime lame en marche : certaines bases du Connect (SKMC 1100 A1
+     * de dadoux63, issue #10 ; SKMC 1200 de McSoda) laissent les octets 9-10 à 0 alors que la lame tourne.
+     */
+    val speedFromTarget: Boolean get() = reportedSpeedLevel < 0 && motorOn && actualRpm == 0 && targetSpeedLevelSigned > 0
+
+    /**
+     * Niveau de vitesse montré à l'écran : celui du régime mesuré, ou la vitesse demandée que la base renvoie
+     * (octet 6) quand elle ne mesure pas le régime ([speedFromTarget]). Écran seulement : l'arrêt de la lame
+     * se juge sur le bit moteur ([motorStopped]), jamais sur ce niveau.
+     */
+    val shownSpeedLevel: Int get() = if (speedFromTarget) targetSpeedLevelSigned.coerceAtMost(10) else actualSpeedLevel
     val hex: String get() = Mcc.hex(raw)
 }
 

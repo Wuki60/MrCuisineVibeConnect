@@ -7,6 +7,7 @@ import android.widget.TextView
 import app.toque.TimeSync
 import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
+import app.toque.core.recipes.CommunityRecipes
 import app.toque.core.recipes.UserRecipes
 import app.toque.ui.Icon
 import app.toque.ui.MainActivity
@@ -161,13 +162,15 @@ class HomeScreen(a: MainActivity) : Screen(a) {
         val repo = a.app.recipes
         val n = repo.count
         val perso = repo.index.entries.count { UserRecipes.isUser(it.id) }
-        val lidl = n - perso
+        val community = repo.index.entries.count { CommunityRecipes.isCommunity(it.id) }
+        val lidl = n - perso - community
         recipesSub.text = when {
             !repo.loaded -> tr("Chargement…")
             n == 0 -> tr("Aucune recette Lidl pour l'instant")
             else -> listOfNotNull(
                 when (lidl) { 0 -> null; 1 -> tr("1 recette Lidl"); else -> tr("%d recettes Lidl", lidl) },
                 when (perso) { 0 -> null; 1 -> tr("1 recette perso"); else -> tr("%d recettes perso", perso) },
+                when (community) { 0 -> null; 1 -> tr("1 de la communauté"); else -> tr("%d de la communauté", community) },
             ).joinToString("\n")
         }
         val favs = repo.index.entries.count { it.favorite }

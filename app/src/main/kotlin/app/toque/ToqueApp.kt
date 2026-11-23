@@ -22,6 +22,8 @@ class ToqueApp : Application() {
         private set
     val machine: MachineClient by lazy { MachineClient(this) }
     val recipes: RecipeRepo by lazy { RecipeRepo(this) }
+    /** toqueapp.org : compte relié, recettes de la communauté. */
+    val site: app.toque.site.SiteAccount by lazy { app.toque.site.SiteAccount(this) }
 
     override fun onCreate() {
         super.onCreate()

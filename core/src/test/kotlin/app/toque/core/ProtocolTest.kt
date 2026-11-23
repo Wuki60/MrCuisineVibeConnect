@@ -8,6 +8,7 @@ import app.toque.core.protocol.Operation
 import app.toque.core.protocol.Telemetry
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
@@ -45,6 +46,33 @@ class ProtocolTest {
             val split = line.indexOf('\t')
             assertEquals(line.substring(split + 1), fields(Mcc.decodeRx(Mcc.parseHex(line.substring(0, split)))))
         }
+    }
+
+    @Test fun requestedSpeedIsShownWhenTheBaseDoesNotMeasureIt() {
+        fun frame(status: Int, level: Int, targetRpm: Int, rpm: Int): Telemetry {
+            val raw = Mcc.parseHex(resource("golden_rx_292.tsv").first().substringBefore('\t'))
+            raw[3] = status.toByte(); raw[6] = level.toByte()
+            raw[7] = (targetRpm shr 8).toByte(); raw[8] = targetRpm.toByte()
+            raw[9] = (rpm shr 8).toByte(); raw[10] = rpm.toByte()
+            raw[25] = Mcc.checksum(raw, 25).toByte()
+            return Mcc.decodeRx(raw)
+        }
+        // SKMC 1100 A1 (issue #10) : vitesse 1 demandée (559 tr/min), lame en marche, régime mesuré à 0.
+        val unmeasured = frame(0x03, 1, 559, 0)
+        assertTrue(unmeasured.motorOn)
+        assertEquals(0, unmeasured.actualSpeedLevel)
+        assertTrue(unmeasured.speedFromTarget)
+        assertEquals(1, unmeasured.shownSpeedLevel)
+        assertFalse(unmeasured.motorStopped)
+        // Base qui mesure : le régime mesuré l'emporte.
+        val measured = frame(0x03, 4, 2400, 2350)
+        assertFalse(measured.speedFromTarget)
+        assertEquals(4, measured.shownSpeedLevel)
+        // Lame arrêtée : rien d'affiché, même si la base renvoie encore une consigne.
+        val stopped = frame(0x00, 1, 559, 0)
+        assertFalse(stopped.speedFromTarget)
+        assertEquals(0, stopped.shownSpeedLevel)
+        assertTrue(stopped.motorStopped)
     }
 
     @Test fun everySingleBitMutationIsRejected() {

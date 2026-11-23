@@ -173,11 +173,14 @@ class Prefs(context: Context) {
             p.edit().putLong("lastSyncMs", v).commit()
         }
 
+    /** Résultat de la dernière synchro, écrit dans la langue d'alors (lastSyncLang). */
     var lastSyncResult: String
         get() = p.getString("lastSyncResult", "") ?: ""
         set(v) {
-            p.edit().putString("lastSyncResult", v).commit()
+            p.edit().putString("lastSyncResult", v).putString("lastSyncLang", I18n.code).commit()
         }
+
+    val lastSyncLang: String get() = p.getString("lastSyncLang", "") ?: ""
 
     var vendorSession: Boolean
         get() = p.getBoolean("vendorSession", false)
@@ -343,4 +346,110 @@ class Prefs(context: Context) {
             p.edit().putString("recipeLanguage", v).commit()
         }
 
+    // ------------------------------------------------------------------ toqueapp.org
+
+    /** Clé de ce robot sur toqueapp.org (vide : pas relié à un compte). Jamais affichée. */
+    var siteToken: String
+        get() = p.getString("siteToken", "") ?: ""
+        set(v) {
+            p.edit().putString("siteToken", v).commit()
+        }
+
+    /** Pseudo du compte Toque relié. */
+    var siteUser: String
+        get() = p.getString("siteUser", "") ?: ""
+        set(v) {
+            p.edit().putString("siteUser", v).commit()
+        }
+
+    val siteLinked: Boolean get() = siteToken.isNotBlank()
+
+    /** Proposition de relier un compte Toque déjà faite (une seule fois, acceptée ou non). */
+    var siteOffered: Boolean
+        get() = p.getBoolean("siteOffered", false)
+        set(v) {
+            p.edit().putBoolean("siteOffered", v).commit()
+        }
+
+    /** Recevoir les recettes de la communauté (sans compte), avec la synchro. */
+    var siteCommunity: Boolean
+        get() = p.getBoolean("siteCommunity", true)
+        set(v) {
+            p.edit().putBoolean("siteCommunity", v).commit()
+        }
+
+    /** Date (ISO, celle du site) de la recette la plus récente reçue ; vide : tout redemander. */
+    var siteSince: String
+        get() = p.getString("siteSince", "") ?: ""
+        set(v) {
+            p.edit().putString("siteSince", v).commit()
+        }
+
+    /** Langue des traductions demandée lors de la dernière synchro (autre langue : tout redemander). */
+    var siteLang: String
+        get() = p.getString("siteLang", "") ?: ""
+        set(v) {
+            p.edit().putString("siteLang", v).commit()
+        }
+
+    /** Dernière liste complète (recettes retirées du site enlevées), en ms. */
+    var siteFullMs: Long
+        get() = p.getLong("siteFullMs", 0)
+        set(v) {
+            p.edit().putLong("siteFullMs", v).commit()
+        }
+
+    var siteLastMs: Long
+        get() = p.getLong("siteLastMs", 0)
+        set(v) {
+            p.edit().putLong("siteLastMs", v).commit()
+        }
+
+    /** Résultat de la dernière synchro avec toqueapp.org, écrit dans la langue d'alors (siteLastLang). */
+    var siteLastResult: String
+        get() = p.getString("siteLastResult", "") ?: ""
+        set(v) {
+            p.edit().putString("siteLastResult", v).putString("siteLastLang", I18n.code).commit()
+        }
+
+    val siteLastLang: String get() = p.getString("siteLastLang", "") ?: ""
+
+    /** Favoris changés ici, pas encore envoyés au site : « toqueapp-12=1 », « toqueapp-7=0 ». */
+    var sitePendingFavorites: Map<String, Boolean>
+        get() = (p.getString("sitePendingFavorites", "") ?: "").split('\n').mapNotNull { line ->
+            val k = line.substringBefore('=', "")
+            if (k.isEmpty()) null else k to (line.substringAfter('=') == "1")
+        }.toMap()
+        set(v) {
+            p.edit().putString("sitePendingFavorites", v.entries.joinToString("\n") { "${it.key}=${if (it.value) 1 else 0}" }).commit()
+        }
+
+    /** Recettes perso mises sur le site : identifiant perso → numéro sur le site. */
+    var siteLinks: Map<String, Long>
+        get() = (p.getString("siteLinks", "") ?: "").split('\n').mapNotNull { line ->
+            val id = line.substringAfter('=', "").toLongOrNull() ?: return@mapNotNull null
+            line.substringBefore('=') to id
+        }.toMap()
+        set(v) {
+            p.edit().putString("siteLinks", v.entries.joinToString("\n") { "${it.key}=${it.value}" }).commit()
+        }
+
+    /** Recettes perso publiées pour tous (les autres de [siteLinks] sont privées, sur le compte seulement). */
+    var sitePublic: Set<String>
+        get() = p.getStringSet("sitePublic", emptySet())?.toSet() ?: emptySet()
+        set(v) {
+            p.edit().putStringSet("sitePublic", HashSet(v)).commit()
+        }
+
+    /** Recettes perso pour lesquelles on a répondu « Garder pour moi » : ne plus demander. */
+    var siteKeepLocal: Set<String>
+        get() = p.getStringSet("siteKeepLocal", emptySet())?.toSet() ?: emptySet()
+        set(v) {
+            p.edit().putStringSet("siteKeepLocal", HashSet(v)).commit()
+        }
+
+    /** Oublie le compte relié (les recettes reçues restent). */
+    fun forgetSite() {
+        p.edit().remove("siteToken").remove("siteUser").remove("sitePendingFavorites").commit()
+    }
 }

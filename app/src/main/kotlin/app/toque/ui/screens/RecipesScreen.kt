@@ -163,6 +163,8 @@ class RecipesScreen(
         chip(tr("Favoris"), plain && filter.favoritesOnly, base.copy(favoritesOnly = true))
         if (filter.source == RecipeSource.USER || a.app.recipes.index.entries.any { it.source == RecipeSource.USER })
             chip(tr("Mes recettes"), plain && filter.source == RecipeSource.USER, base.copy(source = RecipeSource.USER))
+        if (filter.source == RecipeSource.COMMUNITY || a.app.recipes.index.entries.any { it.source == RecipeSource.COMMUNITY })
+            chip(tr("Communauté"), plain && filter.source == RecipeSource.COMMUNITY, base.copy(source = RecipeSource.COMMUNITY))
         chip(tr("30 min max"), plain && filter.maxMinutes == 30, base.copy(maxMinutes = 30))
         for (cat in a.app.recipes.index.categories.take(30)) chip(cat, plain && filter.category == cat, base.copy(category = cat))
     }
@@ -203,6 +205,8 @@ class RecipesScreen(
             none -> tr("Les recettes Lidl apparaîtront après la première synchronisation, une fois Toque installé sur le robot.")
             usage != Usage.NONE && query.isBlank() -> tr("Aucune recette cuisinée pour l'instant.\nLes recettes apparaissent ici dès leur première cuisson.")
             filter.favoritesOnly && query.isBlank() -> tr("Aucun favori pour l'instant.\nTouchez l'étoile d'une recette pour l'ajouter.")
+            filter.source == RecipeSource.COMMUNITY && query.isBlank() ->
+                tr("Aucune recette de la communauté pour l'instant.\nRéglages › Recettes de la communauté › Synchroniser.")
             filter.source == RecipeSource.USER && query.isBlank() ->
                 tr("Aucune recette perso pour l'instant.\nTouchez « Nouvelle recette », ou le crayon d'une recette Lidl pour en faire votre version.")
             else -> tr("Aucune recette ne correspond.\nAstuce : séparez plusieurs ingrédients par des virgules.")
@@ -305,7 +309,11 @@ class RecipesScreen(
             if (e.category.isNotBlank()) parts += e.category
             meta.text = parts.joinToString(" · ")
             star.visibility = if (a.app.recipes.isFavorite(e.id)) View.VISIBLE else View.GONE
-            val tag = if (e.source == RecipeSource.USER) tr("Perso") else e.language.substringBefore('-').uppercase()
+            // Recette de la communauté : sa langue seulement si ce n'est pas celle de l'interface.
+            val lang = e.language.substringBefore('-')
+            val tag = if (e.source == RecipeSource.USER) tr("Perso")
+                else if (e.source == RecipeSource.COMMUNITY && lang == I18n.code.substringBefore('-')) ""
+                else lang.uppercase()
             badge.text = tag
             badge.visibility = if (tag.isEmpty()) View.GONE else View.VISIBLE
             imageBox.background = Ui.gradient(Ui.placeholderColors(e.title), 0f)

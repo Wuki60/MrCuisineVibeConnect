@@ -68,6 +68,12 @@ Comptez 1 à 2 heures. Sans agent : [docs/INSTALLATION.fr.md](docs/INSTALLATION.
   serveur à gérer, plus besoin de l'appli d'origine. Requêtes espacées, et seules les recettes
   nouvelles ou modifiées sont retéléchargées. On peut toujours importer à la place celles de
   l'appli d'origine.
+- **Recettes de la communauté sur [toqueapp.org](https://toqueapp.org)** : les recettes partagées
+  par les utilisateurs de Toque arrivent sur le robot (*Réglages › Recettes de la communauté*), sans
+  compte. Avec un compte Toque gratuit (facultatif, proposé une seule fois et plus jamais si on
+  refuse ; *Réglages › Compte Toque*), les favoris du site arrivent sur le robot et vos recettes
+  peuvent être publiées depuis le robot. Le site est en français, anglais, allemand, espagnol,
+  catalan et ukrainien ; le robot ne garde qu'une clé révocable, jamais le mot de passe.
 - **Auteur, notes et avis** : chaque recette affiche qui l'a publiée et sa note sur le site, et la
   fiche charge les commentaires des utilisateurs (avec les réponses de Monsieur Cuisine).
 - **Recherche qui marche** : insensible aux accents, aux pluriels et aux fautes de frappe

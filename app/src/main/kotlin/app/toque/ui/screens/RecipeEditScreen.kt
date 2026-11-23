@@ -386,10 +386,15 @@ class RecipeEditScreen(a: MainActivity, start: Recipe, private val isNew: Boolea
         // Retour sur la fiche de cette recette : elle est remplacée par la nouvelle version.
         val page = a.current as? RecipeScreen
         if (page != null && page.recipe.id == r.id) a.replace(RecipeScreen(a, saved)) else a.push(RecipeScreen(a, saved))
+        // Compte toqueapp.org relié : mise à jour en ligne, ou proposer de la publier.
+        SitePublish.afterSave(a, saved)
     }
 
     private fun delete() {
-        a.confirm(tr("Supprimer la recette"), tr("« %s » sera supprimée de ce robot, avec sa note et ses corrections.", draft.title.ifBlank { tr("Sans titre") }),
+        val name = draft.title.ifBlank { tr("Sans titre") }
+        a.confirm(tr("Supprimer la recette"), if (a.app.site.isOnline(draft.id))
+            tr("« %s » sera supprimée de ce robot, avec sa note et ses corrections. Elle reste sur toqueapp.org : supprimez-la depuis le site si besoin.", name)
+            else tr("« %s » sera supprimée de ce robot, avec sa note et ses corrections.", name),
             tr("Supprimer"), danger = true, icon = Icon.Kind.TRASH) {
             a.app.recipes.deleteUser(draft.id)
             dirty = false

@@ -11,6 +11,7 @@ import app.toque.core.json.Json
 import app.toque.core.json.int
 import app.toque.core.json.obj
 import app.toque.core.json.str
+import app.toque.core.recipes.CommunityRecipes
 import app.toque.core.recipes.McCategories
 import app.toque.core.recipes.McOnline
 import app.toque.core.recipes.Recipe
@@ -175,7 +176,7 @@ class OnlineSync(private val context: Context, private val prefs: Prefs, private
         val kept = entries.map { it.apiId.toString() }.toHashSet()
         if (foreignFailed) kept += stored.recipes.keys
         val keep = kept.mapNotNull { it.toLongOrNull()?.let(McOnline::toqueId) }.toHashSet()
-        val removes = present.any { it !in keep && !UserRecipes.isUser(it) }
+        val removes = present.any { it !in keep && !UserRecipes.isUser(it) && !CommunityRecipes.isCommunity(it) }
         repo.removeAllExcept(keep, rebuild = false)
         index.keys.retainAll(kept)
         writeIndex(indexKey, index)

@@ -23,8 +23,11 @@ import app.toque.core.protocol.SmartProgram
 import app.toque.core.robot.Feature
 import app.toque.core.robot.RobotProfiles
 
-/** Recettes Lidl importées (site monsieur-cuisine.com ou appli d'origine) ; USER : réservé aux recettes perso. */
-enum class RecipeSource { IMPORTED, USER }
+/**
+ * IMPORTED : recettes Lidl (site monsieur-cuisine.com ou appli d'origine) ; USER : recettes perso ;
+ * COMMUNITY : recettes de la communauté, venues de toqueapp.org (identifiants « toqueapp-N »).
+ */
+enum class RecipeSource { IMPORTED, USER, COMMUNITY }
 
 data class Ingredient(
     val qty: String = "",
@@ -355,6 +358,16 @@ object RecipeCodec {
  * « Mes recettes » : recettes écrites ou modifiées sur le robot. Leur identifiant commence par
  * [ID_PREFIX] ; les synchronisations (site, appli d'origine) n'y touchent jamais.
  */
+/** Recettes de toqueapp.org : identifiant « toqueapp-N », N étant le numéro de la recette sur le site. */
+object CommunityRecipes {
+    const val ID_PREFIX = "toqueapp-"
+
+    fun isCommunity(id: String): Boolean = id.startsWith(ID_PREFIX)
+
+    /** Numéro de la recette sur le site, ou null. */
+    fun siteId(id: String): Long? = if (isCommunity(id)) id.removePrefix(ID_PREFIX).toLongOrNull() else null
+}
+
 object UserRecipes {
     const val ID_PREFIX = "perso-"
     /** Nom du fichier d'échange, dans le dossier Download du robot. */

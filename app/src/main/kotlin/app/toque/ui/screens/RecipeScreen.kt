@@ -81,13 +81,25 @@ class RecipeScreen(a: MainActivity, val recipe: Recipe) : Screen(a) {
 
         // Auteur et note du site.
         val byline = ArrayList<String>()
+        val community = recipe.source == RecipeSource.COMMUNITY
         if (recipe.source == RecipeSource.USER) byline += tr("Ma recette")
+        else if (community) byline += if (recipe.author.isNotBlank()) tr("Communauté toqueapp.org · par %s", recipe.author) else tr("Communauté toqueapp.org")
         else if (recipe.author.isNotBlank()) byline += tr("Par %s", authorName(recipe.author))
-        if (recipe.language.isNotBlank()) byline += tr("Recette en %s", java.util.Locale.forLanguageTag(recipe.language).getDisplayLanguage(I18n.locale))
+        // Recette de la communauté : sa langue seulement si ce n'est pas celle de l'interface.
+        if (recipe.language.isNotBlank() && !(community && recipe.language.substringBefore('-') == I18n.code.substringBefore('-')))
+            byline += tr("Recette en %s", java.util.Locale.forLanguageTag(recipe.language).getDisplayLanguage(I18n.locale))
         if (recipe.ratingCount > 0) byline += "★ " + tr("%s/5 · %d notes", rating(recipe.rating), recipe.ratingCount)
         // Une ligne chacun : sur une seule, la note était coupée (« 124… ») dès que l'auteur est long.
         byline.forEachIndexed { i, line ->
             left.addView(Ui.ellipsize(Ui.text(c, line, 16f, Ui.TEXT2)), Ui.lp(t = if (i == 0) 10 else 2))
+        }
+        // Recette perso, compte toqueapp.org relié : où elle en est sur le site ; toucher pour choisir.
+        if (recipe.source == RecipeSource.USER) SitePublish.status(a, recipe)?.let { line ->
+            val t = Ui.ellipsize(Ui.text(c, line, 16f, Ui.ACCENT))
+            t.setPadding(0, Ui.u(6), 0, Ui.u(6))
+            t.isClickable = true
+            t.setOnClickListener { SitePublish.ask(a, recipe) { t.text = SitePublish.status(a, recipe) ?: "" } }
+            left.addView(t, Ui.lp(t = 2))
         }
 
         val actions = Ui.horizontal(c)
@@ -521,7 +533,9 @@ class RecipeScreen(a: MainActivity, val recipe: Recipe) : Screen(a) {
     private fun editMine() = a.push(RecipeEditScreen(a, recipe, isNew = false))
 
     private fun makeMyVersion() {
-        a.confirm(tr("Ma version"), tr("Toque crée une copie de cette recette dans Mes recettes, telle qu'elle est affichée, pour que vous la modifiiez. La recette Lidl reste telle quelle."),
+        a.confirm(tr("Ma version"), if (recipe.source == RecipeSource.COMMUNITY)
+            tr("Toque crée une copie de cette recette dans Mes recettes, telle qu'elle est affichée, pour que vous la modifiiez. La recette de la communauté reste telle quelle.")
+            else tr("Toque crée une copie de cette recette dans Mes recettes, telle qu'elle est affichée, pour que vous la modifiiez. La recette Lidl reste telle quelle."),
             tr("Créer ma version"), icon = Icon.Kind.EDIT) {
             a.push(RecipeEditScreen(a, UserRecipes.copyOf(shown), isNew = true))
         }
@@ -530,6 +544,8 @@ class RecipeScreen(a: MainActivity, val recipe: Recipe) : Screen(a) {
     private fun toggleFavorite() {
         val now = !a.app.recipes.isFavorite(recipe.id)
         a.app.recipes.setFavorite(recipe.id, now)
+        // Recette de la communauté, compte relié : l'étoile part aussi sur le site.
+        a.app.site.favoriteChanged(recipe.id, now)
         refreshFavorite()
         a.toast(if (now) tr("Ajoutée aux favoris") else tr("Retirée des favoris"))
     }

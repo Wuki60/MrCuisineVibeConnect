@@ -66,6 +66,12 @@ Allow 1 to 2 hours. Without an agent: [docs/INSTALLATION.md](docs/INSTALLATION.m
   site's public API, nightly or on demand: no account, no server to run, no need for the stock app.
   Requests are spaced out and only new or changed recipes are downloaded again. The recipes already
   in the stock app can still be imported instead.
+- **Community recipes from [toqueapp.org](https://toqueapp.org)**: recipes shared by Toque users
+  arrive on the robot (*Settings › Community recipes*), no account needed. With a free Toque account
+  (optional, offered once and never again if declined; *Settings › Toque account*), the site's
+  favourites come to the robot and your own recipes can be published from the robot. The site is in
+  French, English, German, Spanish, Catalan and Ukrainian; only a revocable key of the robot is kept,
+  never the password.
 - **Author, ratings and reviews**: each recipe shows who published it and its rating on the site,
   and the recipe page loads the users' comments (with Monsieur Cuisine's replies).
 - **Search that works**: ignores accents, plurals and typos ("bechamle", "risoto"), in any alphabet
