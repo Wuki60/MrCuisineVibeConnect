@@ -278,6 +278,28 @@ class Prefs(context: Context) {
         set(v) {
             p.edit().putString("weighSound", v).commit()
         }
+    /**
+     * Domotique : serveur d'état en lecture seule (Home Assistant), éteint par défaut.
+     * Le jeton est créé au premier allumage ; « Nouveau jeton » le remplace.
+     */
+    var homeEnabled: Boolean
+        get() = p.getBoolean("homeEnabled", false)
+        set(v) {
+            p.edit().putBoolean("homeEnabled", v).commit()
+        }
+
+    var homePort: Int
+        get() = p.getInt("homePort", app.toque.core.net.StatusServer.DEFAULT_PORT)
+        set(v) {
+            p.edit().putInt("homePort", v).commit()
+        }
+
+    var homeToken: String
+        get() = p.getString("homeToken", "") ?: ""
+        set(v) {
+            p.edit().putString("homeToken", v).commit()
+        }
+
     /** Prévenir quand une nouvelle version de Toque est publiée (au démarrage et au réveil). */
     var updateAlerts: Boolean
         get() = p.getBoolean("updateAlerts", true)

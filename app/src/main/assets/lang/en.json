@@ -640,5 +640,11 @@
   "La base a refusé la commande (code retour %d) : tout est arrêté": "The base refused the command (return code %d): everything is stopped",
   "La base n'a pas repris la commande envoyée : tout est arrêté": "The base did not echo the command sent: everything is stopped",
   "La base répond à des commandes qui ne viennent pas de Toque : tout est arrêté": "The base is answering commands that did not come from Toque: everything is stopped",
-  "Toque télécharge lui-même les recettes officielles du %s sur monsieur-cuisine.com (sans compte).": "Toque downloads the official %s recipes from monsieur-cuisine.com itself (no account needed)."
+  "Toque télécharge lui-même les recettes officielles du %s sur monsieur-cuisine.com (sans compte).": "Toque downloads the official %s recipes from monsieur-cuisine.com itself (no account needed).",
+  "Domotique": "Home automation",
+  "Publier l'état sur le réseau local": "Publish the status on the local network",
+  "Lecture seule : température, vitesse, poids, couvercle, bol, programme et temps restant. Personne ne peut lancer, arrêter ni régler le robot par le réseau. À n'activer que sur un Wi-Fi de confiance.": "Read only: temperature, speed, weight, lid, bowl, programme and time left. Nobody can start, stop or adjust the robot over the network. Only turn this on with a trusted Wi-Fi.",
+  "Nouveau jeton": "New token",
+  "Désactivé.": "Off.",
+  "Adresse : %s · port %d\nJeton : %s": "Address: %s · port %d\nToken: %s"
 }

@@ -19,6 +19,7 @@ import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
+import app.toque.core.net.StatusServer
 import app.toque.core.time.ZoneLookup
 import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
@@ -49,6 +50,7 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
     private lateinit var bowlText: TextView
     private lateinit var linkText: TextView
     private lateinit var timeText: TextView
+    private lateinit var homeText: TextView
     private var settingTime = false
     private var mode = a.prefs.mode
 
@@ -239,6 +241,25 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
         files.addView(Ui.button(c, tr("Importer"), Ui.Style.SECONDARY, Icon.Kind.DOWNLOAD, height = 52) { recipeFiles(export = false) })
         mine.addView(files, Ui.lp(t = 12))
 
+        // ---- Domotique : état en lecture seule pour Home Assistant (aucune commande à distance)
+        val home = section(right, tr("Domotique"), Icon.Kind.LINK)
+        home.addView(toggle(tr("Publier l'état sur le réseau local"), a.prefs.homeEnabled) { on ->
+            if (on && a.prefs.homeToken.length < StatusServer.MIN_TOKEN) a.prefs.homeToken = StatusServer.newToken()
+            a.prefs.homeEnabled = on
+            a.machine.reconfigure { a.refusal(it) }
+            renderHome()
+        })
+        home.addView(Ui.text(c, tr("Lecture seule : température, vitesse, poids, couvercle, bol, programme et temps restant. Personne ne peut lancer, arrêter ni régler le robot par le réseau. À n'activer que sur un Wi-Fi de confiance."),
+            15f, Ui.TEXT3).apply { setLineSpacing(0f, 1.1f) }, Ui.lp(t = 6))
+        homeText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f); setTextIsSelectable(true) }
+        home.addView(homeText, Ui.lp(t = 10))
+        home.addView(Ui.button(c, tr("Nouveau jeton"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 52) {
+            a.prefs.homeToken = StatusServer.newToken()
+            if (a.prefs.homeEnabled) a.machine.reconfigure { a.refusal(it) }
+            renderHome()
+        }, Ui.lp(Ui.WRAP, Ui.WRAP, t = 10))
+        renderHome()
+
         // ---- Mises à jour
         val updates = section(left, tr("Mises à jour"), Icon.Kind.INFO)
         updText = Ui.text(c, "", 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
@@ -266,6 +287,20 @@ class SettingsScreen(a: MainActivity) : Screen(a) {
 
         return Ui.scroll(c, col)
     }
+
+    /** Adresse et jeton à recopier dans Home Assistant. */
+    private fun renderHome() {
+        homeText.text = if (!a.prefs.homeEnabled) tr("Désactivé.")
+        else tr("Adresse : %s · port %d\nJeton : %s", localAddress() ?: "?", a.prefs.homePort, a.prefs.homeToken)
+    }
+
+    /** Adresse IPv4 du robot sur le réseau local (sans permission Wi-Fi). */
+    private fun localAddress(): String? = try {
+        java.net.NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }?.hostAddress
+    } catch (_: Exception) { null }
 
     private fun section(parent: LinearLayout, title: String, icon: Icon.Kind): LinearLayout {
         val card = Ui.card(c, 24f)
