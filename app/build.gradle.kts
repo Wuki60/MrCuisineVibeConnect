@@ -52,6 +52,7 @@ android {
     }
 
     sourceSets["main"].java.srcDirs("src/main/kotlin")
+    sourceSets["test"].java.srcDirs("src/test/kotlin")
 
     lint {
         abortOnError = false
@@ -66,4 +67,5 @@ kotlin {
 
 dependencies {
     implementation(project(":core"))
+    testImplementation("junit:junit:4.13.2")
 }

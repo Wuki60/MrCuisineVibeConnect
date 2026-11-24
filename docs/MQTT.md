@@ -23,12 +23,18 @@ Focused on the running program and its end (no lid/bowl/motor/heater/link).
 | `expectedEndAt` | Planned end time (ISO-8601 UTC), or `null` when idle / unknown. Stable while the countdown ticks → few publishes |
 | `endReason` | Why it ended (empty while running) |
 | `actualTempC` | Measured temperature |
-| `targetTempC` | Job setpoint (°C from `jobTempLevel`), `0` when not heating |
+| `targetTempC` | Job setpoint (`Snapshot.jobTempC`, works for Connect and Smart), `0` when not heating |
 | `faultCode` / `faultMessage` | Alerts |
 
 No blade speed: `jobActive` / `jobState` are enough to know something is running.
 
 `jobState` values include `RUNNING`, `PAUSED`, `FINISHED`, `ABORTED`, … HA automations typically watch `jobState` → `FINISHED` or `cooking` → off.
+
+While **paused**, `expectedEndAt` is `null` (it would otherwise keep sliding with wall-clock time). Resume publishes a fresh end time.
+
+Disabling MQTT publishes retained `offline` on `…/status` before the MQTT DISCONNECT (a graceful disconnect alone would not fire the Last Will).
+
+The `toque-mqtt` worker thread starts only when MQTT is enabled.
 
 HA can show remaining time from `expectedEndAt` (e.g. template sensor with `as_timestamp(states('…')) - as_timestamp(now())`).
 
@@ -53,9 +59,10 @@ With `expectedEndAt` stable, a 5‑minute manual cook at fixed temp/speed should
 **Programs to run on the robot (empty bowl, short durations):**
 
 1. Manual · heat only · ~2–3 min · e.g. 60 °C, speed 0 — checks `targetTempC` / `actualTempC` / `expectedEndAt`.
-2. Manual · speed only · ~1 min · speed 2, no heat — checks `speedLevel` without heating noise.
-3. Manual · heat + speed · ~3 min — combined; pause once mid-run to see `jobState` / `PAUSED`.
+2. Manual · speed only · ~1 min · speed 2, no heat — `targetTempC` stays 0.
+3. Manual · heat + speed · ~3 min — combined; pause once mid-run → `jobState` = `PAUSED`, `expectedEndAt` = `null`; resume → new `expectedEndAt`.
 4. Let it finish normally once — `jobState` → `FINISHED`, `expectedEndAt` → `null`, `endReason` set.
+5. Toggle MQTT off in Settings — broker should show retained `…/status` = `offline`.
 
 Do **not** use long Lidl recipes for a traffic test; short manual jobs are enough.
 

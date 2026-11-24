@@ -1,8 +1,8 @@
 package app.toque.mqtt
 
 import app.toque.core.json.Json
+import app.toque.core.machine.JobState
 import app.toque.core.machine.Snapshot
-import app.toque.core.protocol.Mcc
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -11,9 +11,9 @@ import java.util.TimeZone
  * Sous-ensemble du [Snapshot] utile pour l'automation (programme + fin), sans capteurs/actuateurs.
  * Deux états égaux ⇒ pas de republication.
  *
- * [targetTempC] : consigne du job (pas l'écho base). Pas de vitesse : jobActive / jobState suffisent.
- * [expectedEndAt] : instant de fin prévu (ISO-8601 UTC). Le publisher le « colle » pour éviter
- * le jitter ±1 s entre [now] et [remaining].
+ * [targetTempC] : consigne du job ([Snapshot.jobTempC], pas l'écho base ni la table Connect).
+ * [expectedEndAt] : instant de fin prévu (ISO-8601 UTC). Absent en pause (sinon l'heure « avance »
+ * pendant que le programme est arrêté) ; le publisher le « colle » pendant le décompte.
  */
 data class MqttState(
     val actualTempC: Int,
@@ -22,7 +22,7 @@ data class MqttState(
     val jobKind: String,
     val jobLabel: String,
     val jobState: String,
-    /** Instant de fin prévu, ou `null` si pas de job / durée inconnue / terminé. */
+    /** Instant de fin prévu, ou `null` si pas de job / pause / durée inconnue / terminé. */
     val expectedEndAt: String?,
     val endReason: String,
     val faultCode: String,
@@ -59,9 +59,11 @@ data class MqttState(
         }
 
         fun from(s: Snapshot, nowMs: Long = System.currentTimeMillis()): MqttState {
-            val heating = s.jobActive && s.jobTempLevel > 0
+            val heating = s.jobActive && s.jobTempC > 0
+            val paused = s.jobState == JobState.PAUSED.name
             // remainingMs == 0 en FINISHED feria expectedEndAt = now → 1 publish/s ; només amb temps > 0.
-            val endAt = if (s.jobActive && s.remainingMs > 0) {
+            // En pause : null (HA veu jobState=PAUSED ; no cal un rellotge que es mogui).
+            val endAt = if (s.jobActive && !paused && s.remainingMs > 0) {
                 val remSec = (s.remainingMs + 999) / 1000
                 val endMs = ((nowMs / 1000L) + remSec) * 1000L
                 formatEnd(endMs)
@@ -70,7 +72,7 @@ data class MqttState(
             }
             return MqttState(
                 actualTempC = s.actualTempC,
-                targetTempC = if (heating) Mcc.celsiusForLevel(s.jobTempLevel) else 0,
+                targetTempC = if (heating) s.jobTempC else 0,
                 jobActive = s.jobActive,
                 jobKind = s.jobKind,
                 jobLabel = s.jobLabel,

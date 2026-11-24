@@ -45,9 +45,12 @@ class MqttClient(
         val plain = Socket()
         plain.tcpNoDelay = true
         plain.connect(InetSocketAddress(host, port), 8_000)
+        // Timeout aussi pendant le handshake TLS / CONNACK (pas seulement après).
+        plain.soTimeout = (keepAliveSec + 10) * 1000
         val s: Socket = if (tls) {
             val factory = SSLSocketFactory.getDefault() as SSLSocketFactory
             val ssl = factory.createSocket(plain, host, port, true) as SSLSocket
+            ssl.soTimeout = (keepAliveSec + 10) * 1000
             ssl.startHandshake()
             val verifier = HttpsURLConnection.getDefaultHostnameVerifier()
             if (!verifier.verify(host, ssl.session)) {
@@ -169,13 +172,10 @@ class MqttClient(
         val first = inp.readUnsignedByte()
         if (first and 0xF0 != 0x20) throw IOException("expected CONNACK, got 0x${first.toString(16)}")
         val rem = readRemainingLength(inp)
-        if (rem < 2) throw IOException("short CONNACK")
+        // MQTT 3.1.1 : CONNACK a exactement 2 octets de variable header.
+        if (rem != 2) throw IOException("bad CONNACK remaining length: $rem")
         inp.readUnsignedByte()
         val rc = inp.readUnsignedByte()
-        if (rem > 2) {
-            val skip = ByteArray(rem - 2)
-            inp.readFully(skip)
-        }
         if (rc != 0) throw IOException("CONNACK refused: $rc")
     }
 

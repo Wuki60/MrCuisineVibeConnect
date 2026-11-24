@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 /**
  * Publie l'état machine en MQTT (lecture seule), uniquement quand le payload utile change.
+ * Le fil [toque-mqtt] ne démarre que lorsque MQTT est activé (robot 1 Go).
  */
 class MqttPublisher(
     private val context: Context,
@@ -22,8 +23,9 @@ class MqttPublisher(
     enum class Status { OFF, CONNECTING, CONNECTED, ERROR }
 
     private val utf8: Charset = Charsets.UTF_8
-    private val thread = HandlerThread("toque-mqtt").apply { start() }
-    private val handler = Handler(thread.looper)
+    private val lock = Any()
+    private var thread: HandlerThread? = null
+    private var handler: Handler? = null
     private val lastJson = AtomicReference<String?>(null)
     @Volatile private var client: MqttClient? = null
     @Volatile private var status: Status = Status.OFF
@@ -53,7 +55,17 @@ class MqttPublisher(
         val gen = ++generation
         failDelayMs = 15_000L
         loggedOutage = false
-        handler.post { runSession(gen) }
+        if (!prefs.mqttEnabled) {
+            // Pas de fil si MQTT est off : coupe tout sur le fil existant s'il y en a un.
+            val h = handler
+            if (h != null) {
+                h.post { tearDown(gen) }
+            } else {
+                setStatus(Status.OFF, "")
+            }
+            return
+        }
+        worker().post { runSession(gen) }
     }
 
     fun onSnapshot(snapshot: Snapshot) {
@@ -62,7 +74,7 @@ class MqttPublisher(
         val json = state.toJson()
         if (json == lastJson.get()) return
         lastJson.set(json)
-        handler.post { publishState(json) }
+        worker().post { publishState(json) }
     }
 
     private fun stabilizeEnd(state: MqttState): MqttState {
@@ -82,18 +94,48 @@ class MqttPublisher(
 
     fun shutdown() {
         generation++
-        handler.post {
-            disconnectClient()
+        val gen = generation
+        val h = handler
+        if (h != null) {
+            h.post { tearDown(gen) }
+        } else {
             setStatus(Status.OFF, "")
         }
     }
 
+    private fun worker(): Handler = synchronized(lock) {
+        handler ?: run {
+            val t = HandlerThread("toque-mqtt").apply { start() }
+            thread = t
+            Handler(t.looper).also { handler = it }
+        }
+    }
+
+    private fun tearDown(gen: Int) {
+        disconnectClient(publishOffline = true)
+        lastJson.set(null)
+        stickyEndMs = null
+        if (gen == generation) setStatus(Status.OFF, "")
+        stopWorkerIfIdle()
+    }
+
+    private fun stopWorkerIfIdle() {
+        if (prefs.mqttEnabled) return
+        synchronized(lock) {
+            val t = thread ?: return
+            thread = null
+            handler = null
+            t.quitSafely()
+        }
+    }
+
     private fun runSession(gen: Int) {
-        disconnectClient()
+        disconnectClient(publishOffline = false)
         lastJson.set(null)
         stickyEndMs = null
         if (!prefs.mqttEnabled) {
             setStatus(Status.OFF, "")
+            stopWorkerIfIdle()
             return
         }
         val host = prefs.mqttHost.trim()
@@ -138,7 +180,7 @@ class MqttPublisher(
             schedulePing(gen)
             lastJson.get()?.let { publishState(it) }
         } catch (e: Exception) {
-            disconnectClient()
+            disconnectClient(publishOffline = false)
             setStatus(Status.ERROR, e.message ?: e.toString())
             if (!loggedOutage) {
                 log.write("mqtt", "échec connexion : $e")
@@ -152,7 +194,7 @@ class MqttPublisher(
         if (!prefs.mqttEnabled || gen != generation) return
         val delay = failDelayMs
         failDelayMs = minOf(failDelayMs * 2, 300_000L)
-        handler.postDelayed({ if (gen == generation) runSession(generation) }, delay)
+        worker().postDelayed({ if (gen == generation) runSession(generation) }, delay)
     }
 
     @Volatile private var statusTopic: String = ""
@@ -161,7 +203,8 @@ class MqttPublisher(
 
     /** Republie les configs Discovery (ex. après un changement de langue de l'interface). */
     fun republishDiscovery() {
-        handler.post {
+        if (!prefs.mqttEnabled) return
+        worker().post {
             val c = client
             val id = deviceIdCached
             val st = statusTopic
@@ -189,7 +232,7 @@ class MqttPublisher(
         try {
             c.publish(topic, json.toByteArray(utf8), retain = true)
         } catch (e: Exception) {
-            disconnectClient()
+            disconnectClient(publishOffline = false)
             setStatus(Status.ERROR, e.message ?: e.toString())
             if (!loggedOutage) {
                 log.write("mqtt", "échec publish : $e")
@@ -200,7 +243,7 @@ class MqttPublisher(
     }
 
     private fun schedulePing(gen: Int) {
-        handler.postDelayed({
+        worker().postDelayed({
             if (gen != generation) return@postDelayed
             val c = client
             if (c == null || !c.connected) {
@@ -221,9 +264,23 @@ class MqttPublisher(
         }, 45_000)
     }
 
-    private fun disconnectClient() {
-        try { client?.close() } catch (_: Exception) {}
+    /**
+     * Ferme le client. Si [publishOffline], publie `offline` retained avant le DISCONNECT
+     * (un DISCONNECT normal n'envoie pas le Last Will).
+     */
+    private fun disconnectClient(publishOffline: Boolean) {
+        val c = client
+        val topic = statusTopic
         client = null
+        if (c != null) {
+            if (publishOffline && c.connected && topic.isNotEmpty()) {
+                try {
+                    c.publish(topic, "offline".toByteArray(utf8), retain = true)
+                } catch (_: Exception) {
+                }
+            }
+            try { c.close() } catch (_: Exception) {}
+        }
         statusTopic = ""
         stateTopic = ""
     }
