@@ -184,6 +184,8 @@ class MachineController(
     private fun coldConfirmed(now: Long): Boolean =
         coldConfirmedEpoch == coldEpoch && now - coldConfirmedAtMs in 0..Limits.COLD_CONFIRM_MS
     private var tarePending = false
+    var standby = false
+        private set
 
     private val bowl = BowlScaleTracker(
         config = { config },
@@ -360,9 +362,11 @@ class MachineController(
     fun tick(): ByteArray {
         val now = clock.nowMs()
         if ((link == LinkState.READY || link == LinkState.ARMING) && now - latestAtMs > config.staleMs) {
-            setLink(LinkState.LOST)
-            if (job?.active == true || turboStartedAt != null)
-                raiseFault(FaultCode.COMM_LOST, tr("Plus de réponse de la base moteur : tout est arrêté"))
+            if (!standby || job?.active == true || turboStartedAt != null) {
+                setLink(LinkState.LOST)
+                if (job?.active == true || turboStartedAt != null)
+                    raiseFault(FaultCode.COMM_LOST, tr("Plus de réponse de la base moteur : tout est arrêté"))
+            }
         }
         updateTurbo(now)
         updateJob(now)
@@ -406,6 +410,8 @@ class MachineController(
     private fun desiredSetting(): Setting {
         if (fault != null || link != LinkState.READY) return stopSetting()
         if (turboStartedAt != null) return Programs.turboSetting()
+        if (standby && codec.supports(Operation.SLEEP) && job?.active != true && turboStartedAt == null)
+            return Setting(Operation.SLEEP, 0, 0, lastWire.direction)
         val j = job ?: return stopSetting()
         if (j.state != JobState.RUNNING || j.waitingStop != null) return stopSetting()
         val s = j.phase.setting
@@ -647,6 +653,16 @@ class MachineController(
     private fun requestTare() {
         tarePending = true
         bowl.onTareRequested()
+    }
+
+    fun setStandby(enabled: Boolean) {
+        if (enabled && (!codec.supports(Operation.SLEEP) || job?.active == true || turboStartedAt != null)) {
+            return
+        }
+        standby = enabled
+        if (!enabled) {
+            latestAtMs = clock.nowMs()
+        }
     }
 
     fun acknowledgeFault(): Verdict {

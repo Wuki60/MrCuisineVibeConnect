@@ -1038,5 +1038,7 @@
   "Rendre les commandes": "Steuerung zurückgeben",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Dieses Telefon ist schreibgeschützt: Gesteuert wird am Roboter",
   "Programmes affichés sur l'écran Programmes :": "Auf dem Bildschirm Programme angezeigte Programme:",
-  "Gardez au moins un programme affiché": "Lassen Sie mindestens ein Programm angezeigt"
+  "Gardez au moins un programme affiché": "Lassen Sie mindestens ein Programm angezeigt",
+  "Extinction totale": "Tiefschlaf",
+  "Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.": "Trennt die Stromversorgung der Maschine vollständig und schaltet den Bildschirm aus. Der Leuchtring ist aus (obige Einstellung gilt nicht). Antippen des Bildschirms oder Drehen weckt sie sofort."
 }

@@ -46,7 +46,7 @@ data class Setting(
         smartLevel != null -> Smart.celsiusForLevel(smartLevel)
         else -> Mcc.celsiusForLevel(temperatureLevel)
     }
-    val isRest: Boolean get() = operation == Operation.STOP
+    val isRest: Boolean get() = operation == Operation.STOP || operation == Operation.SLEEP
 
     companion object {
         val STOP = Setting(Operation.STOP, 0, 0, Direction.CLOCKWISE)

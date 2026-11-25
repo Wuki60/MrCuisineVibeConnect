@@ -135,6 +135,13 @@ class Prefs(context: Context) {
             ?: if (p.getBoolean("standbyKnobLight", true)) "dim" else "normal"
         set(v) { p.edit().putString("standbyKnob", v).apply() }
 
+    /** Mode sommeil profond (veille totale) : extinction de l'écran et mise en veille de la base moteur. */
+    var deepSleep: Boolean
+        get() = p.getBoolean("deepSleep", false)
+        set(v) {
+            p.edit().putBoolean("deepSleep", v).commit()
+        }
+
     /** Code couleur sur l'anneau de la molette (problème, pause, à vous, en cours). */
     var knobColours: Boolean by boolPref("knobColours", true)
     /** Luminosité de l'anneau allumé : niveau 1 à 5 ; 0 tant que rien n'a été choisi (le blanc propre au robot). */

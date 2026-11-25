@@ -1038,5 +1038,7 @@
   "Rendre les commandes": "Give controls back",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "This phone is read-only: controls are on the robot",
   "Programmes affichés sur l'écran Programmes :": "Programs shown on the Programs screen:",
-  "Gardez au moins un programme affiché": "Keep at least one program shown"
+  "Gardez au moins un programme affiché": "Keep at least one program shown",
+  "Extinction totale": "Deep sleep",
+  "Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.": "Cuts power to the machine completely and turns off the screen. The light ring is turned off (the setting above does not apply). Tapping the screen or turning the knob wakes it up instantly."
 }

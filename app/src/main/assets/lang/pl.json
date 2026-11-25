@@ -1038,5 +1038,7 @@
   "Rendre les commandes": "Przywróć sterowanie",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Ten telefon jest tylko do odczytu: sterowanie odbywa się na robocie",
   "Programmes affichés sur l'écran Programmes :": "Programy widoczne na ekranie Programy:",
-  "Gardez au moins un programme affiché": "Zostaw widoczny co najmniej jeden program"
+  "Gardez au moins un programme affiché": "Zostaw widoczny co najmniej jeden program",
+  "Extinction totale": "Głęboki sen",
+  "Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.": "Całkowicie odcina zasilanie urządzenia i wyłącza ekran. Pierścień świetlny jest wyłączony (powyższe ustawienie nie ma zastosowania). Dotknięcie ekranu lub ruch pokrętła natychmiast je wybudza."
 }

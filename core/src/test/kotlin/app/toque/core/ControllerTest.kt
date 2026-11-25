@@ -20,6 +20,7 @@ import app.toque.core.machine.SimBoard
 import app.toque.core.protocol.Direction
 import app.toque.core.protocol.Mcc
 import app.toque.core.protocol.Operation
+import app.toque.core.protocol.SmartCodec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -625,5 +626,42 @@ class ControllerTest {
         assertTrue(b.snap.scaleStable)
         // La balance simulée tend vers 500 g sans forcément l'atteindre (troncature) : à 2 g près.
         assertTrue("poids ${b.snap.weightG}", kotlin.math.abs(b.snap.weightG - 500) <= 2)
+    }
+
+    @Test fun standbyRefusedWhileJobRunsAndLinkLossStillTriggers() {
+        val b = Bench().ready()
+        assertTrue(b.c.startJob(Programs.manual(2, 0, Direction.CLOCKWISE, 30_000)).ok)
+        b.step(1_000)
+        b.c.setStandby(true)
+        val frame = b.c.tick()
+        assertFalse(frame[1] == Operation.SLEEP.wire)
+        b.clock.now += ControllerConfig().staleMs + 100
+        b.c.tick()
+        assertEquals(LinkState.LOST, b.c.snapshot().link)
+        assertEquals(FaultCode.COMM_LOST, b.c.snapshot().faultCode)
+    }
+
+    @Test fun standbySilencesLinkLossWhenIdleAndRestoresOnWake() {
+        val b = Bench().ready()
+        b.c.setStandby(true)
+        val sleepFrame = b.c.tick()
+        assertEquals(Operation.SLEEP.wire, sleepFrame[1])
+        b.clock.now += ControllerConfig().staleMs + 5_000
+        b.c.tick()
+        assertEquals(LinkState.READY, b.c.snapshot().link)
+        assertFalse(b.c.snapshot().hasFault)
+        b.c.setStandby(false)
+        val wakeFrame = b.c.tick()
+        assertEquals(Operation.STOP.wire, wakeFrame[1])
+    }
+
+    @Test fun standbyIgnoredOnSmartCodec() {
+        val clock = FakeClock()
+        val c = MachineController(clock, ControllerConfig(), SmartCodec())
+        c.onTransportUp("banc")
+        c.setStandby(true)
+        val frame = c.tick()
+        assertFalse(c.snapshot().hasFault)
+        assertEquals(SmartCodec().stopFrame(Direction.CLOCKWISE).toList(), frame.toList())
     }
 }
