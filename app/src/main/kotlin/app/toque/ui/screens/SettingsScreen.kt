@@ -80,6 +80,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     private lateinit var linkText: TextView
     private lateinit var timeText: TextView
     private lateinit var companionText: TextView
+    private lateinit var programsText: TextView
     /** Point sur « Avancé » et phrase au-dessus de « Machine » : tant que Toque ne pilote pas le vrai moteur. */
     private lateinit var modeDot: View
     private lateinit var modeText: TextView
@@ -491,6 +492,16 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         bowl.addView(bowlState, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         bowl.addView(button, Ui.lp(Ui.WRAP, Ui.WRAP, l = 16))
         p.addView(bowl, Ui.lp(t = 2, b = 8))
+
+        group(p, tr("Programmes"))
+        val progInfo = Ui.vertical(c)
+        progInfo.addView(Ui.text(c, tr("Choix des programmes"), 18f, Ui.TEXT))
+        programsText = hint("")
+        progInfo.addView(programsText, Ui.lp(t = 4))
+        p.addView(setting(progInfo, Ui.button(c, tr("Choix des programmes"), Ui.Style.SECONDARY, height = 52, textSize = 18f) {
+            a.push(VisibleProgramsScreen(a))
+        }), Ui.lp(t = 8, b = 8))
+        refreshPrograms()
     }
 
     private fun safetyPage(p: LinearLayout) {
@@ -705,31 +716,8 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         setPadding(Ui.u(14), 0, Ui.u(14), 0)
     }
 
-    private fun toggle(label: String, initial: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
-        val row = Ui.horizontal(c)
-        row.addView(Ui.text(c, label, 18f, Ui.TEXT), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
-        var state = initial
-        // Interrupteur : piste arrondie, pastille à gauche (non) ou à droite (oui).
-        val sw = android.widget.FrameLayout(c)
-        val knob = View(c)
-        sw.addView(knob, Ui.flp(Ui.u(34), Ui.u(34), Gravity.CENTER_VERTICAL))
-        sw.setPadding(Ui.u(5), 0, Ui.u(5), 0)
-        fun paint() {
-            sw.background = Ui.round(if (state) Ui.ACCENT else Ui.SURFACE3, 22f, if (state) Ui.ACCENT else Ui.STROKE, 1f)
-            knob.background = Ui.round(if (state) Ui.ON_ACCENT else Ui.TEXT2, 17f)
-            (knob.layoutParams as android.widget.FrameLayout.LayoutParams).gravity =
-                Gravity.CENTER_VERTICAL or (if (state) Gravity.END else Gravity.START)
-            knob.requestLayout()
-            sw.contentDescription = if (state) tr("Oui") else tr("Non")
-        }
-        paint()
-        val flip = { _: View -> state = !state; paint(); onChange(state) }
-        sw.setOnClickListener(flip)
-        row.setOnClickListener(flip)   // toute la ligne est touchable, pas seulement l'interrupteur
-        row.minimumHeight = Ui.u(52)
-        row.addView(sw, LinearLayout.LayoutParams(Ui.u(76), Ui.u(44)).apply { leftMargin = Ui.u(14) })
-        return row
-    }
+    private fun toggle(label: String, initial: Boolean, onChange: (Boolean) -> Unit): LinearLayout =
+        toggleRow(c, label, initial, onChange)
 
     private fun link(label: String, onClick: () -> Unit): LinearLayout {
         val row = Ui.horizontal(c)
@@ -835,6 +823,14 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     }
 
     private lateinit var robotText: TextView
+
+    private fun refreshPrograms() {
+        if (!::programsText.isInitialized) return
+        val avail = ProgramsScreen.availableFeatures(a.prefs)
+        val hidden = a.prefs.hiddenPrograms
+        val shown = avail.count { it.name !in hidden }.let { if (it == 0) avail.size else it }
+        programsText.text = tr("%d sur %d affichés", shown, avail.size)
+    }
 
     private fun renderRobot() {
         val p = a.prefs.robot
@@ -1146,6 +1142,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         renderModes()
         renderMode()
         renderRobot()
+        refreshPrograms()
         refreshSync()
         renderAccount()
         refreshSite()
@@ -1218,6 +1215,31 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
          */
         fun reopened(a: MainActivity) = SettingsScreen(a, last)
 
+        internal fun toggleRow(c: android.content.Context, label: String, initial: Boolean, onChange: (Boolean) -> Unit): LinearLayout {
+            val row = Ui.horizontal(c)
+            row.addView(Ui.text(c, label, 18f, Ui.TEXT), LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
+            var state = initial
+            val sw = FrameLayout(c)
+            val knob = View(c)
+            sw.addView(knob, Ui.flp(Ui.u(34), Ui.u(34), Gravity.CENTER_VERTICAL))
+            sw.setPadding(Ui.u(5), 0, Ui.u(5), 0)
+            fun paint() {
+                sw.background = Ui.round(if (state) Ui.ACCENT else Ui.SURFACE3, 22f, if (state) Ui.ACCENT else Ui.STROKE, 1f)
+                knob.background = Ui.round(if (state) Ui.ON_ACCENT else Ui.TEXT2, 17f)
+                (knob.layoutParams as FrameLayout.LayoutParams).gravity =
+                    Gravity.CENTER_VERTICAL or (if (state) Gravity.END else Gravity.START)
+                knob.requestLayout()
+                sw.contentDescription = if (state) tr("Oui") else tr("Non")
+            }
+            paint()
+            val flip = { _: View -> state = !state; paint(); onChange(state) }
+            sw.setOnClickListener(flip)
+            row.setOnClickListener(flip)
+            row.minimumHeight = Ui.u(52)
+            row.addView(sw, LinearLayout.LayoutParams(Ui.u(76), Ui.u(44)).apply { leftMargin = Ui.u(14) })
+            return row
+        }
+
         /**
          * Où ouvrir une liste déroulante haute de [wanted], pour une case allant de [anchorTop] à
          * [anchorBottom], dans la zone de [top] à [bottom] (tout en pixels, dans la fenêtre) : sous la case
@@ -1244,5 +1266,70 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         private const val LIST_MARGIN = 8
         /** Défilement d'un cran de molette, en pixels de référence. */
         private const val KNOB_STEP = 120
+    }
+}
+
+/** Sub-screen for choosing which automatic programs are shown on ProgramsScreen. */
+class VisibleProgramsScreen(a: MainActivity) : Screen(a) {
+    override val title = tr("Choix des programmes")
+    private val list = Ui.vertical(c)
+    private lateinit var scroller: ScrollView
+
+    override fun build(): View {
+        val root = Ui.vertical(c)
+        root.setPadding(Ui.u(28), Ui.u(10), Ui.u(28), Ui.u(20))
+        list.setPadding(Ui.u(4), Ui.u(4), Ui.u(4), Ui.u(8))
+        renderList()
+        scroller = Ui.scroll(c, list)
+        root.addView(scroller, LinearLayout.LayoutParams(Ui.MATCH, 0, 1f))
+
+        val bottom = Ui.horizontal(c, Gravity.CENTER_VERTICAL)
+        bottom.addView(Ui.button(c, tr("Tout activer"), Ui.Style.SECONDARY, height = 56, textSize = 18f) {
+            a.prefs.hiddenPrograms = emptySet()
+            renderList()
+        }, Ui.lp(Ui.WRAP, Ui.WRAP, r = 12))
+        bottom.addView(Ui.button(c, tr("Tout désactiver"), Ui.Style.SECONDARY, height = 56, textSize = 18f) {
+            val avail = ProgramsScreen.availableFeatures(a.prefs)
+            a.prefs.hiddenPrograms = avail.drop(1).map { it.name }.toSet()
+            renderList()
+        }, Ui.lp(Ui.WRAP, Ui.WRAP))
+        bottom.addView(Ui.spacer(c, weight = 1f), LinearLayout.LayoutParams(0, 1, 1f))
+        bottom.addView(Ui.button(c, tr("OK"), Ui.Style.PRIMARY, Icon.Kind.CHECK, height = 56, textSize = 20f) {
+            a.back()
+        }, Ui.lp(Ui.u(160), Ui.WRAP))
+        root.addView(bottom, Ui.lp(t = 14))
+        return root
+    }
+
+    private fun renderList() {
+        list.removeAllViews()
+        val avail = ProgramsScreen.availableFeatures(a.prefs)
+        val hidden = a.prefs.hiddenPrograms
+        for (f in avail) {
+            val visible = f.name !in hidden
+            val row = SettingsScreen.toggleRow(c, f.label, visible) { on ->
+                val next = a.prefs.hiddenPrograms.toMutableSet()
+                if (on) {
+                    next.remove(f.name)
+                } else {
+                    val remaining = avail.count { it.name != f.name && it.name !in next }
+                    if (remaining == 0) {
+                        a.toast(tr("Gardez au moins un programme affiché"), Ui.WARN)
+                        renderList()
+                        return@toggleRow
+                    }
+                    next.add(f.name)
+                }
+                a.prefs.hiddenPrograms = next
+            }
+            row.setPadding(Ui.u(18), Ui.u(8), Ui.u(18), Ui.u(8))
+            row.background = Ui.round(Ui.SURFACE, 18f, Ui.STROKE, 1f)
+            list.addView(row, Ui.lp(Ui.MATCH, Ui.WRAP, b = 10))
+        }
+    }
+
+    override fun onKnob(delta: Int): Boolean {
+        scroller.smoothScrollBy(0, delta * Ui.u(96))
+        return true
     }
 }

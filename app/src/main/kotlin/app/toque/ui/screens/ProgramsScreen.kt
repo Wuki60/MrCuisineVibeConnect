@@ -77,7 +77,11 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
             Programs.smartNettoyageLong(Feature.LONG_CLEAN.label)
         },
     )
-    private val progs = all.filter { RobotProfiles.active.capabilities.has(it.feature) }
+    private val available = all.filter { RobotProfiles.active.capabilities.has(it.feature) }
+    private val progs = run {
+        val hidden = a.prefs.hiddenPrograms
+        available.filter { it.feature.name !in hidden }.ifEmpty { available }
+    }
     private val cleaning = progs.indexOfFirst { it.feature == Feature.CLEANING }
     private var selected = if (openOnCleaning && cleaning >= 0) cleaning else 0
     private lateinit var turbo: HoldButton
@@ -141,10 +145,10 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
             card.addView(p.start, Ui.lp(t = 14))
             card.isClickable = true
             card.setOnClickListener { selected = i; refresh() }
-            row.addView(card, LinearLayout.LayoutParams(0, Ui.MATCH, 1f).apply { if (i % 4 != 3 && (many || i < progs.size - 1)) rightMargin = Ui.u(16) })
+            row.addView(card, LinearLayout.LayoutParams(0, Ui.MATCH, 1f).apply { if (i % 4 != 3) rightMargin = Ui.u(16) })
         }
         // Dernière ligne incomplète : des places vides gardent la largeur des cartes.
-        if (many && progs.size % 4 != 0) for (k in progs.size % 4 until 4)
+        if (progs.size % 4 != 0) for (k in progs.size % 4 until 4)
             row.addView(View(c), LinearLayout.LayoutParams(0, Ui.MATCH, 1f).apply { if (k < 3) rightMargin = Ui.u(16) })
         if (many) {
             rows.addView(row, Ui.lp(Ui.MATCH, Ui.u(rowHeight(progs.size - 1 - (progs.size - 1) % 4))))
@@ -207,5 +211,18 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
     override fun onKnobPress(): Boolean {
         if (!a.snapshot.busy) progs[selected].let { a.startJob(it.make(it.seconds * 1000L, it.celsius)) }
         return true
+    }
+
+    companion object {
+        private val ALL_FEATURES = listOf(
+            Feature.KNEAD, Feature.STEAM, Feature.TOAST, Feature.YOGURT, Feature.CLEANING,
+            Feature.MIXER, Feature.SMOOTHIE, Feature.EGGS, Feature.SOUS_VIDE, Feature.SLOW_COOK,
+            Feature.FERMENT, Feature.RICE, Feature.KETTLE, Feature.PREWASH, Feature.LONG_CLEAN,
+        )
+
+        fun availableFeatures(prefs: app.toque.Prefs): List<Feature> {
+            val active = RobotProfiles.active
+            return ALL_FEATURES.filter { active.capabilities.has(it) }
+        }
     }
 }

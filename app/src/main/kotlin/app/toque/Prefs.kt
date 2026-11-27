@@ -151,6 +151,13 @@ class Prefs(context: Context) {
             p.edit().putBoolean("chainSteps", v).commit()
         }
 
+    /** Feature names hidden from ProgramsScreen. */
+    var hiddenPrograms: Set<String>
+        get() = p.getStringSet("hiddenPrograms", emptySet())?.toSet() ?: emptySet()
+        set(v) {
+            p.edit().putStringSet("hiddenPrograms", v).commit()
+        }
+
     var sound: Boolean
         get() = p.getBoolean("sound", true)
         set(v) {
