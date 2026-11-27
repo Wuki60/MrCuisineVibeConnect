@@ -1038,5 +1038,14 @@
   "Rendre les commandes": "Retornar el control",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Aquest telèfon és de només lectura: el control es fa al robot",
   "Programmes affichés sur l'écran Programmes :": "Programes que es mostren a la pantalla Programes:",
-  "Gardez au moins un programme affiché": "Deixa almenys un programa visible"
+  "Gardez au moins un programme affiché": "Deixa almenys un programa visible",
+  "Clavier": "Teclat",
+  "Utilisé": "En ús",
+  "Utiliser": "Utilitza",
+  "Changement de clavier…": "Canviant de teclat…",
+  "Clavier du robot : %s": "Teclat del robot: %s",
+  "Cette action demande l'accès root (Magisk).": "Aquesta acció necessita accés root (Magisk).",
+  "Ce clavier ne peut pas être choisi d'ici.": "Aquest teclat no es pot triar des d'aquí.",
+  "Le clavier n'a pas pu être changé : %s": "No s'ha pogut canviar el teclat: %s",
+  "Cet écran ne s'ouvre pas depuis Toque.": "Aquesta pantalla no s'obre des de Toque."
 }

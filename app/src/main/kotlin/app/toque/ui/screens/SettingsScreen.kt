@@ -24,6 +24,8 @@ import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
 import app.toque.core.time.ZoneLookup
 import app.toque.core.update.Release
+import app.toque.keyboard.KeyboardJob
+import app.toque.keyboard.Keyboards
 import app.toque.recipes.LidlSync
 import app.toque.core.recipes.McOnline
 import app.toque.recipes.OnlineSync
@@ -83,6 +85,9 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     private lateinit var invertHint: TextView
     private lateinit var linkText: TextView
     private lateinit var timeText: TextView
+    private lateinit var keyboardBox: LinearLayout
+    private val keyboards by lazy { Keyboards(a) }
+    private val followKeyboards: () -> Unit = { refreshKeyboards() }
     private lateinit var companionText: TextView
     private lateinit var phonesBox: LinearLayout
     /** Point sur « Avancé » et phrase au-dessus de « Machine » : tant que Toque ne pilote pas le vrai moteur. */
@@ -596,6 +601,12 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
             a.applyLanguage()
         }, 380), Ui.lp(t = 10, b = 8))
 
+        // Les claviers du robot : celui d'Android 6 et ceux installés en plus, chacun avec ses propres réglages.
+        keyboardBox = Ui.vertical(c)
+        p.addView(keyboardBox)
+        KeyboardJob.forget()
+        refreshKeyboards()
+
         group(p, tr("Date et heure"))
         val zones = listOf(ZoneLookup.AUTO to tr("Automatique (d'après la connexion Internet)")) +
             (ZoneLookup.COMMON + listOf(TimeSync.current(), a.prefs.timeZone))
@@ -609,6 +620,53 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         p.addView(setting(timeText, Ui.button(c, tr("Mettre à l'heure"), Ui.Style.SECONDARY, Icon.Kind.SYNC, height = 52, textSize = 18f) { setClock() }),
             Ui.lp(t = 8, b = 8))
         refreshTime()
+    }
+
+    /**
+     * Le groupe « Clavier » : les claviers installés, celui du robot d'abord. Chacun ouvre ses propres réglages,
+     * et, s'il y en a plusieurs, « Utiliser » fait de l'un d'eux le clavier du robot. Ce que dit un changement
+     * (en cours, refusé) s'écrit sous le nom du clavier qu'il concerne. Rien tant qu'Android n'en liste aucun.
+     */
+    private fun refreshKeyboards() {
+        keyboardBox.removeAllViews()
+        val all = keyboards.list()
+        if (all.isEmpty()) return
+        group(keyboardBox, tr("Clavier"), separated = true)
+        val busy = KeyboardJob.running
+        for ((i, k) in all.withIndex()) {
+            if (i > 0) line(keyboardBox)
+            val names = Ui.vertical(c)
+            names.addView(Ui.text(c, k.name, 18f, Ui.TEXT))
+            KeyboardJob.message?.takeIf { KeyboardJob.about == k.id }?.let { said ->
+                names.addView(Ui.text(c, said, 16f, if (KeyboardJob.failed) Ui.WARN else Ui.ACCENT_INK).apply { setLineSpacing(0f, 1.15f) }, Ui.lp(t = 2))
+            }
+            val buttons = Ui.horizontal(c)
+            if (all.size > 1) {
+                if (k.current) {
+                    buttons.addView(Ui.chip(c, tr("Utilisé"), Icon.Kind.CHECK, Ui.ACCENT_INK, Ui.ACCENT_DIM, 17f).apply {
+                        minimumHeight = Ui.u(52)
+                        setGravity(Gravity.CENTER)
+                        setPadding(Ui.u(16), 0, Ui.u(20), 0)
+                    })
+                } else {
+                    val use = Ui.button(c, tr("Utiliser"), Ui.Style.SECONDARY, height = 52, textSize = 18f) { useKeyboard(k) }
+                    Ui.setButtonEnabled(use, !busy)
+                    buttons.addView(use)
+                }
+            }
+            k.settings?.let { intent ->
+                // Sans le bouton « Retour à Toque » : ces réglages ont leur propre flèche de retour.
+                buttons.addView(Ui.button(c, tr("Réglages"), Ui.Style.GHOST, Icon.Kind.SETTINGS, height = 52, textSize = 18f) {
+                    a.openWithItsOwnWayBack(Intent(intent))
+                }, Ui.lp(Ui.WRAP, Ui.WRAP, l = if (all.size > 1) 12 else 0))
+            }
+            keyboardBox.addView(setting(names, buttons), Ui.lp(t = 6, b = 6))
+        }
+    }
+
+    /** Fait de [k] le clavier du robot, hors du fil de l'interface : sa ligne le dit, puis un bandeau, ou la cause du refus. */
+    private fun useKeyboard(k: Keyboards.Entry) {
+        KeyboardJob.start(k.id, tr("Changement de clavier…"), { keyboards.use(k.id) }) { a.toast(tr("Clavier du robot : %s", k.name), Ui.OK) }
     }
 
     private fun updatesPage(p: LinearLayout) {
@@ -691,8 +749,8 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     private fun hint(s: String): TextView = Ui.text(c, Ui.guillemets(s), 16f, Ui.TEXT2).apply { setLineSpacing(0f, 1.15f) }
 
     /** Titre d'un groupe de réglages dans une page, séparé du groupe d'avant par un trait. */
-    private fun group(page: LinearLayout, title: String) {
-        if (page.childCount > 0) line(page)
+    private fun group(page: LinearLayout, title: String, separated: Boolean = page.childCount > 0) {
+        if (separated) line(page)
         page.addView(Ui.text(c, title, 14f, Ui.TEXT2, Ui.BOLD).apply {
             isAllCaps = true
             letterSpacing = 0.08f
@@ -1194,6 +1252,8 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         unsubSync = SyncProgress.onChange { refreshSync() }
         unsubSite = a.app.site.onChange { renderAccount(); refreshSite() }
         unsubMealie = a.app.mealie.onChange { refreshMealie() }
+        KeyboardJob.onChange = followKeyboards
+        refreshKeyboards()
         refreshCompanion()
         unsubCompanion = a.app.companion?.onChange { ch ->
             if (ch == RobotCompanion.Change.PHONES || ch == RobotCompanion.Change.SERVER) refreshCompanion()
@@ -1218,6 +1278,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
 
     override fun onHide() {
         openList?.dismiss()
+        if (KeyboardJob.onChange === followKeyboards) KeyboardJob.onChange = null
         unsubRecipes?.invoke()
         unsubRecipes = null
         unsubSync?.invoke()
