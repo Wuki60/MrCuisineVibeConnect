@@ -1038,5 +1038,14 @@
   "Rendre les commandes": "Przywróć sterowanie",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Ten telefon jest tylko do odczytu: sterowanie odbywa się na robocie",
   "Programmes affichés sur l'écran Programmes :": "Programy widoczne na ekranie Programy:",
-  "Gardez au moins un programme affiché": "Zostaw widoczny co najmniej jeden program"
+  "Gardez au moins un programme affiché": "Zostaw widoczny co najmniej jeden program",
+  "Clavier": "Klawiatura",
+  "Utilisé": "Używana",
+  "Utiliser": "Użyj",
+  "Changement de clavier…": "Zmiana klawiatury…",
+  "Clavier du robot : %s": "Klawiatura robota: %s",
+  "Cette action demande l'accès root (Magisk).": "Ta czynność wymaga dostępu root (Magisk).",
+  "Ce clavier ne peut pas être choisi d'ici.": "Tej klawiatury nie można wybrać z tego miejsca.",
+  "Le clavier n'a pas pu être changé : %s": "Nie udało się zmienić klawiatury: %s",
+  "Cet écran ne s'ouvre pas depuis Toque.": "Tego ekranu nie można otworzyć z Toque."
 }

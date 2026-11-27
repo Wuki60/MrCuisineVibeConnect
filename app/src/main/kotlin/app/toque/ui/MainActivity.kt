@@ -1119,6 +1119,19 @@ class MainActivity : Activity() {
         }.start()
     }
 
+    /**
+     * Ouvre [intent] hors de Toque sans le bouton « Retour à Toque » : pour un écran qui a sa propre flèche de
+     * retour et se referme sur Toque (les réglages du clavier d'Android 6 et ceux de HeliBoard, essayés sur un
+     * SKMC 1100 A1). Sans ce bouton, Android 6 ne refuse pas les demandes de permission de cet écran.
+     */
+    fun openWithItsOwnWayBack(intent: Intent) {
+        try {
+            startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (_: Exception) {
+            toast(tr("Cet écran ne s'ouvre pas depuis Toque."), Ui.WARN)
+        }
+    }
+
     companion object {
         private var reopenSettings = false
         private const val STORAGE_REQUEST = 7

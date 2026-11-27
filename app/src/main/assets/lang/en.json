@@ -1038,5 +1038,14 @@
   "Rendre les commandes": "Give controls back",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "This phone is read-only: controls are on the robot",
   "Programmes affichés sur l'écran Programmes :": "Programs shown on the Programs screen:",
-  "Gardez au moins un programme affiché": "Keep at least one program shown"
+  "Gardez au moins un programme affiché": "Keep at least one program shown",
+  "Clavier": "Keyboard",
+  "Utilisé": "In use",
+  "Utiliser": "Use",
+  "Changement de clavier…": "Changing keyboard…",
+  "Clavier du robot : %s": "Robot keyboard: %s",
+  "Cette action demande l'accès root (Magisk).": "This action needs root access (Magisk).",
+  "Ce clavier ne peut pas être choisi d'ici.": "This keyboard cannot be chosen from here.",
+  "Le clavier n'a pas pu être changé : %s": "The keyboard could not be changed: %s",
+  "Cet écran ne s'ouvre pas depuis Toque.": "This screen cannot be opened from Toque."
 }

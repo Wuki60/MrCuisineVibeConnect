@@ -1038,5 +1038,14 @@
   "Rendre les commandes": "Повернути керування",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Цей телефон лише для перегляду: керування — на роботі",
   "Programmes affichés sur l'écran Programmes :": "Програми, показані на екрані «Програми»:",
-  "Gardez au moins un programme affiché": "Залиште показаною хоча б одну програму"
+  "Gardez au moins un programme affiché": "Залиште показаною хоча б одну програму",
+  "Clavier": "Клавіатура",
+  "Utilisé": "Використовується",
+  "Utiliser": "Використати",
+  "Changement de clavier…": "Зміна клавіатури…",
+  "Clavier du robot : %s": "Клавіатура робота: %s",
+  "Cette action demande l'accès root (Magisk).": "Для цієї дії потрібен root-доступ (Magisk).",
+  "Ce clavier ne peut pas être choisi d'ici.": "Цю клавіатуру не можна вибрати звідси.",
+  "Le clavier n'a pas pu être changé : %s": "Не вдалося змінити клавіатуру: %s",
+  "Cet écran ne s'ouvre pas depuis Toque.": "Цей екран не відкривається з Toque."
 }
