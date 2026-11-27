@@ -147,4 +147,28 @@ class RobotTest {
         val ms = (System.nanoTime() - t0) / 1_000_000
         assertTrue("$ms ms", ms < 200)
     }
+
+    @Test fun smartProgramsAdaptAlgorithmicallyForConnect() {
+        val specs = listOf(
+            Programs.smartProgram(SmartProgram.MIXER, 30_000L, "Mixer"),
+            Programs.smartProgram(SmartProgram.SMOOTHIE, 60_000L, "Smoothie"),
+            Programs.smartProgram(SmartProgram.EGGS, 8 * 60_000L, "Eggs"),
+            Programs.smartProgram(SmartProgram.SOUS_VIDE, 6 * 3600_000L, "Sous-vide", celsius = 60),
+            Programs.smartMijoter(4 * 3600_000L, "Slow cook", celsius = 90),
+            Programs.smartFermenter(8 * 3600_000L, "Ferment", celsius = 37),
+            Programs.smartProgram(SmartProgram.RICE, 30 * 60_000L, "Rice"),
+            Programs.smartProgram(SmartProgram.KETTLE, 10 * 60_000L, "Kettle"),
+            Programs.smartPrelavage("Prewash"),
+            Programs.smartNettoyageLong("Long clean"),
+        )
+        for (raw in specs) {
+            val adapted = Programs.forConnect(raw)
+            val violations = SafetyPolicy.checkJob(adapted, null)
+            assertTrue("${raw.label}: $violations", violations.isEmpty())
+            for (ph in adapted.phases) {
+                val st = ph.setting
+                ConnectCodec.encodeTx(st.operation, st.speed, st.temperatureLevel, st.direction, false, 60)
+            }
+        }
+    }
 }

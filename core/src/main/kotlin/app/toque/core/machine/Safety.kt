@@ -46,7 +46,7 @@ data class Setting(
         smartLevel != null -> Smart.celsiusForLevel(smartLevel)
         else -> Mcc.celsiusForLevel(temperatureLevel)
     }
-    val isRest: Boolean get() = operation == Operation.STOP
+    val isRest: Boolean get() = operation == Operation.STOP || operation == Operation.SLEEP
 
     companion object {
         val STOP = Setting(Operation.STOP, 0, 0, Direction.CLOCKWISE)
@@ -113,6 +113,11 @@ data class JobSpec(
      * qui peut durer [Limits.MAX_MS_FERMENT]. Gardé par [SafetyPolicy.checkJob], réglages en cours compris.
      */
     val ferment: Boolean = false,
+    /**
+     * Long low-speed program (sous-vide, slow cook, ferment) adapted for Connect: speed <= 1, <= 100 °C,
+     * allowed up to [Limits.MAX_MS_FERMENT].
+     */
+    val longProgram: Boolean = false,
 ) {
     /** Programme à étapes de l'appli d'origine du Smart : chaque phase est une trame capturée. */
     val capturedSteps: Boolean get() = phases.size > 1 && phases.all { it.setting.program != null }
@@ -268,11 +273,10 @@ object SafetyPolicy {
 
     /** Durée maximale autorisée pour un travail, d'après son réglage le plus rapide. */
     fun maxDurationMs(spec: JobSpec): Long {
-        if (spec.ferment) return Limits.MAX_MS_FERMENT
+        if (spec.ferment || spec.longProgram) return Limits.MAX_MS_FERMENT
         val fastest = spec.phases.maxOfOrNull { it.setting.speed } ?: 0
-        // Programme à étapes non cyclique (nettoyage long : 1 min 45 à vitesse 10 sur 17 min) : on
-        // compte le seul temps passé au-dessus de la vitesse 6.
-        val highMs = if (spec.capturedSteps && !spec.cyclic)
+        // Multi-phase non-cyclic program (e.g. long clean: 1m45 at speed 10 out of 17m): count only speed > 6 time.
+        val highMs = if (spec.phases.size > 1 && !spec.cyclic)
             spec.phases.filter { it.setting.speed > 6 }.sumOf { minOf(it.durationMs, spec.totalMs) } else spec.totalMs
         val base = if (fastest > 6 && highMs > Limits.MAX_MS_HIGH_SPEED) Limits.MAX_MS_HIGH_SPEED else Limits.MAX_MS_DEFAULT
         return when (spec.kind) {
@@ -309,13 +313,19 @@ object SafetyPolicy {
             v += Violation("program", tr("Programme incohérent"))
         if (spec.kind == JobKind.PROGRAM && spec.phases.size == 1 && spec.cyclic)
             v += Violation("program", tr("Programme incohérent"))
-        if (spec.phases.any { it.untilTemperature && it.setting.program?.nettoyage != true })
+        if (spec.phases.any {
+                it.untilTemperature && it.setting.program?.nettoyage != true &&
+                    !(spec.kind == JobKind.MANUAL && it.setting.temperatureC <= Limits.MAX_C_CLEANING && it.setting.speed <= 1)
+            })
             v += Violation("program", tr("Programme incohérent"))
         if (spec.totalMs < Limits.MIN_MS) v += Violation("too_short", tr("Durée trop courte"))
         // Fermentation : longue, donc seulement lame à l'arrêt et chauffe douce, d'un bout à l'autre.
         if (spec.ferment && (spec.kind != JobKind.MANUAL || spec.phases.size != 1 || spec.phases.any {
                 it.setting.speed != 0 || !it.setting.heated || it.setting.temperatureC > Limits.MAX_C_FERMENT }))
             v += Violation("ferment", tr("Fermentation : lame à l'arrêt, %d °C maximum", Limits.MAX_C_FERMENT))
+        if (spec.longProgram && (spec.kind != JobKind.MANUAL || spec.cyclic || spec.phases.any {
+                it.setting.speed > 1 || it.setting.temperatureC > 100 }))
+            v += Violation("program", tr("Programme incohérent"))
         val max = maxDurationMs(spec)
         if (spec.totalMs > max) v += Violation("too_long", tr("Durée maximale : %s", formatDuration(max)))
         for (p in spec.phases) {
@@ -329,7 +339,7 @@ object SafetyPolicy {
     const val HOT_BLEND = "hot_blend"
 
     /** Programmes du Smart autorisés au-delà de 99 min (voir [maxDurationMs]). */
-    private val LONG_PROGRAMS = setOf(
+    internal val LONG_PROGRAMS = setOf(
         SmartProgram.SOUS_VIDE, SmartProgram.MIJOTER_BRASSE, SmartProgram.MIJOTER_REPOS,
         SmartProgram.FERMENTER_BRASSE, SmartProgram.FERMENTER_REPOS,
     )
@@ -563,5 +573,23 @@ object Programs {
             else -> return spec
         }
         return spec.copy(phases = listOf(Phase(s, spec.totalMs)), cyclic = false)
+    }
+
+    /**
+     * Adapts a Smart [JobSpec] to run on Connect (`ConnectCodec`) by stripping Smart-only fields
+     * while preserving speed, direction, duration, and Connect-mapped `temperatureLevel`.
+     */
+    fun forConnect(spec: JobSpec): JobSpec {
+        if (spec.phases.none { it.setting.program != null || it.setting.smartLevel != null || it.setting.programCelsius != null }) {
+            return spec
+        }
+        val isLong = spec.phases.any { it.setting.program in SafetyPolicy.LONG_PROGRAMS }
+        return spec.copy(
+            kind = JobKind.MANUAL,
+            phases = spec.phases.map { ph ->
+                ph.copy(setting = ph.setting.copy(program = null, smartLevel = null, programCelsius = null))
+            },
+            longProgram = isLong,
+        )
     }
 }

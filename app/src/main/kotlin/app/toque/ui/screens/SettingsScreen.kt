@@ -491,6 +491,42 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         bowl.addView(bowlState, LinearLayout.LayoutParams(0, Ui.WRAP, 1f))
         bowl.addView(button, Ui.lp(Ui.WRAP, Ui.WRAP, l = 16))
         p.addView(bowl, Ui.lp(t = 2, b = 8))
+
+        group(p, tr("Programmes"))
+        val progList = Ui.vertical(c)
+        fun renderProgramToggles() {
+            progList.removeAllViews()
+            val avail = ProgramsScreen.availableFeatures(a.prefs)
+            for (f in avail) {
+                val visible = f.name !in a.prefs.hiddenPrograms
+                progList.addView(toggle(f.label, visible) { on ->
+                    val hidden = a.prefs.hiddenPrograms.toMutableSet()
+                    if (on) {
+                        hidden.remove(f.name)
+                    } else {
+                        val remaining = avail.count { it.name != f.name && it.name !in hidden }
+                        if (remaining == 0) {
+                            a.toast(tr("Gardez au moins un programme affiché"), Ui.WARN)
+                            renderProgramToggles()
+                            return@toggle
+                        }
+                        hidden.add(f.name)
+                    }
+                    a.prefs.hiddenPrograms = hidden
+                }, Ui.lp(t = 6))
+            }
+        }
+        if (a.prefs.robot == RobotProfiles.MC_CONNECT) {
+            p.addView(toggle(tr("Émulation des programmes du Smart"), a.prefs.emulateSmartPrograms) { on ->
+                a.prefs.emulateSmartPrograms = on
+                renderProgramToggles()
+            }, Ui.lp(t = 8))
+            p.addView(hint(tr("Ajoute les programmes automatiques du Smart, adaptés aux paliers de température du Connect.")),
+                Ui.lp(t = 4, b = 10))
+        }
+        p.addView(hint(tr("Programmes affichés sur l'écran Programmes :")), Ui.lp(t = 4, b = 4))
+        renderProgramToggles()
+        p.addView(progList, Ui.lp(b = 8))
     }
 
     private fun safetyPage(p: LinearLayout) {
