@@ -151,6 +151,13 @@ class Prefs(context: Context) {
             p.edit().putBoolean("chainSteps", v).commit()
         }
 
+    /** Connect only: emulate Smart automatic programs using Connect's temperature table. */
+    var emulateSmartPrograms: Boolean
+        get() = p.getBoolean("emulateSmartPrograms", false)
+        set(v) {
+            p.edit().putBoolean("emulateSmartPrograms", v).commit()
+        }
+
     var sound: Boolean
         get() = p.getBoolean("sound", true)
         set(v) {

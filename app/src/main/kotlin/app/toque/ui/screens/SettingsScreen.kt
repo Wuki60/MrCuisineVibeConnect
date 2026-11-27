@@ -21,6 +21,7 @@ import app.toque.core.i18n.I18n
 import app.toque.core.i18n.tr
 import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
+import app.toque.core.robot.RobotProfiles
 import app.toque.core.time.ZoneLookup
 import app.toque.core.update.Release
 import app.toque.recipes.LidlSync
@@ -80,6 +81,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     private lateinit var linkText: TextView
     private lateinit var timeText: TextView
     private lateinit var companionText: TextView
+    private lateinit var emulateBox: LinearLayout
     /** Point sur « Avancé » et phrase au-dessus de « Machine » : tant que Toque ne pilote pas le vrai moteur. */
     private lateinit var modeDot: View
     private lateinit var modeText: TextView
@@ -579,6 +581,11 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         robotText = hint("")
         robot.addView(robotText, Ui.lp(t = 4))
         p.addView(setting(robot, Ui.button(c, tr("Changer de robot"), Ui.Style.SECONDARY, height = 52, textSize = 18f) { a.askRobot() }), Ui.lp(t = 10, b = 8))
+        emulateBox = Ui.vertical(c)
+        emulateBox.addView(toggle(tr("Émulation des programmes du Smart"), a.prefs.emulateSmartPrograms) { a.prefs.emulateSmartPrograms = it }, Ui.lp(t = 8))
+        emulateBox.addView(hint(tr("Ajoute les programmes automatiques du Smart, adaptés aux paliers de température du Connect.")),
+            Ui.lp(t = 4, b = 8))
+        p.addView(emulateBox)
         renderRobot()
         line(p)
 
@@ -841,6 +848,9 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         robotText.text = if (!a.prefs.robotConfirmed) tr("Pas encore choisi : la liaison avec la base reste fermée en « Machine réelle ».")
             else p.displayName + " (" + p.models.joinToString(", ") + ")" + if (p.tested) "" else
                 "\n" + tr("En test : le projet ne l'a pas essayé lui-même, vos retours sont attendus sur GitHub.")
+        if (::emulateBox.isInitialized) {
+            emulateBox.visibility = if (p == RobotProfiles.MC_CONNECT) View.VISIBLE else View.GONE
+        }
     }
 
     private fun renderModes() {

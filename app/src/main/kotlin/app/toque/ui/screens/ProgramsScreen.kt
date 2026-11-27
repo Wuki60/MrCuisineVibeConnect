@@ -77,7 +77,21 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
             Programs.smartNettoyageLong(Feature.LONG_CLEAN.label)
         },
     )
-    private val progs = all.filter { RobotProfiles.active.capabilities.has(it.feature) }
+    private val isConnect = RobotProfiles.active == RobotProfiles.MC_CONNECT
+    private val progs = run {
+        val emulate = isConnect && a.prefs.emulateSmartPrograms
+        all.filter {
+            RobotProfiles.active.capabilities.has(it.feature) ||
+                (emulate && RobotProfiles.MC_SMART.capabilities.has(it.feature))
+        }
+    }.onEach { p ->
+        if (p.maxC > p.minC) {
+            val temps = allowedTemps(p)
+            if (temps.isNotEmpty() && p.celsius !in temps) {
+                p.celsius = temps.minByOrNull { kotlin.math.abs(it - p.celsius) } ?: temps.first()
+            }
+        }
+    }
     private val cleaning = progs.indexOfFirst { it.feature == Feature.CLEANING }
     private var selected = if (openOnCleaning && cleaning >= 0) cleaning else 0
     private lateinit var turbo: HoldButton
@@ -136,7 +150,7 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
             }
             p.start = Ui.button(c, tr("Démarrer"), Ui.Style.PRIMARY, Icon.Kind.PLAY, height = 66) {
                 selected = i
-                a.startJob(p.make(p.seconds * 1000L, p.celsius))
+                a.startJob(buildSpec(p))
             }
             card.addView(p.start, Ui.lp(t = 14))
             card.isClickable = true
@@ -168,14 +182,28 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
     private fun rinseRecipe(): String? =
         a.app.recipes.index.entries.firstOrNull { Programs.isRinseRecipe(it.title) }?.id
 
+    private fun allowedTemps(p: Prog): List<Int> =
+        RobotProfiles.active.capabilities.temperaturesC.filter { it in p.minC..p.maxC }
+
     private fun bump(p: Prog, dir: Int) {
         p.seconds = (p.seconds + dir * p.step).coerceIn(p.min, p.max)
         refresh()
     }
 
     private fun bumpTemp(p: Prog, dir: Int) {
-        p.celsius = (p.celsius + dir).coerceIn(p.minC, p.maxC)
+        val temps = allowedTemps(p)
+        if (temps.isNotEmpty()) {
+            val idx = temps.indexOf(p.celsius).let { if (it >= 0) it else 0 }
+            p.celsius = temps[(idx + dir).coerceIn(0, temps.lastIndex)]
+        } else {
+            p.celsius = (p.celsius + dir).coerceIn(p.minC, p.maxC)
+        }
         refresh()
+    }
+
+    private fun buildSpec(p: Prog): JobSpec {
+        val raw = p.make(p.seconds * 1000L, p.celsius)
+        return if (isConnect) Programs.forConnect(raw) else raw
     }
 
     private fun refresh() {
@@ -205,7 +233,7 @@ class ProgramsScreen(a: MainActivity, openOnCleaning: Boolean = false) : Screen(
     }
 
     override fun onKnobPress(): Boolean {
-        if (!a.snapshot.busy) progs[selected].let { a.startJob(it.make(it.seconds * 1000L, it.celsius)) }
+        if (!a.snapshot.busy) progs[selected].let { a.startJob(buildSpec(it)) }
         return true
     }
 }
