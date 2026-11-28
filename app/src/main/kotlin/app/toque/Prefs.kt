@@ -124,6 +124,15 @@ class Prefs(context: Context) {
     var sound: Boolean by boolPref("sound", true)
     /** Mise en veille de l'écran après ce nombre de minutes sans geste (0 : jamais). */
     var standbyMinutes: Int by intPref("standbyMinutes", 10)
+    /** Pendant un programme, minutes sans geste avant que l'écran baisse sa luminosité (0 : jamais). */
+    var jobDimMinutes: Int by intPref("jobDimMinutes", 0)
+    /** Cette luminosité réduite, en pour cent ; 0 : la plus faible que l'écran sait tenir. */
+    var jobDimBrightness: Int by intPref("jobDimBrightness", 20)
+    /**
+     * Pendant un programme, minutes sans geste avant que l'écran passe au noir comme en veille, avec l'étape et
+     * son temps restant à la place de l'heure (0 : jamais).
+     */
+    var jobStandbyMinutes: Int by intPref("jobStandbyMinutes", 0)
 
     /**
      * Ancien réglage de la molette pendant la veille : « normal » (inchangée), « dim » (veilleuse blanche
