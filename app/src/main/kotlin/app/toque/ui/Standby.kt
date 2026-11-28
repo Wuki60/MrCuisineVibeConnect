@@ -10,6 +10,7 @@ import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import app.toque.core.i18n.tr
+import app.toque.core.machine.RootShell
 import app.toque.core.machine.Snapshot
 import kotlin.random.Random
 
@@ -30,6 +31,9 @@ class Standby(private val a: MainActivity, private val root: FrameLayout) {
     private var hot: TextView? = null
     private var running = false
     private var wokeMs = 0L
+    private var wasDeepSleep = false
+    @Volatile private var savedBrightness = 200
+    private val backlightExec = java.util.concurrent.Executors.newSingleThreadExecutor()
 
     val asleep: Boolean get() = view != null
 
@@ -101,6 +105,7 @@ class Standby(private val a: MainActivity, private val root: FrameLayout) {
         val lidMoved = lastLid != null && lastLid != s.lidOpen
         lastWeight = s.weightG
         lastLid = s.lidOpen
+        if (asleep && wasDeepSleep) return
         if (s.busy || weightMoved || lidMoved) poke()
         else if (asleep) refresh()
     }
@@ -117,27 +122,42 @@ class Standby(private val a: MainActivity, private val root: FrameLayout) {
         val v = FrameLayout(a)
         v.setBackgroundColor(0xFF000000.toInt())
         v.isClickable = true
-        val b = Ui.vertical(a, Gravity.CENTER_HORIZONTAL)
-        val t = Ui.text(a, "", 150f, 0xFF7C828B.toInt(), Ui.THIN)
-        b.addView(t, Ui.lp(Ui.WRAP, Ui.WRAP))
-        // La veille est noire dans les deux thèmes : l'avertissement garde sa teinte claire.
-        val h = Ui.text(a, "", 22f, Ui.WARN_ON_DARK, Ui.MEDIUM)
-        b.addView(h, Ui.lp(Ui.WRAP, Ui.WRAP, t = 6))
-        b.addView(Ui.text(a, tr("Touchez l'écran pour reprendre"), 17f, 0xFF3E434A.toInt()), Ui.lp(Ui.WRAP, Ui.WRAP, t = 18))
-        v.addView(b, Ui.flp(Ui.WRAP, Ui.WRAP, Gravity.CENTER))
         root.addView(v, Ui.flp())
         view = v
-        box = b
-        clock = t
-        hot = h
-        refresh()
-        v.alpha = 0f
-        v.animate().alpha(1f).setDuration(800).start()
-        brightness(0.02f)
-        // Anneau de la molette : ce qui est réglé pour la veille (rien si c'est la même chose qu'allumé).
-        a.prefs.ring.standby?.let { KnobLight.start(it) }
-        main.postDelayed(tick, 60_000)
-        if (!WallClock.known) main.postDelayed(clockTick, WallClock.UNKNOWN_TICK_MS)
+        wasDeepSleep = a.prefs.deepSleep
+        if (wasDeepSleep) {
+            a.machine.setStandby(true)
+            backlightExec.execute {
+                val f = java.io.File("/sys/class/leds/lcd-backlight/brightness")
+                if (f.exists()) {
+                    val prev = runCatching { f.readText().trim().toIntOrNull() }.getOrNull()
+                        ?: RootShell.run("cat /sys/class/leds/lcd-backlight/brightness", 2_000).out.trim().toIntOrNull()
+                    if (prev != null && prev > 0) savedBrightness = prev
+                    RootShell.run("echo 0 > /sys/class/leds/lcd-backlight/brightness", 5_000)
+                }
+            }
+            KnobLight.start(app.toque.core.ring.Rgb(0, 0, 0))
+        } else {
+            val b = Ui.vertical(a, Gravity.CENTER_HORIZONTAL)
+            val t = Ui.text(a, "", 150f, 0xFF7C828B.toInt(), Ui.THIN)
+            b.addView(t, Ui.lp(Ui.WRAP, Ui.WRAP))
+            // La veille est noire dans les deux thèmes : l'avertissement garde sa teinte claire.
+            val h = Ui.text(a, "", 22f, Ui.WARN_ON_DARK, Ui.MEDIUM)
+            b.addView(h, Ui.lp(Ui.WRAP, Ui.WRAP, t = 6))
+            b.addView(Ui.text(a, tr("Touchez l'écran pour reprendre"), 17f, 0xFF3E434A.toInt()), Ui.lp(Ui.WRAP, Ui.WRAP, t = 18))
+            v.addView(b, Ui.flp(Ui.WRAP, Ui.WRAP, Gravity.CENTER))
+            box = b
+            clock = t
+            hot = h
+            refresh()
+            v.alpha = 0f
+            v.animate().alpha(1f).setDuration(800).start()
+            brightness(0.02f)
+            // Anneau de la molette : ce qui est réglé pour la veille (rien si c'est la même chose qu'allumé).
+            a.prefs.ring.standby?.let { KnobLight.start(it) }
+            main.postDelayed(tick, 60_000)
+            if (!WallClock.known) main.postDelayed(clockTick, WallClock.UNKNOWN_TICK_MS)
+        }
     }
 
     private fun wake() {
@@ -150,6 +170,15 @@ class Standby(private val a: MainActivity, private val root: FrameLayout) {
         box = null
         clock = null
         hot = null
+        if (wasDeepSleep) {
+            backlightExec.execute {
+                if (java.io.File("/sys/class/leds/lcd-backlight/brightness").exists()) {
+                    RootShell.run("echo $savedBrightness > /sys/class/leds/lcd-backlight/brightness", 5_000)
+                }
+            }
+            a.machine.setStandby(false)
+            wasDeepSleep = false
+        }
         brightness(WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE)
         KnobLight.stop()
         if (running) onWake?.invoke()

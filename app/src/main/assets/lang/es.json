@@ -1038,5 +1038,7 @@
   "Rendre les commandes": "Devolver el control",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Este teléfono es de solo lectura: el control se hace en el robot",
   "Programmes affichés sur l'écran Programmes :": "Programas que se muestran en la pantalla Programas:",
-  "Gardez au moins un programme affiché": "Deja al menos un programa visible"
+  "Gardez au moins un programme affiché": "Deja al menos un programa visible",
+  "Extinction totale": "Apagado profundo",
+  "Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.": "Corta por completo la alimentación de la máquina y apaga la pantalla. El anillo luminoso se apaga (el ajuste anterior no aplica). Tocar la pantalla o girar la rueda la despierta al instante."
 }

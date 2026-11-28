@@ -322,6 +322,10 @@ class MachineService : Service() {
                 l.resumePort()
                 reply(to, id, Verdict.OK)
             }
+            Ipc.STANDBY -> {
+                val enabled = data.getBoolean("standby")
+                l.post { c -> c.setStandby(enabled) }
+            }
             Ipc.SIM -> {
                 val b = sim
                 if (b != null) {

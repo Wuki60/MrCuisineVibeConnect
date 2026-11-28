@@ -273,6 +273,10 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
             Ui.lp(t = 8))
         p.addView(hint(tr("Sans geste ni programme en cours, l'écran s'assombrit et n'affiche plus que l'heure. Touchez-le ou tournez le bouton pour reprendre ; le couvercle et la balance le réveillent aussi.")),
             Ui.lp(t = 4, b = 8))
+        line(p)
+        p.addView(toggle(tr("Extinction totale"), a.prefs.deepSleep) { a.prefs.deepSleep = it }, Ui.lp(t = 8))
+        p.addView(hint(tr("Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.")),
+            Ui.lp(t = 4, b = 8))
     }
 
     private fun knobAndSoundsPage(p: LinearLayout) {

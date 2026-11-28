@@ -35,6 +35,7 @@ object Ipc {
     const val SIM = 23
     const val CONFIRM_COLD = 24
     const val FORGET_BOWL = 25
+    const val STANDBY = 26
 
     /** Clé de la langue de l'interface, jointe à chaque commande. */
     const val LANG = "lang"

@@ -136,6 +136,8 @@ class MachineClient(private val context: Context) {
     fun reconfigure(cb: (Verdict) -> Unit) = sendRaw(Ipc.RECONFIGURE, null, cb)
     fun suspendPort(cb: (Verdict) -> Unit) = sendRaw(Ipc.SUSPEND_PORT, null, cb)
     fun resumePort(cb: (Verdict) -> Unit = {}) = sendRaw(Ipc.RESUME_PORT, null, cb)
+    fun setStandby(enabled: Boolean) =
+        sendRaw(Ipc.STANDBY, Bundle().apply { putBoolean("standby", enabled) }, null)
 
     fun adjust(speed: Int? = null, temp: Int? = null, reverse: Boolean? = null, totalMs: Long? = null,
                hot: Boolean = false, smartLevel: Int? = null, cb: (Verdict) -> Unit) {

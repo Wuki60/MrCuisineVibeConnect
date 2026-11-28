@@ -1038,5 +1038,7 @@
   "Rendre les commandes": "Повернути керування",
   "Ce téléphone est en lecture seule : les commandes se font sur le robot": "Цей телефон лише для перегляду: керування — на роботі",
   "Programmes affichés sur l'écran Programmes :": "Програми, показані на екрані «Програми»:",
-  "Gardez au moins un programme affiché": "Залиште показаною хоча б одну програму"
+  "Gardez au moins un programme affiché": "Залиште показаною хоча б одну програму",
+  "Extinction totale": "Глибокий сон (повне вимкнення)",
+  "Coupe complètement l'alimentation de la machine et éteint l'écran. L'anneau lumineux est éteint (le réglage ci-dessus ne s'applique pas). Un appui sur l'écran ou la molette la réveille instantanément.": "Повністю знеструмлює силовий блок та вимикає підсвітку екрана. Кільце енкодера вимкнене (налаштування вище не діє). Дотик до екрана чи дія коліщатком миттєво пробуджують машину."
 }
