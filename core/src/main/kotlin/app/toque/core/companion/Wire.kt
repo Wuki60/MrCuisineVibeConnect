@@ -156,18 +156,28 @@ data class PhoneWire(
     val label: String = "",
     /** Ce téléphone est en lecture seule (voir [Phone.readOnly]) : écrit seulement quand il l'est. */
     val readOnly: Boolean = false,
+    /**
+     * Le nom que ce téléphone reprendrait sans [label] (« Téléphone N », dans la langue du robot) : le champ
+     * « Renommer » du téléphone le dit. Vide sans nom donné ([name] est alors ce nom-là), et chez un robot plus ancien.
+     */
+    val defaultName: String = "",
 ) {
-    /** [label] et [readOnly] ne sont écrits que s'ils existent : un téléphone sans nom garde exactement son JSON d'avant. */
+    /**
+     * [label], [readOnly] et [defaultName] ne sont écrits que s'ils existent ([defaultName] seulement avec un nom
+     * donné) : un téléphone sans nom garde exactement son JSON d'avant.
+     */
     fun toMap(): Map<String, Any?> = linkedMapOf<String, Any?>("id" to id, "number" to number, "name" to name,
         "pairedAt" to pairedAt, "lastSeenAt" to lastSeenAt, "method" to method).apply {
         if (label.isNotEmpty()) put("label", label)
         if (readOnly) put("readOnly", true)
+        if (label.isNotEmpty() && defaultName.isNotEmpty()) put("defaultName", defaultName)
     }
 
     companion object {
-        fun of(p: Phone) = PhoneWire(p.id, p.number, p.name, p.pairedAt, p.lastSeenAt, p.method, p.label, p.readOnly)
+        fun of(p: Phone) = PhoneWire(p.id, p.number, p.name, p.pairedAt, p.lastSeenAt, p.method, p.label, p.readOnly,
+            if (p.label.isEmpty()) "" else p.defaultName)
         fun fromMap(m: Map<String, Any?>) = PhoneWire(W.s(m, "id"), W.i(m, "number"), W.s(m, "name"),
-            W.l(m, "pairedAt"), W.l(m, "lastSeenAt"), W.s(m, "method"), W.s(m, "label"), m["readOnly"] == true)
+            W.l(m, "pairedAt"), W.l(m, "lastSeenAt"), W.s(m, "method"), W.s(m, "label"), m["readOnly"] == true, W.s(m, "defaultName"))
     }
 }
 
@@ -327,20 +337,25 @@ data class JobWire(
     /** Machine en attente d'un arrêt confirmé (démarrage, changement de sens, fin). */
     val waitingStop: Boolean = false,
     val pause: PauseWire? = null,
+    /**
+     * Fermentation (yaourt) : une cuisson [kind] MANUAL sans mélange, tiède, qui dure des heures et ne se règle
+     * pas comme une cuisson manuelle. Le téléphone la montre comme un programme. Écrit seulement quand c'est vrai.
+     */
+    val ferment: Boolean = false,
 ) {
-    fun toMap(): Map<String, Any?> = linkedMapOf("kind" to kind, "kindLabel" to kindLabel, "label" to label,
+    fun toMap(): Map<String, Any?> = linkedMapOf<String, Any?>("kind" to kind, "kindLabel" to kindLabel, "label" to label,
         "state" to state, "counting" to counting, "endReason" to endReason, "phaseIndex" to phaseIndex,
         "phaseCount" to phaseCount, "elapsedMs" to elapsedMs, "totalMs" to totalMs, "remainingMs" to remainingMs,
         "speed" to speed, "tempLevel" to tempLevel, "tempC" to tempC, "reverse" to reverse, "accessory" to accessory,
         "hotBlendConfirmed" to hotBlendConfirmed, "startedAt" to startedAt, "waitingStop" to waitingStop,
-        "pause" to pause?.toMap())
+        "pause" to pause?.toMap()).apply { if (ferment) put("ferment", true) }
 
     companion object {
         fun fromMap(m: Map<String, Any?>) = JobWire(W.s(m, "kind"), W.s(m, "kindLabel"), W.s(m, "label"),
             W.s(m, "state"), W.b(m, "counting"), W.s(m, "endReason"), W.i(m, "phaseIndex"), W.i(m, "phaseCount"),
             W.l(m, "elapsedMs"), W.l(m, "totalMs"), W.l(m, "remainingMs"), W.i(m, "speed"), W.i(m, "tempLevel"),
             W.i(m, "tempC"), W.b(m, "reverse"), W.s(m, "accessory").ifEmpty { "BLADE" }, W.b(m, "hotBlendConfirmed"),
-            W.l(m, "startedAt"), W.b(m, "waitingStop"), W.o(m, "pause")?.let { PauseWire.fromMap(it) })
+            W.l(m, "startedAt"), W.b(m, "waitingStop"), W.o(m, "pause")?.let { PauseWire.fromMap(it) }, W.b(m, "ferment"))
     }
 }
 
