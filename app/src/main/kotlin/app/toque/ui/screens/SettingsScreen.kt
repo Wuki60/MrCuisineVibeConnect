@@ -83,6 +83,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
     private lateinit var invertHint: TextView
     private lateinit var linkText: TextView
     private lateinit var timeText: TextView
+    private lateinit var standbyText: TextView
     private lateinit var companionText: TextView
     private lateinit var phonesBox: LinearLayout
     /** Point sur « Avancé » et phrase au-dessus de « Machine » : tant que Toque ne pilote pas le vrai moteur. */
@@ -268,11 +269,23 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         AccentWheel.Ring.get(Ui.u(AccentWheelScreen.RING)) {}
 
         group(p, tr("Veille"))
-        val delays = listOf("0" to tr("Jamais")) + listOf(2, 5, 10, 15, 30).map { it.toString() to tr("Après %d min", it) }
-        p.addView(choice(tr("Mise en veille"), dropdown(delays, a.prefs.standbyMinutes.toString()) { m -> a.prefs.standbyMinutes = m.toInt() }),
-            Ui.lp(t = 8))
-        p.addView(hint(tr("Sans geste ni programme en cours, l'écran s'assombrit et n'affiche plus que l'heure. Touchez-le ou tournez le bouton pour reprendre ; le couvercle et la balance le réveillent aussi.")),
-            Ui.lp(t = 4, b = 8))
+        // Le délai au repos, et ce que fait l'écran pendant un programme : sur leur écran.
+        p.addView(link(tr("Veille de l'écran")) { a.push(StandbyScreen(a)) })
+        standbyText = hint("")
+        p.addView(standbyText, Ui.lp(b = 8))
+        refreshStandby()
+    }
+
+    /**
+     * Ce qui est réglé pour la veille, sous son lien, dans les mots de son écran et une situation par ligne :
+     * « Au repos : après 10 min », « Pendant un programme : jamais ». Pendant un programme, la mise en veille si
+     * elle est réglée, sinon la luminosité qui baisse.
+     */
+    private fun refreshStandby() {
+        val p = a.prefs
+        fun after(minutes: Int) = if (minutes <= 0) tr("jamais") else tr("après %d min", minutes)
+        val job = if (p.jobStandbyMinutes <= 0 && p.jobDimMinutes > 0) tr("luminosité réduite") else after(p.jobStandbyMinutes)
+        standbyText.text = listOf(tr("Au repos : %s", after(p.standbyMinutes)), tr("Pendant un programme : %s", job)).joinToString("\n")
     }
 
     private fun knobAndSoundsPage(p: LinearLayout) {
@@ -1194,6 +1207,7 @@ class SettingsScreen(a: MainActivity, private val startOn: Family? = null) : Scr
         unsubSync = SyncProgress.onChange { refreshSync() }
         unsubSite = a.app.site.onChange { renderAccount(); refreshSite() }
         unsubMealie = a.app.mealie.onChange { refreshMealie() }
+        refreshStandby()
         refreshCompanion()
         unsubCompanion = a.app.companion?.onChange { ch ->
             if (ch == RobotCompanion.Change.PHONES || ch == RobotCompanion.Change.SERVER) refreshCompanion()
