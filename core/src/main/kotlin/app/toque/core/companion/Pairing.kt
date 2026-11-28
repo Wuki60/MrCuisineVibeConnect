@@ -53,7 +53,9 @@ data class Phone(
      */
     val readOnly: Boolean = false,
 ) {
-    val name: String get() = label.ifEmpty { tr("Téléphone %d", number) }
+    /** « Téléphone N », dans la langue du robot : le nom d'un téléphone à qui on n'en a pas donné. */
+    val defaultName: String get() = tr("Téléphone %d", number)
+    val name: String get() = label.ifEmpty { defaultName }
 }
 
 /** Code d'appairage affiché sur le robot. */

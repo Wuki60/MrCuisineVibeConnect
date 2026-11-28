@@ -42,6 +42,8 @@ class CompanionRenameTest {
         val wire = PhoneWire.fromMap(f.json(r))
         assertEquals("Cuisine de Léa", wire.name)
         assertEquals("Cuisine de Léa", wire.label)
+        // Le nom qu'il reprendrait sans celui-là, dans la langue du robot : le champ « Renommer » du téléphone le dit.
+        assertEquals("Téléphone 1", wire.defaultName)
         assertEquals(1, wire.number)
         assertEquals(phoneOf(f, first).id, wire.id)
         assertEquals("Cuisine de Léa", phoneOf(f, first).name)
@@ -51,9 +53,11 @@ class CompanionRenameTest {
         assertTrue("une nouvelle révision", s.revision > before)
         assertEquals("Cuisine de Léa", s.me.name)
         assertEquals("Cuisine de Léa", s.me.label)
-        // L'autre téléphone garde le sien.
+        assertEquals("Téléphone 1", s.me.defaultName)
+        // L'autre téléphone garde le sien : sans nom donné, « name » est déjà le nom par défaut.
         assertEquals("Téléphone 2", state(f, second).me.name)
         assertEquals("", state(f, second).me.label)
+        assertEquals("", state(f, second).me.defaultName)
 
         // Le même nom une seconde fois : rien ne change, pas de nouvelle révision.
         val rev = state(f, first).revision
@@ -79,6 +83,7 @@ class CompanionRenameTest {
             assertEquals("Téléphone 1", PhoneWire.fromMap(f.json(r)).name)
             // Sans nom donné, le champ n'est pas écrit : le JSON d'un téléphone sans nom reste celui d'avant.
             assertFalse(f.json(r).containsKey("label"))
+            assertFalse(f.json(r).containsKey("defaultName"))
             assertEquals("", phoneOf(f, t).label)
         }
     }
@@ -146,6 +151,11 @@ class CompanionRenameTest {
         val withLabel = PhoneWire(id = "1eeddd36", number = 1, name = "Cuisine", method = "code", label = "Cuisine").toMap()
         assertEquals("Cuisine", PhoneWire.fromMap(withLabel).label)
         assertEquals("", PhoneWire.fromMap(withLabel - "label").label)
+        // Le nom par défaut suit le nom donné, et un robot qui ne l'envoie pas encore est lu sans peine.
+        val named = PhoneWire(id = "1eeddd36", number = 1, name = "Cuisine", method = "code", label = "Cuisine", defaultName = "Téléphone 1")
+        assertEquals("Téléphone 1", named.toMap()["defaultName"])
+        assertEquals(named, PhoneWire.fromMap(named.toMap()))
+        assertEquals("", PhoneWire.fromMap(named.toMap() - "defaultName").defaultName)
     }
 
     @Test fun aRenameOnTheRobotMovesTheRevisionToo() {

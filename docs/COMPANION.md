@@ -874,9 +874,10 @@ that is not a string or longer than 200 characters: `400 bad_request`, nothing c
 cleans it like its own field (`PairingManager.cleanLabel`): one line (control characters and runs of
 spaces become one space), trimmed, at most 24 characters (`MAX_LABEL`, longer is cut). An empty or
 blank name goes back to the default « Téléphone N ». Reply `200`: this phone's `PhoneWire` as the robot
-now knows it (`name` the displayed name, `label` the name given, absent for the default):
+now knows it (`name` the displayed name; `label` the name given and `defaultName` the name it would take
+back without one, in the robot's language, both absent for the default):
 ```json
-{"id":"1eeddd36","number":1,"name":"Cuisine de Léa","pairedAt":1795340083523,"lastSeenAt":1795340090000,"method":"code","label":"Cuisine de Léa"}
+{"id":"1eeddd36","number":1,"name":"Cuisine de Léa","pairedAt":1795340083523,"lastSeenAt":1795340090000,"method":"code","label":"Cuisine de Léa","defaultName":"Téléphone 1"}
 ```
 The new name is the one the journal, the robot's messages and `state.me` carry from then on; a change
 moves `revision` (a rename on the robot's list too). Nothing is journaled. Allowed to any paired phone
@@ -945,7 +946,7 @@ differ, so compute countdowns from the moment the response arrived, not from `se
 | `revision` | grows on every visible change; pass it back as `since` |
 | `serverTime` | robot wall clock at the response |
 | `robot` | `id` (stable random id, 12 hex), `name`, `appVersion`, `language` (UI language code), `protocol`, and its look so that the phone can match it: `accent` (the colour chosen in Settings › Screen, `#RRGGBB` in upper case) and `theme` (`dark` or `light`). Both are absent on a robot that does not know them (before 0.8.0): the phone then keeps its own colour and theme. A change of colour or theme on the robot moves `revision` like any visible change. `anyAccent`: `true` when `POST /api/robot/appearance` takes any colour of the colour wheel (any colour its guard accepts), not only the ten; written only when true, so absent on an older robot (read as false: offer it only the ten) and an older phone ignores it. `accent` may then be a wheel colour: a phone shows it as is. `model`: the robot model, the id of its profile (`mc-connect` or `mc-smart`); written only when known, so absent on an older robot (the phone then infers it from `limits`: `heatNoStir` false is the Smart) |
-| `me` | this phone: `id`, `number`, `name`, `pairedAt`, `lastSeenAt`, `method` (`qr` / `code`); `label`: the name given to it (on the robot or with `POST /api/phones/me`), written only when there is one, so absent for « Téléphone N » and on an older robot; `readOnly`: `true` when this phone is read-only (`POST /api/phones/me/read-only`), written only then |
+| `me` | this phone: `id`, `number`, `name`, `pairedAt`, `lastSeenAt`, `method` (`qr` / `code`); `label`: the name given to it (on the robot or with `POST /api/phones/me`), written only when there is one, so absent for « Téléphone N » and on an older robot; `readOnly`: `true` when this phone is read-only (`POST /api/phones/me/read-only`), written only then; `defaultName`: with a `label`, the name the phone would take back without it (« Téléphone N » in the robot's language), absent otherwise (`name` is then that name) |
 | `machine` | the base, always present |
 | `job` | the current or last job, `null` when none is shown on the robot; an ended job (`FINISHED`, `ABORTED`) stays until OK is pressed on the robot or sent by a phone (`POST /api/machine/clear`) |
 | `can` | what this phone may do now (section 6): `pause`, `resume`, `stop`, `adjust`, `tare`, `sendRecipe`, `removeWaiting`, `start`, `clear`, `favorite`, `stopRecipe`, `editRecipes`, `setAppearance`, `renamePhone`, `ownSettings` |
@@ -987,6 +988,7 @@ differ, so compute countdowns from the moment the response arrived, not from `se
 | `counting` | `state == RUNNING`: extrapolate `remainingMs` locally only then |
 | `endReason` | why it ended ("Terminé", "Arrêté", "Pause trop longue : programme annulé", fault text) |
 | `phaseIndex`, `phaseCount` | current phase; a manual job has 1 phase (only those are adjustable) |
+| `ferment` | `true` for a fermentation (the Connect's Yaourt program): a `MANUAL` job with one phase, blade stopped, lukewarm, that lasts hours (up to 12 h) and is not tuned like a manual cooking; show it as a program. Written only when `true`; absent on an older robot, where such a job is the only `MANUAL` one longer than 99 min |
 | `elapsedMs`, `totalMs`, `remainingMs` | job timer |
 | `speed`, `tempLevel`, `tempC`, `reverse` | current phase setting (level 0–19, °C from the robot's table) |
 | `accessory` | `BLADE` or `WHISK` |

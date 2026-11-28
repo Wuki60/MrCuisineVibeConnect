@@ -1286,7 +1286,7 @@ class CompanionHub(
             JobWire(s.jobKind, runCatching { JobKind.valueOf(s.jobKind).label }.getOrElse { s.jobKind }, s.jobLabel,
                 s.jobState, s.state == JobState.RUNNING, s.endReason, s.phaseIndex, s.phaseCount, s.elapsedMs, s.totalMs,
                 s.remainingMs, s.jobSpeed, s.jobTempLevel, s.jobTempC, s.jobReverse, s.accessory,
-                s.hotBlendConfirmed, jobStartedAt, s.waitingStop, pause)
+                s.hotBlendConfirmed, jobStartedAt, s.waitingStop, pause, s.jobFerment)
         }
         val sess = session?.let { sessionWire(it, sessionStartedAt) }
         val left = if (session == null) suspended?.let { sessionWire(it, suspendedStartedAt) } else null

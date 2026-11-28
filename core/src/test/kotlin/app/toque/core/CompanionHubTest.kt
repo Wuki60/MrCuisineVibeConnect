@@ -258,6 +258,36 @@ class CompanionHubTest {
     }
 
     /** Seul « start » (cuisson manuelle, coupée tant que le robot ne l'a pas permise) peut lancer quelque chose. */
+    /** Un yaourt est une cuisson MANUAL pour la base ; le téléphone doit savoir que c'est une fermentation. */
+    @Test fun aFermentationIsToldToPhones() {
+        val b = Bench().ready()
+        val f = HubFixture(FakeHost(b.c))
+        val t = f.pair()
+        assertTrue(b.c.startJob(Programs.yogurt(8 * 3600_000L)).ok)
+        b.step(500)
+        f.hub.updateMachine(b.snap)
+        val job = state(f, t).job!!
+        assertEquals("MANUAL", job.kind)
+        assertEquals("Yaourt", job.label)
+        assertEquals(1, job.phaseCount)
+        assertEquals(0, job.speed)
+        assertEquals(8 * 3600_000L, job.totalMs)
+        assertTrue(job.ferment)
+        @Suppress("UNCHECKED_CAST")
+        val raw = f.json(f.req("GET", "/api/state", t))["job"] as Map<String, Any?>
+        assertEquals(true, raw["ferment"])
+        assertEquals(job, JobWire.fromMap(raw))
+
+        // Une cuisson manuelle n'en dit rien : son JSON reste celui d'avant.
+        b.c.stop(); b.step(3_000); b.c.clearFinished()
+        assertTrue(b.c.startJob(Programs.manual(2, 0, Direction.CLOCKWISE, 300_000)).ok)
+        b.step(500)
+        f.hub.updateMachine(b.snap)
+        assertFalse(state(f, t).job!!.ferment)
+        @Suppress("UNCHECKED_CAST")
+        assertFalse((f.json(f.req("GET", "/api/state", t))["job"] as Map<String, Any?>).containsKey("ferment"))
+    }
+
     @Test fun noRouteCanStartAnything() {
         val names = CompanionHost::class.java.methods.map { it.name.lowercase() }
         assertEquals(listOf("start"), names.filter { it.contains("start") })
